@@ -42,13 +42,13 @@ def update_violin_plot(ev_penetration,
                        selected_grid_usage_fees):
              
     df = pd.read_csv('data_example.csv', index_col=0)
-    df_selected = df[(df['ev_penetration'] == ev_penetration) 
+    df_selected = df[(df['diffusion_evs'] == ev_penetration) 
                     & (df['curtailment'] == curtailment) 
                     & (df['grid_type'] == selected_grid_type)
-                    & (df['hp_diffusion'] == selected_hp_diffusion)
-                    & (df['pv_storage_diffusion'] == selected_pv_storage_diffusion)
-                    & (df['wholesale_tariff'] == selected_wholesale_tariff)
-                    & (df['grid_usage_fees'] == selected_grid_usage_fees)
+                    & (df['diffusion_hps'] == selected_hp_diffusion)
+                    & (df['diffusion_pv_storage'] == selected_pv_storage_diffusion)
+                    & (df['tariff_wholesale'] == selected_wholesale_tariff)
+                    & (df['tariff_grid_usage_fee'] == selected_grid_usage_fees)
                     ]
     
     fig = px.violin(df_selected, 
