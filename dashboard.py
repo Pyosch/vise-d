@@ -30,3 +30,11 @@ with st.sidebar:
     selected_wholesale_tariff = st.selectbox('Wholesale Tariff', wholesale_tariff)
     selected_grid_usage_fees = st.selectbox('Netznutzungsgebühren', grid_usage_fees)
     
+
+footer_cols = st.columns(2)
+
+with footer_cols[0]:
+    st.image("https://smart-energy-nrw.web.th-koeln.de/wp-content/uploads/2023/10/VISE_D_neu-1024x470.png")
+    
+with footer_cols[1]:
+    st.image("https://smart-energy-nrw.web.th-koeln.de/wp-content/uploads/2023/01/Logo_MWIKEPixel.png")
