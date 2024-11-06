@@ -35,7 +35,8 @@ with st.sidebar:
     selected_grid_usage_fees = st.selectbox('Netznutzungsgebühren', grid_usage_fees)
     
 conn = st.connection('gcs', type=FilesConnection)
-df = conn.read("vise-d/240912_inputs_online_tool.csv", input_format="csv", ttl=600)
+# df = conn.read("vise-d/240912_inputs_online_tool.csv", input_format="csv", ttl=600)
+df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
     
 def update_violin_plot(df,
                        ev_penetration, 
