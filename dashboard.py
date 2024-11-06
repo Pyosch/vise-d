@@ -14,17 +14,22 @@ st.title('VISE-D Dashboard')
 
 st.write('Welcome to the VISE-D Dashboard! This is a demo of the tool developed in the VISE-D project.')
 
+# Load data
+conn = st.connection('gcs', type=FilesConnection)
+# df = conn.read("vise-d/240912_inputs_online_tool.csv", input_format="csv", ttl=600)
+df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
+
 # Sidebar
 with st.sidebar:
     st.title('VISE-D')
     
-    grid_type = ['standard']
-    ev_diffusion = [30, 50, 70]
-    hp_diffusion = ['standard']
-    pv_storage_diffusion = ['standard']
-    curtailment = ['none']
-    wholesale_tariff = ['rtt', 'tou', 'fix']
-    grid_usage_fees = ['fix', 'variable']
+    grid_type = df.grid_type.unique()
+    ev_diffusion = sorted(df.diffusion_evs.unique())
+    hp_diffusion = df.diffusion_hps.unique()
+    pv_storage_diffusion = df.diffusion_pv_storage.unique()
+    curtailment = df.curtailment.unique()
+    wholesale_tariff = df.tariff_wholesale.unique()
+    grid_usage_fees = df.tariff_grid_usage_fee.unique()
     
     selected_grid_type = st.selectbox('Netz Typ', grid_type)
     selected_ev_diffusion = st.selectbox('EV Diffusion', ev_diffusion)
@@ -33,10 +38,6 @@ with st.sidebar:
     selected_curtailment = st.selectbox('Curtailment', curtailment)
     selected_wholesale_tariff = st.selectbox('Wholesale Tariff', wholesale_tariff)
     selected_grid_usage_fees = st.selectbox('Netznutzungsgebühren', grid_usage_fees)
-    
-conn = st.connection('gcs', type=FilesConnection)
-# df = conn.read("vise-d/240912_inputs_online_tool.csv", input_format="csv", ttl=600)
-df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
     
 def update_violin_plot(df,
                        ev_penetration, 
