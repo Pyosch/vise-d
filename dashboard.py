@@ -65,7 +65,8 @@ def update_violin_plot(df,
 
 st.write('## Violin Plot')
 
-st.plotly_chart(update_violin_plot(selected_ev_diffusion, 
+st.plotly_chart(update_violin_plot(df,
+                                   selected_ev_diffusion, 
                                    selected_curtailment,
                                    selected_grid_type, 
                                    selected_hp_diffusion, 
