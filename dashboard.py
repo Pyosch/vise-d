@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 
 import streamlit as st
+from st_files_connection import FilesConnection
 
 st.set_page_config(page_title='VISE-D Dashboard', 
                     page_icon=':bar_chart:',
@@ -33,7 +34,11 @@ with st.sidebar:
     selected_wholesale_tariff = st.selectbox('Wholesale Tariff', wholesale_tariff)
     selected_grid_usage_fees = st.selectbox('Netznutzungsgebühren', grid_usage_fees)
     
-def update_violin_plot(ev_penetration, 
+conn = st.connection('gcs', type=FilesConnection)
+df = conn.read("vise-d/240912_inputs_online_tool.csv", input_format="csv", ttl=600)
+    
+def update_violin_plot(df,
+                       ev_penetration, 
                        curtailment,
                        selected_grid_type, 
                        selected_hp_diffusion, 
@@ -41,7 +46,7 @@ def update_violin_plot(ev_penetration,
                        selected_wholesale_tariff, 
                        selected_grid_usage_fees):
              
-    df = pd.read_csv('data_example.csv', index_col=0)
+    # df = pd.read_csv('data_example.csv', index_col=0)
     df_selected = df[(df['diffusion_evs'] == ev_penetration) 
                     & (df['curtailment'] == curtailment) 
                     & (df['grid_type'] == selected_grid_type)
