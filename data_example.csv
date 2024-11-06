@@ -1,0 +1,1001 @@
+,grid_type,diffusion_evs,diffusion_hps,diffusion_pv_storage,curtailment,tariff_wholesale,tariff_grid_usage_fee,q,component,value
+0,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 52_HH2b_eff_vacWinter_ees,0.0037
+1,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 52_HH2b_eff_vacWinter_pv,-1.61e-07
+2,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 93_entity,-7.095650983005971e-05
+3,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 45_HH2b_eff_vacSummer_ees,0.0037
+4,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 67_entity,-7.541219232903856e-05
+5,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 110_HH1b_random_vacSummer_ees,0.0085
+6,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 101_entity,-0.00029002361342077054
+7,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 48_HH1b_random_vacWinter_ees,0.0066
+8,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 43_entity,-0.00010296098184290383
+9,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 132_HH1b_eff_vacSummer_ees,0.0056
+10,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 90_entity,-9.602675467662038e-05
+11,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 18_HH1b_random_vacWinter_ees,0.0066
+12,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 17_entity,-0.00010296098184290383
+13,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 50_HH1b_random_vacSummer_ees,0.0085
+14,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 61_entity,-0.00029002361342077054
+15,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 47_HH2b_eff_vacSummer_ees,0.0037
+16,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 41_entity,-7.3396e-05
+17,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 95_entity,-7.541219232903856e-05
+18,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 13_HH1a_random_vacSummer_ees,0.008199999999999999
+19,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 99_entity,-0.00011803396058864339
+20,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 9_HH1a_random_vacSummer_ees,0.008199999999999999
+21,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 88_entity,-0.00011803396058864339
+22,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 109_HH2a_eff_vacSummer_ees,0.0039
+23,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 80_entity,-6.491568393470093e-05
+24,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 71_HH2b_random_vacWinter_ees,0.0064
+25,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 91_entity,-0.000518453393289582
+26,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 69_HH1a_eff_vacSummer_ees,0.004900000000000001
+27,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 58_entity,-0.00011059686946300945
+28,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 57_HH1a_eff_vacWinter_ees,0.004900000000000001
+29,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 92_entity,-8.510707520687283e-05
+30,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 20_HH1a_random_vacSummer_ees,0.008199999999999999
+31,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 11_entity,-0.00011803396058864339
+32,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 29_HH1b_eff_vacSummer_ees,0.0056
+33,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 18_entity,-9.602675467662038e-05
+34,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 53_HH2b_eff_vacWinter_ees,0.0037
+35,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 53_HH2b_eff_vacWinter_pv,-1.61e-07
+36,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 47_entity,-6.541354944207611e-05
+37,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 104_entity,-7.095650983005971e-05
+38,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 3_HH2b_eff_vacWinter_ees,0.0037
+39,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 3_HH2b_eff_vacWinter_pv,-1.61e-07
+40,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 33_entity,-7.095650983005971e-05
+41,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 30_HH2b_random_vacWinter_ees,0.0064
+42,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 15_entity,-0.000518453393289582
+43,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 44_HH1b_eff_vacWinter_ees,0.0056
+44,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 44_HH1b_eff_vacWinter_pv,-1.1e-07
+45,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 82_entity,-9.738720331293197e-05
+46,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 85_HH2b_eff_vacWinter_ees,0.0037
+47,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 85_HH2b_eff_vacWinter_pv,-1.61e-07
+48,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 94_entity,-7.095650983005971e-05
+49,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 45_HH1a_random_vacWinter_ees,0.0088
+50,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 45_HH1a_random_vacWinter_pv,-7e-06
+51,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 67_entity,-0.0001385687730235231
+52,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 100_HH2b_random_vacWinter_ees,0.0064
+53,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 76_entity,-0.000518453393289582
+54,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 102_HH1b_eff_vacSummer_ees,0.0056
+55,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 19_entity,-9.602675467662038e-05
+56,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 114_HH2b_eff_vacSummer_ees,0.0037
+57,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 59_entity,-7.541219232903856e-05
+58,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 43_HH1b_random_vacWinter_ees,0.0066
+59,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 35_entity,-0.00010296098184290383
+60,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 31_HH1b_random_vacSummer_ees,0.0085
+61,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 17_entity,-0.00029002361342077054
+62,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 56_HH2a_eff_vacSummer_ees,0.0039
+63,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 31_entity,-6.491568393470093e-05
+64,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 98_HH1b_random_vacSummer_ees,0.0085
+65,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 19_entity,-0.00029002361342077054
+66,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 109_HH1b_random_vacSummer_ees,0.0085
+67,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 80_entity,-0.00029002361342077054
+68,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 45_HH1a_eff_vacWinter_ees,0.004900000000000001
+69,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 67_entity,-8.510707520687283e-05
+70,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 50_HH2a_random_vacSummer_ees,0.0064
+71,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 50_HH2a_random_vacSummer_pv,-5e-07
+72,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 117_entity,-7.656083532962227e-05
+73,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 11_HH2a_random_vacWinter_ees,0.006
+74,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 20_entity,-7.656083532962227e-05
+75,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 64_entity,-0.000600305
+76,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 65_entity,-0.0001342931166073426
+77,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 37_HH2b_eff_vacSummer_ees,0.0037
+78,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 85_entity,-7.541219232903856e-05
+79,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 97_HH2b_eff_vacWinter_ees,0.0037
+80,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 97_HH2b_eff_vacWinter_pv,-1.61e-07
+81,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 88_entity,-7.095650983005971e-05
+82,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 37_entity,-7.095650983005971e-05
+83,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 71_HH1a_random_vacWinter_ees,0.0088
+84,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 71_HH1a_random_vacWinter_pv,-7e-06
+85,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 76_entity,-0.0001385687730235231
+86,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 71_HH2b_random_vacWinter_ees,0.0064
+87,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 91_entity,-0.000518453393289582
+88,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 94_HH2a_random_vacWinter_ees,0.006
+89,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 13_entity,-0.0001342931166073426
+90,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 77_HH2a_eff_vacSummer_ees,0.0039
+91,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 52_entity,-6.491568393470093e-05
+92,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 39_HH2a_eff_vacSummer_ees,0.0039
+93,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 105_entity,-6.491568393470093e-05
+94,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 79_HH2b_random_vacSummer_ees,0.0050999999999999995
+95,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 79_HH2b_random_vacSummer_pv,-5.1e-07
+96,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 28_entity,-0.00010332716853344879
+97,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 15_HH2a_random_vacSummer_ees,0.0064
+98,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 15_HH2a_random_vacSummer_pv,-5e-07
+99,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 9_entity,-7.656083532962227e-05
+100,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 111_entity,-0.00029002361342077054
+101,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 40_HH1a_eff_vacWinter_ees,0.004900000000000001
+102,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 37_entity,-8.510707520687283e-05
+103,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 94_HH2a_random_vacWinter_ees,0.006
+104,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 118_entity,-0.0001342931166073426
+105,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 14_HH2a_eff_vacWinter_ees,0.0039
+106,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 59_entity,-6.541354944207611e-05
+107,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 37_HH2a_eff_vacWinter_ees,0.0039
+108,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 25_entity,-6.541354944207611e-05
+109,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 114_HH1b_eff_vacSummer_ees,0.0056
+110,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 59_entity,-9.602675467662038e-05
+111,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 11_HH2b_random_vacWinter_ees,0.0064
+112,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 65_entity,-0.000518453393289582
+113,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 21_HH1a_random_vacWinter_ees,0.0088
+114,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 21_HH1a_random_vacWinter_pv,-7e-06
+115,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 4_entity,-0.0001385687730235231
+116,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 15_HH2b_random_vacSummer_ees,0.0050999999999999995
+117,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 15_HH2b_random_vacSummer_pv,-5.1e-07
+118,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 15_LV4.202 Load 3_pv,-1.1e-07
+119,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 2_entity,-0.00010332716853344879
+120,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 3_entity,-0.000166668
+121,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 114_HH2a_random_vacSummer_ees,0.0064
+122,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 114_HH2a_random_vacSummer_pv,-5e-07
+123,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 59_entity,-7.656083532962227e-05
+124,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 51_HH1b_eff_vacWinter_ees,0.0056
+125,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 51_HH1b_eff_vacWinter_pv,-1.1e-07
+126,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 97_entity,-9.738720331293197e-05
+127,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 8_HH2b_eff_vacWinter_ees,0.0037
+128,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 8_HH2b_eff_vacWinter_pv,-1.61e-07
+129,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 34_entity,-7.095650983005971e-05
+130,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 16_HH2a_random_vacWinter_ees,0.006
+131,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 30_entity,-0.0001342931166073426
+132,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 86_HH2a_random_vacSummer_ees,0.0064
+133,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 86_HH2a_random_vacSummer_pv,-5e-07
+134,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 20_entity,-7.656083532962227e-05
+135,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 92_HH1b_eff_vacWinter_ees,0.0056
+136,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 92_HH1b_eff_vacWinter_pv,-1.1e-07
+137,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 60_entity,-9.738720331293197e-05
+138,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 3_HH1b_random_vacSummer_ees,0.0085
+139,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 33_entity,-0.00029002361342077054
+140,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 130_HH1a_random_vacWinter_ees,0.0088
+141,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 130_HH1a_random_vacWinter_pv,-7e-06
+142,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 64_entity,-0.0001385687730235231
+143,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 50_HH2b_random_vacWinter_ees,0.0064
+144,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 44_entity,-0.000263304
+145,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 98_entity,-0.000518453393289582
+146,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 95_HH1b_eff_vacSummer_ees,0.0056
+147,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 80_entity,-9.602675467662038e-05
+148,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 96_HH1a_random_vacWinter_ees,0.0088
+149,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 96_HH1a_random_vacWinter_pv,-7e-06
+150,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 116_entity,-0.0001385687730235231
+151,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 17_HH2a_random_vacWinter_ees,0.006
+152,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 20_entity,-0.0001342931166073426
+153,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 130_HH2a_random_vacSummer_ees,0.0064
+154,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 130_HH2a_random_vacSummer_pv,-5e-07
+155,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 64_entity,-7.656083532962227e-05
+156,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 41_HH1b_eff_vacSummer_ees,0.0056
+157,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 40_entity,-0.00011803396058864339
+158,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 92_entity,-9.602675467662038e-05
+159,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 93_entity,-3.6698e-05
+160,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 94_entity,-0.0001342931166073426
+161,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 5_HH1b_random_vacWinter_ees,0.0066
+162,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 3_entity,-0.00010296098184290383
+163,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 14_HH1a_eff_vacWinter_ees,0.004900000000000001
+164,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 59_entity,-8.510707520687283e-05
+165,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 15_HH1a_random_vacWinter_ees,0.0088
+166,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 15_HH1a_random_vacWinter_pv,-7e-06
+167,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 88_entity,-0.0001385687730235231
+168,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 68_HH2a_random_vacSummer_ees,0.0064
+169,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 68_HH2a_random_vacSummer_pv,-5e-07
+170,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 78_entity,-7.656083532962227e-05
+171,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 60_HH1a_eff_vacSummer_ees,0.004900000000000001
+172,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 51_entity,-0.00011059686946300945
+173,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 69_HH1b_random_vacWinter_ees,0.0066
+174,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 26_entity,-0.00010296098184290383
+175,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 113_HH1b_eff_vacSummer_ees,0.0056
+176,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 82_entity,-9.602675467662038e-05
+177,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 41_HH2b_eff_vacWinter_ees,0.0037
+178,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 41_HH2b_eff_vacWinter_pv,-1.61e-07
+179,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 38_entity,-7.095650983005971e-05
+180,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 11_HH2b_random_vacWinter_ees,0.0064
+181,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 21_entity,-0.000518453393289582
+182,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 64_HH2b_random_vacWinter_ees,0.0064
+183,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 29_entity,-0.000518453393289582
+184,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 20_HH2b_eff_vacWinter_ees,0.0037
+185,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 20_HH2b_eff_vacWinter_pv,-1.61e-07
+186,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 12_entity,-7.095650983005971e-05
+187,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 113_HH1b_eff_vacSummer_ees,0.0056
+188,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 82_entity,-9.602675467662038e-05
+189,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 119_HH2a_eff_vacWinter_ees,0.0039
+190,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 66_entity,-6.541354944207611e-05
+191,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 31_HH2b_random_vacWinter_ees,0.0064
+192,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 2_entity,-0.000518453393289582
+193,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 9_HH1a_random_vacWinter_ees,0.0088
+194,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 9_HH1a_random_vacWinter_pv,-7e-06
+195,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 24_entity,-0.0001385687730235231
+196,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 93_HH1a_random_vacWinter_ees,0.0088
+197,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 93_HH1a_random_vacWinter_pv,-7e-06
+198,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 33_entity,-0.0001385687730235231
+199,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 87_HH1b_eff_vacSummer_ees,0.0056
+200,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 44_entity,-9.602675467662038e-05
+201,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 106_HH2a_random_vacSummer_ees,0.0064
+202,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 106_HH2a_random_vacSummer_pv,-5e-07
+203,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 89_entity,-7.656083532962227e-05
+204,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 49_HH1b_random_vacWinter_ees,0.0066
+205,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 20_entity,-0.00010296098184290383
+206,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 42_HH1b_eff_vacWinter_ees,0.0056
+207,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 42_HH1b_eff_vacWinter_pv,-1.1e-07
+208,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 7_entity,-0.0001342931166073426
+209,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 108_entity,-9.738720331293197e-05
+210,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 18_HH1a_eff_vacSummer_ees,0.004900000000000001
+211,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 1_entity,-0.00011059686946300945
+212,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 79_HH1a_random_vacWinter_ees,0.0088
+213,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 79_HH1a_random_vacWinter_pv,-7e-06
+214,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 28_entity,-0.0001385687730235231
+215,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Bus 5_HH2a_random_vacWinter_ees,0.006
+216,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Load 13_entity,-0.0001342931166073426
+217,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 20_HH2b_random_vacSummer_ees,0.0050999999999999995
+218,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 20_HH2b_random_vacSummer_pv,-5.1e-07
+219,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 97_entity,-0.00010332716853344879
+220,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 82_HH1a_random_vacSummer_ees,0.008199999999999999
+221,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 2_entity,-0.00011803396058864339
+222,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 33_HH1a_eff_vacSummer_ees,0.004900000000000001
+223,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 38_entity,-0.00011059686946300945
+224,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 58_HH2a_random_vacSummer_ees,0.0064
+225,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 58_HH2a_random_vacSummer_pv,-5e-07
+226,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 77_entity,-7.656083532962227e-05
+227,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 59_HH1a_eff_vacWinter_ees,0.004900000000000001
+228,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 4_entity,-8.510707520687283e-05
+229,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 101_HH2a_eff_vacSummer_ees,0.0039
+230,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 50_entity,-6.491568393470093e-05
+231,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 104_HH2a_random_vacWinter_ees,0.006
+232,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 36_entity,-0.0001342931166073426
+233,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 110_HH1a_random_vacWinter_ees,0.0088
+234,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 110_HH1a_random_vacWinter_pv,-7e-06
+235,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 102_entity,-0.0001385687730235231
+236,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 68_HH2b_random_vacWinter_ees,0.0064
+237,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 91_entity,-0.000518453393289582
+238,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 103_HH2b_random_vacSummer_ees,0.0050999999999999995
+239,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 103_HH2b_random_vacSummer_pv,-5.1e-07
+240,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 71_entity,-0.00010332716853344879
+241,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 12_HH2b_random_vacSummer_ees,0.0050999999999999995
+242,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 12_HH2b_random_vacSummer_pv,-5.1e-07
+243,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 74_entity,-0.00010332716853344879
+244,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 25_HH1b_eff_vacSummer_ees,0.0056
+245,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 24_entity,-9.602675467662038e-05
+246,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 73_HH1a_random_vacWinter_ees,0.0088
+247,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 73_HH1a_random_vacWinter_pv,-7e-06
+248,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 108_entity,-0.0001385687730235231
+249,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 68_HH2b_random_vacWinter_ees,0.0064
+250,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 2_entity,-0.000518453393289582
+251,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Bus 10_HH2b_random_vacWinter_ees,0.0064
+252,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Load 1_entity,-0.000518453393289582
+253,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 22_HH1b_random_vacWinter_ees,0.0066
+254,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 6_entity,-0.00010296098184290383
+255,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 89_HH1a_random_vacSummer_ees,0.008199999999999999
+256,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 61_entity,-0.00011803396058864339
+257,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 51_HH2a_eff_vacSummer_ees,0.0039
+258,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 97_entity,-6.491568393470093e-05
+259,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 8_HH2a_random_vacWinter_ees,0.006
+260,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 34_entity,-0.0001342931166073426
+261,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 20_HH2b_eff_vacSummer_ees,0.0037
+262,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 11_entity,-7.541219232903856e-05
+263,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 37_HH2a_eff_vacWinter_ees,0.0039
+264,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 35_entity,-6.541354944207611e-05
+265,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 28_HH1a_random_vacSummer_ees,0.008199999999999999
+266,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 3_entity,-0.00011803396058864339
+267,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 17_HH1a_random_vacSummer_ees,0.008199999999999999
+268,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 24_entity,-5.5047e-05
+269,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 70_entity,-0.00011803396058864339
+270,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 99_HH1a_eff_vacSummer_ees,0.004900000000000001
+271,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 98_entity,-0.00011059686946300945
+272,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 40_HH1a_random_vacWinter_ees,0.0088
+273,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 40_HH1a_random_vacWinter_pv,-7e-06
+274,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 32_entity,-0.0001385687730235231
+275,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 80_entity,-0.000455058
+276,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 34_HH1a_random_vacWinter_ees,0.0088
+277,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 34_HH1a_random_vacWinter_pv,-7e-06
+278,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 7_entity,-0.0001385687730235231
+279,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 124_HH2b_eff_vacSummer_ees,0.0037
+280,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 53_entity,-7.541219232903856e-05
+281,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 7_HH1a_random_vacSummer_ees,0.008199999999999999
+282,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 15_entity,-0.00011803396058864339
+283,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 63_entity,-7.541219232903856e-05
+284,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 109_HH1b_eff_vacWinter_ees,0.0056
+285,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 109_HH1b_eff_vacWinter_pv,-1.1e-07
+286,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 80_entity,-9.738720331293197e-05
+287,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 8_HH2a_random_vacSummer_ees,0.0064
+288,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 8_HH2a_random_vacSummer_pv,-5e-07
+289,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 4_entity,-7.656083532962227e-05
+290,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 55_HH1a_random_vacWinter_ees,0.0088
+291,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 55_HH1a_random_vacWinter_pv,-7e-06
+292,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 37_entity,-0.0001385687730235231
+293,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 44_HH2b_eff_vacWinter_ees,0.0037
+294,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 44_HH2b_eff_vacWinter_pv,-1.61e-07
+295,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 41_entity,-7.095650983005971e-05
+296,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 34_HH2a_eff_vacSummer_ees,0.0039
+297,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 70_entity,-6.491568393470093e-05
+298,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 34_HH1b_random_vacWinter_ees,0.0066
+299,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 70_entity,-0.00010296098184290383
+300,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 5_HH1b_eff_vacWinter_ees,0.0056
+301,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 5_HH1b_eff_vacWinter_pv,-1.1e-07
+302,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 14_entity,-5.5047e-05
+303,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 26_entity,-9.738720331293197e-05
+304,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 23_HH1a_random_vacWinter_ees,0.0088
+305,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 23_HH1a_random_vacWinter_pv,-7e-06
+306,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 52_entity,-0.0001385687730235231
+307,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 28_entity,-0.00012006099999999999
+308,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 83_HH1a_eff_vacSummer_ees,0.004900000000000001
+309,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 72_entity,-0.00011059686946300945
+310,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 77_HH2b_eff_vacWinter_ees,0.0037
+311,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 77_HH2b_eff_vacWinter_pv,-1.61e-07
+312,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 14_entity,-7.095650983005971e-05
+313,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 43_HH2a_eff_vacWinter_ees,0.0039
+314,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 14_entity,-6.541354944207611e-05
+315,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 12_HH1a_random_vacWinter_ees,0.0088
+316,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 12_HH1a_random_vacWinter_pv,-7e-06
+317,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 28_entity,-0.0001385687730235231
+318,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 60_HH2a_random_vacWinter_ees,0.006
+319,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 51_entity,-0.0001342931166073426
+320,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 27_HH2b_random_vacSummer_ees,0.0050999999999999995
+321,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 27_HH2b_random_vacSummer_pv,-5.1e-07
+322,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 1_entity,-0.00010332716853344879
+323,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 28_HH2b_random_vacWinter_ees,0.0064
+324,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 5_entity,-0.000518453393289582
+325,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 75_HH1a_random_vacWinter_ees,0.0088
+326,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 75_HH1a_random_vacWinter_pv,-7e-06
+327,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 87_entity,-0.0001385687730235231
+328,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 71_HH2a_random_vacSummer_ees,0.0064
+329,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 71_HH2a_random_vacSummer_pv,-5e-07
+330,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 91_entity,-7.656083532962227e-05
+331,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 92_HH2b_random_vacSummer_ees,0.0050999999999999995
+332,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 92_HH2b_random_vacSummer_pv,-5.1e-07
+333,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 3_entity,-0.00010332716853344879
+334,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 67_HH2b_random_vacWinter_ees,0.0064
+335,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 62_entity,-0.000518453393289582
+336,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 32_HH2a_random_vacSummer_ees,0.0064
+337,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 32_HH2a_random_vacSummer_pv,-5e-07
+338,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 34_entity,-7.541219232903856e-05
+339,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 81_entity,-0.0001342931166073426
+340,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 82_entity,-5.5047e-05
+341,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 83_entity,-7.656083532962227e-05
+342,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 46_HH1b_random_vacSummer_ees,0.0085
+343,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 46_entity,-0.00029002361342077054
+344,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 4_HH1a_random_vacSummer_ees,0.008199999999999999
+345,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 53_entity,-0.00011803396058864339
+346,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 51_entity,-0.00029002361342077054
+347,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 24_HH2b_eff_vacSummer_ees,0.0037
+348,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 70_entity,-7.541219232903856e-05
+349,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 119_HH2b_random_vacSummer_ees,0.0050999999999999995
+350,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 119_HH2b_random_vacSummer_pv,-5.1e-07
+351,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 66_entity,-0.00010332716853344879
+352,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 93_HH1b_eff_vacSummer_ees,0.0056
+353,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 114_entity,-9.602675467662038e-05
+354,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 57_HH2b_random_vacSummer_ees,0.0050999999999999995
+355,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 57_HH2b_random_vacSummer_pv,-5.1e-07
+356,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 92_entity,-0.00010332716853344879
+357,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 120_HH1b_random_vacSummer_ees,0.0085
+358,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 18_entity,-0.00029002361342077054
+359,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 24_HH2b_eff_vacWinter_ees,0.0037
+360,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 24_HH2b_eff_vacWinter_pv,-1.61e-07
+361,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 24_HH1a_random_vacWinter_pv,-7e-06
+362,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 3_entity,-7.095650983005971e-05
+363,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 75_entity,-0.0001385687730235231
+364,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 76_entity,-0.00011111199999999999
+365,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 77_entity,-0.000131652
+366,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 115_HH2a_random_vacSummer_ees,0.0064
+367,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 115_HH2a_random_vacSummer_pv,-5e-07
+368,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 26_entity,-7.656083532962227e-05
+369,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 4_HH1a_eff_vacSummer_ees,0.004900000000000001
+370,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 29_entity,-0.00011059686946300945
+371,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Bus 6_HH2b_random_vacSummer_ees,0.0050999999999999995
+372,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Bus 6_HH2b_random_vacSummer_pv,-5.1e-07
+373,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Load 6_entity,-0.00010332716853344879
+374,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 18_HH2a_random_vacWinter_ees,0.006
+375,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 18_LV6.202 Load 31_pv,-7e-06
+376,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 18_LV6.202 Load 78_pv,-5e-07
+377,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 31_entity,-0.000360183
+378,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 78_entity,-0.00027778
+379,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 79_entity,-0.0001342931166073426
+380,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 102_HH2b_eff_vacWinter_ees,0.0037
+381,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 102_HH2b_eff_vacWinter_pv,-1.61e-07
+382,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 30_entity,-7.095650983005971e-05
+383,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 132_HH1a_random_vacSummer_ees,0.008199999999999999
+384,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 90_entity,-0.00011803396058864339
+385,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 14_HH1b_random_vacSummer_ees,0.0085
+386,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 14_HH2a_random_vacSummer_pv,-5e-07
+387,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 28_entity,-7.656083532962227e-05
+388,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 72_entity,-0.00029002361342077054
+389,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 73_entity,-0.000227529
+390,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 15_HH2b_eff_vacWinter_ees,0.0037
+391,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 15_HH2b_eff_vacWinter_pv,-1.61e-07
+392,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 72_entity,-7.095650983005971e-05
+393,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 95_HH1a_eff_vacWinter_ees,0.004900000000000001
+394,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 33_entity,-8.510707520687283e-05
+395,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 2_HH2b_eff_vacSummer_ees,0.0037
+396,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 11_entity,-7.541219232903856e-05
+397,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 30_HH1a_random_vacSummer_ees,0.008199999999999999
+398,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 38_entity,-0.00011803396058864339
+399,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 104_HH2a_eff_vacWinter_ees,0.0039
+400,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 36_entity,-6.541354944207611e-05
+401,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 93_HH1b_eff_vacWinter_ees,0.0056
+402,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 93_HH1b_eff_vacWinter_pv,-1.1e-07
+403,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 33_entity,-9.738720331293197e-05
+404,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 111_HH1a_random_vacWinter_ees,0.0088
+405,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 111_HH1a_random_vacWinter_pv,-7e-06
+406,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 68_entity,-0.0001385687730235231
+407,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 39_HH1a_eff_vacWinter_ees,0.004900000000000001
+408,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 17_entity,-8.510707520687283e-05
+409,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 80_HH2b_eff_vacSummer_ees,0.0037
+410,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 25_entity,-7.541219232903856e-05
+411,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 42_HH1a_eff_vacSummer_ees,0.004900000000000001
+412,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 99_entity,-0.00011059686946300945
+413,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 43_HH2b_eff_vacSummer_ees,0.0037
+414,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 73_entity,-7.541219232903856e-05
+415,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 8_HH1a_random_vacWinter_ees,0.0088
+416,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 8_HH1a_random_vacWinter_pv,-7e-06
+417,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 46_entity,-0.0001385687730235231
+418,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 20_HH2b_random_vacWinter_ees,0.0064
+419,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 12_entity,-0.000518453393289582
+420,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 47_HH1a_eff_vacSummer_ees,0.004900000000000001
+421,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 100_entity,-0.00011059686946300945
+422,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 91_HH1b_random_vacSummer_ees,0.0085
+423,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 107_entity,-0.00029002361342077054
+424,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 77_HH1a_eff_vacWinter_ees,0.004900000000000001
+425,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 14_entity,-8.510707520687283e-05
+426,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 127_HH1b_random_vacWinter_ees,0.0066
+427,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 48_entity,-0.00010296098184290383
+428,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 69_LV3.203 Load 42_ees,0.0056
+429,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 42_entity,-0.00011111199999999999
+430,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 1_LV5.217 Load 7_ees,0.004900000000000001
+431,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 7_entity,-5.5047e-05
+432,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 71_LV3.202 Load 91_ees,0.0064
+433,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 91_entity,-0.000131652
+434,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 105_LV3.203 Load 94_ees,0.004900000000000001
+435,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 94_entity,-0.000131652
+436,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 60_LV3.202 Load 51_ees,0.0056
+437,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 60_LV3.202 Load 51_pv,-1.1e-07
+438,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 51_entity,-0.00011111199999999999
+439,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 132_LV3.204 Load 90_ees,0.0066
+440,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 90_entity,-0.0016605679999999999
+441,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 111_LV3.205 Load 68_ees,0.004900000000000001
+442,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 68_entity,-0.000227529
+443,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 11_LV3.202 Load 44_ees,0.008199999999999999
+444,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 44_entity,-0.000360183
+445,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 83_LV3.204 Load 72_ees,0.0064
+446,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 83_LV3.204 Load 72_pv,-5e-07
+447,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 72_entity,-0.000151686
+448,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 6_LV4.202 Load 29_ees,0.0037
+449,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 29_entity,-0.00019747799999999998
+450,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 13_LV3.204 Load 99_ees,0.0056
+451,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 99_entity,-0.000227529
+452,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 80_LV3.205 Load 25_ees,0.0039
+453,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 25_entity,-0.00019747799999999998
+454,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 133_LV3.205 Load 9_ees,0.008199999999999999
+455,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 9_entity,-0.000227529
+456,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 21_LV3.202 Load 27_ees,0.008199999999999999
+457,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 27_entity,-0.000227529
+458,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 46_LV2.217 Load 83_ees,0.004900000000000001
+459,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 56_entity,-0.000151686
+460,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 83_entity,-0.000131652
+461,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 20_LV3.204 Load 11_ees,0.0064
+462,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 20_LV3.204 Load 11_pv,-5e-07
+463,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 11_entity,-0.000131652
+464,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 39_LV3.202 Load 105_ees,0.004900000000000001
+465,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 105_entity,-0.000227529
+466,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 111_LV3.202 Load 68_ees,0.0056
+467,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 111_LV3.202 Load 68_pv,-1.1e-07
+468,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 68_entity,-0.000227529
+469,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 39_LV5.217 Load 83_ees,0.0050999999999999995
+470,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 39_LV5.217 Load 83_pv,-5.1e-07
+471,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 83_entity,-0.00037921499999999997
+472,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 68_LV3.205 Load 78_ees,0.0039
+473,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 78_entity,-0.000131652
+474,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 28_LV6.202 Load 33_ees,0.0039
+475,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 33_entity,-0.000379312
+476,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 82_LV3.204 Load 15_ees,0.0037
+477,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 82_LV3.204 Load 15_pv,-1.61e-07
+478,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 15_entity,-5.5047e-05
+479,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 72_LV2.203 Load 57_ees,0.0064
+480,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 72_LV2.203 Load 57_pv,-5e-07
+481,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 57_entity,-3.6698e-05
+482,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 56_LV2.203 Load 41_ees,0.0085
+483,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 11_entity,-7.5843e-05
+484,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 41_entity,-5.5555999999999995e-05
+485,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 91_LV3.205 Load 107_ees,0.0064
+486,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 107_entity,-0.000131652
+487,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 26_LV6.202 Load 5_ees,0.0039
+488,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 5_entity,-0.00019747799999999998
+489,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 105_entity,-0.00019747799999999998
+490,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 106_entity,-7.541219232903856e-05
+491,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 57_LV3.203 Load 75_ees,0.0056
+492,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 75_entity,-3.6698e-05
+493,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 18_LV5.217 Load 40_ees,0.006
+494,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 40_entity,-0.000128443
+495,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 79_LV2.203 Load 67_ees,0.0039
+496,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 67_entity,-0.000227529
+497,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 13_LV4.232 Load 22_ees,0.006
+498,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 22_entity,-0.000227529
+499,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 124_LV3.202 Load 53_ees,0.0037
+500,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 53_entity,-3.6698e-05
+501,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 38_LV3.205 Load 112_ees,0.0088
+502,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 38_LV3.205 Load 112_pv,-7e-06
+503,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 112_entity,-0.00048024399999999995
+504,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 103_LV3.205 Load 71_ees,0.0056
+505,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 71_entity,-0.00019747799999999998
+506,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 33_LV6.202 Load 1_ees,0.0064
+507,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 1_entity,-0.000227529
+508,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 58_entity,-7.541219232903856e-05
+509,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 59_entity,-6.491568393470093e-05
+510,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 97_LV3.205 Load 65_ees,0.0056
+511,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 65_entity,-0.000360183
+512,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 60_LV3.205 Load 51_ees,0.0039
+513,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 51_entity,-0.00011111199999999999
+514,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 18_LV3.202 Load 17_ees,0.008199999999999999
+515,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 17_entity,-0.000151686
+516,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 36_LV4.219 Load 34_ees,0.0056
+517,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 34_entity,-0.002016404
+518,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 133_LV3.203 Load 9_ees,0.0056
+519,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 133_LV3.203 Load 9_pv,-1.1e-07
+520,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 9_entity,-0.000227529
+521,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 80_LV3.203 Load 25_ees,0.0037
+522,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 25_entity,-0.00019747799999999998
+523,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 59_LV6.202 Load 56_ees,0.0050999999999999995
+524,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 59_LV6.202 Load 56_pv,-5.1e-07
+525,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 56_entity,-3.6698e-05
+526,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 57_entity,-0.000151686
+527,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 130_LV3.203 Load 64_ees,0.0066
+528,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 64_entity,-3.6698e-05
+529,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 128_LV3.205 Load 84_ees,0.006
+530,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 84_entity,-3.6698e-05
+531,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 10_LV4.232 Load 8_ees,0.0085
+532,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 8_entity,-0.00039495599999999996
+533,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 11_LV4.202 Load 21_ees,0.0056
+534,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 11_LV4.202 Load 21_pv,-1.1e-07
+535,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 21_entity,-0.000263304
+536,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 56_LV2.217 Load 41_ees,0.0039
+537,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 11_entity,-7.5843e-05
+538,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 41_entity,-5.5555999999999995e-05
+539,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 16_LV2.217 Load 55_ees,0.0037
+540,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 16_LV2.217 Load 55_pv,-1.61e-07
+541,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 55_entity,-0.00011111199999999999
+542,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 14_LV4.219 Load 13_ees,0.0064
+543,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 14_LV4.219 Load 13_pv,-5e-07
+544,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 13_entity,-0.000303372
+545,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 92_LV3.203 Load 60_ees,0.0039
+546,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 60_entity,-0.00024012199999999998
+547,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 13_LV2.217 Load 22_ees,0.0056
+548,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 22_entity,-1.8349e-05
+549,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 127_LV3.205 Load 48_ees,0.0056
+550,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 48_entity,-0.000360183
+551,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 12_LV3.205 Load 74_ees,0.0088
+552,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 12_LV3.205 Load 74_pv,-7e-06
+553,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 74_entity,-3.6698e-05
+554,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 23_LV4.219 Load 25_ees,0.004900000000000001
+555,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 25_entity,-0.000110094
+556,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 8_LV3.205 Load 46_ees,0.006
+557,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 46_entity,-0.001119492
+558,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 48_LV6.202 Load 96_ees,0.0085
+559,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 42_entity,-0.000166668
+560,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 96_entity,-0.000166668
+561,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 64_LV3.203 Load 83_ees,0.0066
+562,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 83_entity,-0.00024012199999999998
+563,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 8_LV3.203 Load 46_ees,0.0064
+564,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 46_entity,-0.001119492
+565,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 62_LV2.203 Load 65_ees,0.006
+566,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 65_entity,-7.5843e-05
+567,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 36_LV5.217 Load 82_ees,0.0037
+568,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 36_LV5.217 Load 82_pv,-1.61e-07
+569,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 82_entity,-0.00019747799999999998
+570,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 101_LV5.217 Load 45_ees,0.0066
+571,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 45_entity,-5.5047e-05
+572,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 15_LV4.219 Load 2_ees,0.004900000000000001
+573,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 2_entity,-5.5047e-05
+574,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 3_entity,-0.000166668
+575,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 33_LV3.203 Load 38_ees,0.0039
+576,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 38_entity,-0.00019747799999999998
+577,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 38_LV3.202 Load 112_ees,0.0056
+578,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 112_entity,-0.00048024399999999995
+579,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 23_LV4.202 Load 25_ees,0.0066
+580,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 25_entity,-0.000110094
+581,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 38_LV4.219 Load 36_ees,0.0066
+582,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 36_entity,-0.001304732
+583,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 53_LV3.205 Load 56_ees,0.0066
+584,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 56_entity,-0.00024012199999999998
+585,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 21_LV4.232 Load 31_ees,0.0064
+586,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 31_entity,-0.00019747799999999998
+587,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 17_LV2.217 Load 63_ees,0.006
+588,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 63_entity,-7.5843e-05
+589,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 48_LV3.204 Load 43_ees,0.0066
+590,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 43_entity,-3.6698e-05
+591,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 81_LV2.217 Load 84_ees,0.0039
+592,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 84_entity,-0.00034526999999999995
+593,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 70_LV2.203 Load 49_ees,0.004900000000000001
+594,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 49_entity,-6.5826e-05
+595,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 33_LV3.202 Load 38_ees,0.0056
+596,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 38_entity,-0.00019747799999999998
+597,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 53_LV5.217 Load 52_ees,0.0039
+598,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 52_entity,-0.00022222399999999998
+599,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 132_LV3.202 Load 90_ees,0.0037
+600,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 90_entity,-0.0016605679999999999
+601,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 92_LV3.204 Load 60_ees,0.0056
+602,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 92_LV3.204 Load 60_pv,-1.1e-07
+603,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 60_entity,-0.00024012199999999998
+604,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 53_HH2a_eff_vacWinter_ees,0.0039
+605,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 41_HH1a_random_vacSummer_ees,0.008199999999999999
+606,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 32_HH2b_eff_vacSummer_ees,0.0037
+607,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 24_HH1a_random_vacWinter_ees,0.0088
+608,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 15_LV4.202 Load 3_ees,0.0056
+609,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 18_LV6.202 Load 31_ees,0.0088
+610,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 32_HH2a_random_vacWinter_ees,0.006
+611,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 41_HH2a_random_vacWinter_ees,0.006
+612,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 SGen 9_pv,-5.0000000000000004e-08
+613,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 111_entity,-0.000227529
+614,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 SGen 11_pv,-3.7e-06
+615,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 79_entity,-0.000166668
+616,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 14_entity,-0.00011111199999999999
+617,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 SGen 3_pv,-3.3e-06
+618,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 55_entity,-5.5047e-05
+619,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 113_entity,-5.5047e-05
+620,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 104_entity,-0.000151686
+621,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 SGen 2_pv,-7.6e-07
+622,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 13_entity,-0.00011111199999999999
+623,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 SGen 5_pv,-1.4e-06
+624,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 34_entity,-3.6698e-05
+625,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 111_entity,-0.000227529
+626,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 14_entity,-0.00011111199999999999
+627,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 SGen 14_pv,-3.7e-06
+628,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 104_entity,-0.000151686
+629,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 SGen 8_pv,-1.33e-06
+630,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 96_entity,-3.6698e-05
+631,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 43_entity,-0.000360183
+632,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 31_HH2b_eff_vacWinter_pv,-1.61e-07
+633,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 54_entity,-7.095650983005971e-05
+634,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 6_entity,-0.00011059686946300945
+635,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 24_entity,-0.00011059686946300945
+636,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 15_entity,-0.00011059686946300945
+637,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 22_HH2b_eff_vacWinter_pv,-1.61e-07
+638,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 68_entity,-7.095650983005971e-05
+639,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 19_entity,-0.00011059686946300945
+640,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 75_HH2b_eff_vacWinter_pv,-1.61e-07
+641,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 103_entity,-7.095650983005971e-05
+642,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 32_HH2b_eff_vacWinter_pv,-1.61e-07
+643,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 48_entity,-7.095650983005971e-05
+644,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 21_entity,-0.00011059686946300945
+645,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 84_HH2b_eff_vacWinter_pv,-1.61e-07
+646,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 39_entity,-7.095650983005971e-05
+647,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 110_entity,-0.00011059686946300945
+648,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 35_entity,-0.00011059686946300945
+649,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 68_HH2b_eff_vacWinter_pv,-1.61e-07
+650,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 91_entity,-7.095650983005971e-05
+651,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 16_entity,-0.00011059686946300945
+652,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 78_entity,-0.00011059686946300945
+653,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 95_HH2b_eff_vacWinter_pv,-1.61e-07
+654,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 33_entity,-7.095650983005971e-05
+655,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 43_HH2b_eff_vacWinter_pv,-1.61e-07
+656,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 35_entity,-7.095650983005971e-05
+657,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 20_entity,-0.000455058
+658,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 101_LV2.217 Load 50_pv,-1.61e-07
+659,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 50_entity,-0.000131652
+660,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 11_LV3.204 Load 44_pv,-1.61e-07
+661,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 44_entity,-0.000360183
+662,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 56_LV3.202 Load 31_pv,-1.61e-07
+663,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 31_entity,-0.000151686
+664,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 6_entity,-5.5555999999999995e-05
+665,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 45_entity,-0.000151686
+666,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 6_entity,-5.5555999999999995e-05
+667,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 13_entity,-0.00011111199999999999
+668,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 SGen 3_pv,-4.1e-07
+669,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 55_entity,-5.5047e-05
+670,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 SGen 4_pv,-9e-08
+671,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 62_entity,-0.0008396479999999999
+672,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 SGen 5_pv,-1.4e-06
+673,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 34_entity,-3.6698e-05
+674,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 87_entity,-0.00019747799999999998
+675,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 SGen 10_pv,-1.7000000000000001e-07
+676,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 113_entity,-5.5047e-05
+677,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 SGen 14_pv,-3.7e-06
+678,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 104_entity,-0.000151686
+679,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 SGen 15_pv,-3.9500000000000003e-07
+680,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 7_entity,-0.00011111199999999999
+681,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 49_entity,-3.6698e-05
+682,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 SGen 2_pv,-1.2299999999999999e-06
+683,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 13_entity,-0.00011111199999999999
+684,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 SGen 4_pv,-2.6000000000000005e-07
+685,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 62_entity,-0.0008396479999999999
+686,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 SGen 5_pv,-1.5e-06
+687,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 34_entity,-3.6698e-05
+688,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 87_entity,-0.00019747799999999998
+689,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 111_entity,-0.000227529
+690,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 SGen 11_pv,-3.7e-06
+691,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 79_entity,-0.000166668
+692,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 14_entity,-0.00011111199999999999
+693,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 SGen 15_pv,-5.0000000000000004e-08
+694,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 7_entity,-0.00011111199999999999
+695,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 49_entity,-3.6698e-05
+696,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 55_entity,-5.5047e-05
+697,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 62_entity,-0.0008396479999999999
+698,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 34_entity,-3.6698e-05
+699,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 87_entity,-0.00019747799999999998
+700,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 SGen 9_pv,-1.4499999999999999e-06
+701,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 111_entity,-0.000227529
+702,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 SGen 10_pv,-1.7000000000000001e-07
+703,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 113_entity,-5.5047e-05
+704,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 79_entity,-0.000166668
+705,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 14_entity,-0.00011111199999999999
+706,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 SGen 14_pv,-5.3e-08
+707,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 104_entity,-0.000151686
+708,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 7_entity,-0.00011111199999999999
+709,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 SGen 1_pv,-1.4e-06
+710,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 49_entity,-3.6698e-05
+711,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 13_entity,-0.00011111199999999999
+712,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 62_entity,-0.0008396479999999999
+713,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 SGen 7_pv,-2.0999999999999997e-07
+714,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 87_entity,-0.00019747799999999998
+715,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 113_entity,-5.5047e-05
+716,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 79_entity,-0.000166668
+717,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 7_entity,-0.00011111199999999999
+718,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 SGen 1_pv,-1.02e-06
+719,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 16_entity,-7.3396e-05
+720,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 16_entity,-7.3396e-05
+721,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 16_entity,-7.3396e-05
+722,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 18_entity,-0.00024012199999999998
+723,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 32_entity,-0.001088829
+724,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 23_entity,-0.00037921499999999997
+725,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 SGen 1_pv,-5e-07
+726,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 107_entity,-0.00019747799999999998
+727,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 21_entity,-9.174500000000001e-05
+728,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 66_entity,-0.00048024399999999995
+729,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 103_entity,-0.000360183
+730,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 30_entity,-7.541219232903856e-05
+731,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 79_entity,-0.00029002361342077054
+732,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 72_entity,-0.0001342931166073426
+733,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 31_entity,-8.510707520687283e-05
+734,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 53_entity,-0.00024012199999999998
+735,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 19_entity,-0.0001342931166073426
+736,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 46_entity,-0.000518453393289582
+737,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 19_entity,-0.0001342931166073426
+738,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 6_entity,-9.602675467662038e-05
+739,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 13_HH2a_random_vacSummer_pv,-5e-07
+740,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 86_entity,-0.000360183
+741,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 43_entity,-8.510707520687283e-05
+742,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 59_entity,-0.0001342931166073426
+743,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 2_HH2a_random_vacSummer_pv,-5e-07
+744,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 11_entity,-7.656083532962227e-05
+745,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 6_HH2a_random_vacSummer_pv,-5e-07
+746,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 93_entity,-7.656083532962227e-05
+747,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 94_entity,-8.510707520687283e-05
+748,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Bus 14_HH1b_eff_vacWinter_pv,-1.1e-07
+749,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Load 3_entity,-9.738720331293197e-05
+750,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 13_entity,-6.491568393470093e-05
+751,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 15_entity,-8.510707520687283e-05
+752,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 105_entity,-7.541219232903856e-05
+753,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 8_entity,-8.510707520687283e-05
+754,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 96_entity,-8.510707520687283e-05
+755,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 32_entity,-7.541219232903856e-05
+756,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 59_HH1b_eff_vacWinter_pv,-1.1e-07
+757,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 74_entity,-9.738720331293197e-05
+758,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 112_entity,-7.541219232903856e-05
+759,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 104_HH1b_eff_vacWinter_pv,-1.1e-07
+760,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 36_entity,-9.738720331293197e-05
+761,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 100_entity,-8.510707520687283e-05
+762,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 61_entity,-0.0001342931166073426
+763,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 101_entity,-9.602675467662038e-05
+764,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 69_entity,-0.00010296098184290383
+765,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 15_HH2b_random_vacSummer_pv,-5.1e-07
+766,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 88_entity,-0.00010332716853344879
+767,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 81_entity,-9.602675467662038e-05
+768,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 22_entity,-0.000518453393289582
+769,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 116_entity,-0.0001342931166073426
+770,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 9_entity,-0.0001342931166073426
+771,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 24_HH2b_random_vacSummer_pv,-5.1e-07
+772,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 70_entity,-0.00010332716853344879
+773,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 52_entity,-9.602675467662038e-05
+774,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 2_entity,-6.541354944207611e-05
+775,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 74_entity,-0.00011803396058864339
+776,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 43_entity,-0.00010296098184290383
+777,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 102_entity,-6.541354944207611e-05
+778,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 26_entity,-0.00029002361342077054
+779,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 26_HH1a_random_vacWinter_pv,-7e-06
+780,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 102_entity,-0.0001385687730235231
+781,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 31_entity,-6.491568393470093e-05
+782,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 67_entity,-0.00010296098184290383
+783,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 51_HH2a_random_vacSummer_pv,-5e-07
+784,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 100_entity,-0.0001342931166073426
+785,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 136_HH2b_random_vacSummer_pv,-5.1e-07
+786,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 40_entity,-0.00010332716853344879
+787,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 30_entity,-8.510707520687283e-05
+788,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 85_HH2a_random_vacSummer_pv,-5e-07
+789,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 94_entity,-7.656083532962227e-05
+790,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 29_HH2b_random_vacSummer_pv,-5.1e-07
+791,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 63_entity,-0.00010332716853344879
+792,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 71_HH2b_random_vacSummer_pv,-5.1e-07
+793,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 95_entity,-0.00010332716853344879
+794,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 95_entity,-0.00011803396058864339
+795,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 101_entity,-0.00024012199999999998
+796,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 12_entity,-6.541354944207611e-05
+797,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 95_entity,-0.00029002361342077054
+798,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 114_entity,-9.602675467662038e-05
+799,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 76_HH1b_eff_vacWinter_pv,-1.1e-07
+800,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 106_entity,-9.738720331293197e-05
+801,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 72_entity,-0.00029002361342077054
+802,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 52_entity,-0.00011803396058864339
+803,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 28_entity,-0.00012006099999999999
+804,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 81_entity,-0.0001342931166073426
+805,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 40_entity,-0.00029002361342077054
+806,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 23_entity,-0.00010296098184290383
+807,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 41_entity,-0.00010296098184290383
+808,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 76_entity,-7.541219232903856e-05
+809,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 124_HH1a_random_vacWinter_pv,-7e-06
+810,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 53_entity,-0.0001385687730235231
+811,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 64_entity,-9.602675467662038e-05
+812,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 59_entity,-0.0001342931166073426
+813,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 60_entity,-0.0001342931166073426
+814,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 58_HH1a_random_vacWinter_pv,-7e-06
+815,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 77_entity,-0.0001385687730235231
+816,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 96_entity,-0.000518453393289582
+817,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 5_entity,-0.00010296098184290383
+818,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 89_entity,-0.00010296098184290383
+819,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 102_HH1a_random_vacWinter_pv,-7e-06
+820,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 30_entity,-0.0001385687730235231
+821,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 62_entity,-6.541354944207611e-05
+822,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 32_entity,-6.491568393470093e-05
+823,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 113_HH2b_random_vacSummer_pv,-5.1e-07
+824,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 82_entity,-0.00010332716853344879
+825,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 52_entity,-6.541354944207611e-05
+826,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 83_entity,-9.602675467662038e-05
+827,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 99_HH1b_eff_vacWinter_pv,-1.1e-07
+828,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 98_entity,-9.738720331293197e-05
+829,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 5_entity,-6.541354944207611e-05
+830,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Bus 43_HH2a_random_vacSummer_pv,-5e-07
+831,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 40_entity,-7.656083532962227e-05
+832,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 88_HH2b_random_vacSummer_pv,-5.1e-07
+833,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 62_entity,-0.00010332716853344879
+834,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 37_HH1a_random_vacWinter_pv,-7e-06
+835,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 85_entity,-0.0001385687730235231
+836,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 91_HH2b_random_vacSummer_pv,-5.1e-07
+837,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 29_entity,-0.00010332716853344879
+838,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 95_entity,-0.00011803396058864339
+839,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 35_entity,-0.0001342931166073426
+840,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 55_HH1a_random_vacWinter_pv,-7e-06
+841,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 37_entity,-0.0001385687730235231
+842,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 131_HH1a_random_vacWinter_pv,-7e-06
+843,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 21_entity,-0.0001385687730235231
+844,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 64_HH2b_random_vacSummer_pv,-5.1e-07
+845,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 83_entity,-0.00010332716853344879
+846,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 85_entity,-0.000518453393289582
+847,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 6_HH1a_random_vacWinter_pv,-7e-06
+848,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 85_entity,-0.0001385687730235231
+849,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 115_HH2a_random_vacSummer_pv,-5e-07
+850,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 26_entity,-7.656083532962227e-05
+851,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 50_entity,-6.541354944207611e-05
+852,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 4_HH2a_random_vacSummer_pv,-5e-07
+853,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 5_entity,-7.656083532962227e-05
+854,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 82_entity,-0.00010296098184290383
+855,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 99_HH2a_random_vacSummer_pv,-5e-07
+856,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 98_entity,-7.656083532962227e-05
+857,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 89_entity,-0.0001342931166073426
+858,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 43_HH1b_eff_vacWinter_pv,-1.1e-07
+859,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 35_entity,-9.738720331293197e-05
+860,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 27_HH2b_random_vacSummer_pv,-5.1e-07
+861,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 38_entity,-0.00010332716853344879
+862,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 21_entity,-0.0001342931166073426
+863,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 84_entity,-7.541219232903856e-05
+864,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 30_entity,-0.00010296098184290383
+865,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 3_entity,-6.491568393470093e-05
+866,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 108_entity,-0.00029002361342077054
+867,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 117_entity,-0.000518453393289582
+868,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 81_entity,-7.541219232903856e-05
+869,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 16_entity,-0.000518453393289582
+870,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 31_entity,-0.000518453393289582
+871,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 99_HH1a_random_vacWinter_pv,-7e-06
+872,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 56_entity,-0.0001385687730235231
+873,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 12_entity,-6.491568393470093e-05
+874,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 21_HH1a_random_vacWinter_pv,-7e-06
+875,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 27_entity,-0.0001385687730235231
+876,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 21_entity,-0.0001342931166073426
+877,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 51_entity,-0.00029002361342077054
+878,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 95_entity,-6.541354944207611e-05
+879,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 34_HH2b_random_vacSummer_pv,-5.1e-07
+880,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 7_entity,-0.00010332716853344879
+881,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 56_entity,-6.491568393470093e-05
+882,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Bus 46_HH2a_random_vacSummer_pv,-5e-07
+883,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 26_entity,-0.000110094
+884,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 60_entity,-0.00010296098184290383
+885,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 22_HH1b_eff_vacWinter_pv,-1.1e-07
+886,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 92_entity,-9.738720331293197e-05
+887,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 63_entity,-0.000518453393289582
+888,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Bus 88_HH2a_random_vacSummer_pv,-5e-07
+889,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 53_entity,-7.656083532962227e-05
+890,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 50_entity,-6.491568393470093e-05
+891,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 99_entity,-9.602675467662038e-05
+892,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 107_entity,-6.541354944207611e-05
+893,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 81_entity,-7.541219232903856e-05
+894,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 38_entity,-0.00029002361342077054
+895,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 85_HH1a_random_vacWinter_pv,-7e-06
+896,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 95_entity,-0.0001385687730235231
+897,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 51_HH1a_random_vacWinter_pv,-7e-06
+898,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 97_entity,-0.0001385687730235231
+899,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Bus 25_HH2a_random_vacSummer_pv,-5e-07
+900,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 9_entity,-7.656083532962227e-05
+901,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 13_entity,-6.491568393470093e-05
+902,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 89_entity,-0.0001342931166073426
+903,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 2_entity,-0.00011803396058864339
+904,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 8_entity,-0.0001342931166073426
+905,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 14_entity,-0.00010296098184290383
+906,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 42_entity,-0.00029002361342077054
+907,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 117_entity,-6.491568393470093e-05
+908,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 19_entity,-8.510707520687283e-05
+909,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Bus 23_HH1b_eff_vacWinter_pv,-1.1e-07
+910,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 25_entity,-9.738720331293197e-05
+911,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Bus 41_HH2b_random_vacSummer_pv,-5.1e-07
+912,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 41_entity,-0.00010332716853344879
+913,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 13_entity,-8.510707520687283e-05
+914,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Bus 7_HH1b_eff_vacWinter_pv,-1.1e-07
+915,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 64_entity,-9.738720331293197e-05
+916,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 69_HH1b_eff_vacWinter_pv,-1.1e-07
+917,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 42_entity,-9.738720331293197e-05
+918,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 56_entity,-9.602675467662038e-05
+919,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 101_entity,-0.00010296098184290383
+920,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 34_entity,-7.541219232903856e-05
+921,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Bus 82_LV3.205 Load 15_pv,-5e-07
+922,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 15_entity,-5.5047e-05
+923,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Bus 39_LV3.204 Load 105_pv,-5e-07
+924,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 105_entity,-0.000227529
+925,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 35_entity,-0.00019747799999999998
+926,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 84_entity,-0.000166668
+927,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 69_entity,-0.000166668
+928,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 69_entity,-0.000360183
+929,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 58_entity,-0.00024012199999999998
+930,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 33_entity,-0.000131652
+931,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 106_entity,-0.00011111199999999999
+932,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 36_entity,-0.001304732
+933,standard,70,standard,standard,none,rtt,fix,q09697,LV3.204 Load 65_entity,-0.000360183
+934,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 90_entity,-1.8349e-05
+935,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 42_entity,-6.5826e-05
+936,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 28_entity,-0.000151686
+937,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 6_entity,-0.00019747799999999998
+938,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 38_entity,-0.00422346
+939,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 122_LV3.202 Load 47_pv,-7e-06
+940,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 47_entity,-0.000227529
+941,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 36_entity,-0.001304732
+942,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 27_entity,-7.3396e-05
+943,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Bus 4_LV2.203 Load 53_pv,-7e-06
+944,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 53_entity,-0.00012006099999999999
+945,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 99_entity,-0.000227529
+946,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 23_entity,-0.000110094
+947,standard,70,standard,standard,none,rtt,fix,q09697,LV5.217 Load 42_entity,-0.000360183
+948,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 37_entity,-0.001585947
+949,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 106_entity,-0.00011111199999999999
+950,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 27_entity,-0.000303372
+951,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Bus 85_LV3.202 Load 95_pv,-5.1e-07
+952,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 95_entity,-0.000131652
+953,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 83_entity,-0.00024012199999999998
+954,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 45_entity,-0.000151686
+955,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 86_entity,-0.00012006099999999999
+956,standard,70,standard,standard,none,rtt,fix,q09697,LV2.217 Load 86_entity,-0.00012006099999999999
+957,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 55_entity,-5.5047e-05
+958,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 6_entity,-0.000227529
+959,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 52_entity,-0.0001342931166073426
+960,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 45_entity,-0.00011111199999999999
+961,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 13_entity,-0.000360183
+962,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 71_entity,-7.656083532962227e-05
+963,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 3_entity,-0.000166668
+964,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 26_entity,-0.00019747799999999998
+965,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 46_entity,-0.00019747799999999998
+966,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 36_entity,-0.000227529
+967,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 12_entity,-0.00010332716853344879
+968,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 99_entity,-7.656083532962227e-05
+969,standard,70,standard,standard,none,rtt,fix,q09697,LV4.202 Load 34_entity,-6.541354944207611e-05
+970,standard,70,standard,standard,none,rtt,fix,q09697,LV4.219 Load 12_entity,-0.00010296098184290383
+971,standard,70,standard,standard,none,rtt,fix,q09697,LV3.203 Load 100_entity,-0.0001385687730235231
+972,standard,70,standard,standard,none,rtt,fix,q09697,LV3.205 Load 44_entity,-0.00011059686946300945
+973,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 90_entity,-0.0001342931166073426
+974,standard,70,standard,standard,none,rtt,fix,q09697,LV4.232 Load 9_entity,-0.000518453393289582
+975,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 85_entity,-7.656083532962227e-05
+976,standard,70,standard,standard,none,rtt,fix,q09697,LV6.202 Load 102_entity,-0.00019747799999999998
+977,standard,70,standard,standard,none,rtt,fix,q09697,LV3.202 Load 49_entity,-3.6698e-05
+978,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Load 5_entity,-0.0001342931166073426
+979,standard,70,standard,standard,none,rtt,fix,q09697,LV1.202 Load 10_entity,-9.738720331293197e-05
+980,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 9_entity,-7.541219232903856e-05
+981,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 60_entity,-7.541219232903856e-05
+982,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 77_entity,-8.510707520687283e-05
+983,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 46_entity,-0.00012006099999999999
+984,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 66_entity,-0.0001385687730235231
+985,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 88_entity,-6.5826e-05
+986,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 35_entity,-0.000131652
+987,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 30_entity,-0.0001342931166073426
+988,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 56_entity,-0.000151686
+989,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 61_entity,-8.510707520687283e-05
+990,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 22_entity,-0.000131652
+991,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 71_entity,-0.000227529
+992,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 21_entity,-5.5047e-05
+993,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 37_entity,-6.5826e-05
+994,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 26_entity,-9.602675467662038e-05
+995,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 98_entity,-7.095650983005971e-05
+996,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 63_entity,-0.000227529
+997,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 83_entity,-0.000131652
+998,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 43_entity,-0.000518453393289582
+999,standard,70,standard,standard,none,rtt,fix,q09697,LV2.203 Load 18_entity,-7.656083532962227e-05
