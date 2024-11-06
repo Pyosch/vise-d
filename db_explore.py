@@ -23,5 +23,6 @@ query = f"SELECT * FROM {database_table} LIMIT {L_LIMIT}, {U_LIMIT}"
 df = pd.read_sql_query(query, conn)
 
 # df.to_csv('240912_inputs_online_tool.csv', index=False)
+df.to_csv(f'example_data_{U_LIMIT}.csv', index=False)
 
-df = pd.read_csv('data_example.csv', index_col=0)
+# df = pd.read_csv(f'example_data_{U_LIMIT}.csv', index_col=0)
