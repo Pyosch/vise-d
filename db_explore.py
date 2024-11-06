@@ -17,7 +17,11 @@ atexit.register(close_db)
 
 # Fetch data from the database
 L_LIMIT = 0
-U_LIMIT = 1_000
+U_LIMIT = 10_000
 query = f"SELECT * FROM {database_table} LIMIT {L_LIMIT}, {U_LIMIT}"
 # query = f"SELECT * FROM inputs_online_tool LIMIT {L_LIMIT}, {U_LIMIT}"
 df = pd.read_sql_query(query, conn)
+
+# df.to_csv('240912_inputs_online_tool.csv', index=False)
+
+df = pd.read_csv('data_example.csv', index_col=0)
