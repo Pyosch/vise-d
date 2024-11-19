@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#%% -*- coding: utf-8 -*-
 """
 Created on Tue Nov 12 12:01:32 2024
 
@@ -15,11 +15,18 @@ from matplotlib.lines import Line2D
 import datetime
 import matplotlib.gridspec as gridspec
 
+import streamlit as st
+from st_files_connection import FilesConnection
+
 #%% FIGURE 5
 def fig_5():
-    data_path = os.path.join(os.path.dirname(__file__), 'data/figures')
-    prices = pd.read_pickle(f"{data_path}/prices.pkl")
-    data = pd.read_pickle(f"{data_path}/data_da_prices.pickle")
+    
+    conn = st.connection('gcs', type=FilesConnection)
+    prices = conn.read("vise-d/prices.csv", input_format="csv", ttl=100)
+    prices.index = prices["Unnamed: 0"]
+    prices.drop(columns=["Unnamed: 0"], inplace=True)
+    
+    data = np.array(conn.read("vise-d/da_data.csv", input_format="csv", ttl=100))
 
     colors = {"offpeak":"burlywood","median":"burlywood","peak":"burlywood","rp_purchase":"burlywood","rp_grid":"lightgreen","rp_levy":"pink","rp_tax":"lightgrey","mean":"grey","day_ahead_price_q":"lightblue"}
     labels = {"offpeak":"burlywood","median":"burlywood","peak":"burlywood","rp_purchase":"procurement","rp_grid":"grid usage fee","rp_levy":"levies","rp_tax":"tax","mean":"mean","day_ahead_price_q":"wholesale price"}
@@ -93,9 +100,13 @@ def fig_5():
 #%% FIGURE 7
 def fig_7():
 
-    data_path = os.path.join(os.path.dirname(__file__), 'data/figures')
-    trafo_loadings = pd.read_pickle(f"{data_path}/trafo_loadings.pkl")
-    costs = pd.read_pickle(f"{data_path}/costs.pkl")
+    conn = st.connection('gcs', type=FilesConnection)
+    trafo_loadings = conn.read("vise-d/trafo_loadings.json", input_format="json", ttl=100)
+    
+    dRates = ['dRate_30', 'dRate_50', 'dRate_70']
+    costs = {}
+    for key in dRates:
+        costs[key] = conn.read(f'vise-d/{key}_costs.csv', input_format="csv", ttl=100, header=[0, 1], index_col=[0])
 
     start_time = datetime.time(0, 0)
     # end_time = datetime.time(23, 59)
@@ -119,25 +130,25 @@ def fig_7():
 
     # dRate 30
     ax.append(fig.add_subplot(gs[0, 0]))
-    ax[0].plot(range(1, len(trafo_loadings['30'][0])+1), trafo_loadings['30'][0], color='black', linewidth=linewidth, linestyle='dashed')
-    ax[0].plot(range(1, len(trafo_loadings['30'][2])+1), trafo_loadings['30'][1], color=color2, linewidth=linewidth)
-    ax[0].plot(range(1, len(trafo_loadings['30'][1])+1), trafo_loadings['30'][2], color=color3, linewidth=linewidth)
+    ax[0].plot(range(1, len(trafo_loadings['30']['0'])+1), trafo_loadings['30']['0'], color='black', linewidth=linewidth, linestyle='dashed')
+    ax[0].plot(range(1, len(trafo_loadings['30']['2'])+1), trafo_loadings['30']['1'], color=color2, linewidth=linewidth)
+    ax[0].plot(range(1, len(trafo_loadings['30']['1'])+1), trafo_loadings['30']['2'], color=color3, linewidth=linewidth)
     # ax[0].plot(range(1, len(trafo_loadings['30'][2])+1), np.ones(len(trafo_loadings['30'][2])) * 100, color='red', linewidth=linewidth)
     ax[0].set_ylabel(r'$\mathbf{dRate\ 30}$' +'\n\nMVA', fontsize=8)
 
     # dRate 50
     ax.append(fig.add_subplot(gs[1, 0]))
-    ax[1].plot(range(1, len(trafo_loadings['50'][0])+1), trafo_loadings['50'][0], color='black', linewidth=linewidth, linestyle='dashed')
-    ax[1].plot(range(1, len(trafo_loadings['50'][2])+1), trafo_loadings['50'][1], color=color2, linewidth=linewidth)
-    ax[1].plot(range(1, len(trafo_loadings['50'][1])+1), trafo_loadings['50'][2], color=color3, linewidth=linewidth)
+    ax[1].plot(range(1, len(trafo_loadings['50']['0'])+1), trafo_loadings['50']['0'], color='black', linewidth=linewidth, linestyle='dashed')
+    ax[1].plot(range(1, len(trafo_loadings['50']['2'])+1), trafo_loadings['50']['1'], color=color2, linewidth=linewidth)
+    ax[1].plot(range(1, len(trafo_loadings['50']['1'])+1), trafo_loadings['50']['2'], color=color3, linewidth=linewidth)
     # ax[1].plot(range(1, len(trafo_loadings['40'][2])+1), np.ones(len(trafo_loadings['40'][2])) * 100, color='red', linewidth=linewidth)
     ax[1].set_ylabel(r'$\mathbf{dRate\ 50}$' +'\n\nMVA', fontsize=8)
 
     # dRate 70
     ax.append(fig.add_subplot(gs[2, 0]))
-    ax[2].plot(range(1, len(trafo_loadings['70'][0])+1), trafo_loadings['70'][0], color='black', linewidth=linewidth, linestyle='dashed')
-    ax[2].plot(range(1, len(trafo_loadings['70'][2])+1), trafo_loadings['70'][1], color=color2, linewidth=linewidth)
-    ax[2].plot(range(1, len(trafo_loadings['70'][1])+1), trafo_loadings['70'][2], color=color3, linewidth=linewidth)
+    ax[2].plot(range(1, len(trafo_loadings['70']['0'])+1), trafo_loadings['70']['0'], color='black', linewidth=linewidth, linestyle='dashed')
+    ax[2].plot(range(1, len(trafo_loadings['70']['2'])+1), trafo_loadings['70']['1'], color=color2, linewidth=linewidth)
+    ax[2].plot(range(1, len(trafo_loadings['70']['1'])+1), trafo_loadings['70']['2'], color=color3, linewidth=linewidth)
     # ax[2].plot(range(1, len(trafo_loadings['50'][2])+1), np.ones(len(trafo_loadings['50'][2])) * 100, color='red', linewidth=linewidth)
     ax[2].set_ylabel(r'$\mathbf{dRate\ 70}$' +'\n\nMVA', fontsize=8)
 
@@ -226,9 +237,8 @@ def fig_7():
 #%% FIGURE 8
 def fig_8():
 
-    data_path = os.path.join(os.path.dirname(__file__), 'data/figures')
     dRates = ['dRate_30', 'dRate_50', 'dRate_70']
-    days = ['d01', 'd02', 'd03', 'd04', 'd05', 'd06', 'd07', 'd08', 'd09', 'd10', 'd11', 'd12', 'd13', 'd14', 'd15', 'd16']
+    # days = ['d01', 'd02', 'd03', 'd04', 'd05', 'd06', 'd07', 'd08', 'd09', 'd10', 'd11', 'd12', 'd13', 'd14', 'd15', 'd16']
 
     flex_dict = {}
 
@@ -329,10 +339,13 @@ def fig_8():
 
 def fig_9():
     
-    data_path = os.path.join(os.path.dirname(__file__), 'data/figures')
-    with open(f'{data_path}/boxplot.pickle', 'rb') as handle:
-        boxplot = pickle.load(handle)
-        
+    conn = st.connection('gcs', type=FilesConnection)
+    
+    dRates = ['dRate_30', 'dRate_50', 'dRate_70']
+    boxplot = {}
+    for key in dRates:
+        boxplot[key] = conn.read(f'vise-d/{key}_boxplot.csv', input_format="csv", ttl=100, header=[0, 1], index_col=[0])
+    
     # first dimension = scenario with different penetrations
     # second dimension = Use Case
 
