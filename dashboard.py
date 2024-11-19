@@ -4,6 +4,8 @@ import plotly.express as px
 import streamlit as st
 from st_files_connection import FilesConnection
 
+from paper_figures import fig_5, fig_7, fig_8, fig_9
+
 st.set_page_config(page_title='VISE-D Dashboard', 
                     page_icon=':bar_chart:',
                     layout='centered',
@@ -76,6 +78,21 @@ st.plotly_chart(update_violin_plot(df,
                                    selected_wholesale_tariff, 
                                    selected_grid_usage_fees)
                 )
+
+
+st.write('## Paper Figures')
+
+st.write('### Figure 5')
+st.pyplot(fig=fig_5(), clear_figure=True)
+
+st.write('### Figure 7')
+st.pyplot(fig=fig_7(), clear_figure=True)
+
+st.write('### Figure 8')
+st.pyplot(fig=fig_8(), clear_figure=True)
+
+st.write('### Figure 9')
+st.pyplot(fig=fig_9(), clear_figure=True)
 
 # Footer with Logos
 footer_cols = st.columns(2)
