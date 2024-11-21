@@ -4,7 +4,7 @@ import plotly.express as px
 import streamlit as st
 from st_files_connection import FilesConnection
 
-from paper_figures import fig_5, fig_7, fig_8, fig_9
+from paper_figures import fig_5, fig_7, fig_8, fig_9, fig_5_plotly
 
 st.set_page_config(page_title='VISE-D Dashboard', 
                     page_icon=':bar_chart:',
@@ -106,7 +106,8 @@ st.write(
 st.write('*Die Veröffentlichung finden Sie [hier](https://www.sciencedirect.com/science/article/pii/S0306261924021585?dgcid=author) (Englisch).*')
 
 st.write('### Großhandelspreise und abgeleitete durchschnittliche Verbraucherpreise für Festtarif und ToU-Tarif')
-st.pyplot(fig=fig_5(), clear_figure=True)
+# st.pyplot(fig=fig_5(), clear_figure=True)
+st.plotly_chart(fig_5_plotly())
 st.write(
     'Hier sind die Strompreise für die Kumulierte Verteilung der angenommenen Stromgroßhandelspreise \
     für 2030 (links) und die endgültige Zusammensetzung der Strompreise für den Fix- und ToU-Tarif \

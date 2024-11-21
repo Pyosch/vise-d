@@ -6,14 +6,14 @@ Created on Tue Nov 12 12:01:32 2024
 """
 
 import pandas as pd
-import os
 import numpy as np
-import pickle
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 import datetime
 import matplotlib.gridspec as gridspec
+
+import plotly.graph_objects as go
 
 import streamlit as st
 from st_files_connection import FilesConnection
@@ -95,6 +95,99 @@ def fig_5():
 
     fig.tight_layout()
     
+    return fig
+
+#%% FIGURE 5 Ploty
+
+def fig_5_plotly():
+    # Simulated connection and data (replace with actual data fetching)
+    conn = st.connection('gcs', type=FilesConnection)
+    prices = conn.read("vise-d/prices.csv", input_format="csv", ttl=100)
+    prices.index = prices["Unnamed: 0"]
+    prices.drop(columns=["Unnamed: 0"], inplace=True)
+    
+    data = np.array(conn.read("vise-d/da_data.csv", input_format="csv", ttl=100))
+
+    colors = {
+        "rp_purchase": "burlywood",
+        "rp_grid": "lightgreen",
+        "rp_levy": "pink",
+        "rp_tax": "lightgrey",
+        "purchase": "burlywood",
+        "day_ahead_price_q": "lightblue",
+    }
+    labels = {
+        "rp_purchase": "procurement",
+        "rp_grid": "grid usage fee",
+        "rp_levy": "levies",
+        "rp_tax": "tax",
+        "purchase": "procurement",
+        "day_ahead_price_q": "wholesale price",
+    }
+
+    # Adjust prices as per the logic
+    prices.loc["q00001", "rp_purchase"] = 59.6
+    prices["purchase"] = prices[["rp_purchase", "time_of_use_q"]].fillna(0).sum(axis=1)
+    prices.drop(columns=["rp_purchase", "time_of_use_q"], inplace=True)
+    
+    # calculate tax
+    prices["rp_tax"] = (prices[["purchase", "rp_grid", "rp_levy"]].sum(axis=1) + 20.5) * 0.19 + 20.5
+    # order df
+    prices = prices[["purchase", "rp_grid", "rp_levy", "rp_tax"]]
+
+    # Create the bar chart
+    fig = go.Figure()
+
+    x_labels = ["Fix", "ToU (0-8)", "ToU (8-16)", "ToU (16-24)"]
+    bar_components = ["purchase", "rp_grid", "rp_levy", "rp_tax"]
+
+    # Add bars for each component
+    for component in bar_components:
+        fig.add_trace(
+            go.Bar(
+                name=labels[component],
+                x=x_labels,
+                y=prices[component],
+                marker_color=colors[component]
+            )
+        )
+
+    # Add annotations for bar labels
+    for i, index in enumerate(prices.index):
+        total = prices.loc[index].sum()
+        fig.add_annotation(
+            x=x_labels[i],
+            y=total + 5,
+            text=f"{total:.1f}",
+            showarrow=False,
+            font=dict(size=10)
+        )
+
+    # Add line chart for the wholesale prices
+    p = 1. * np.arange(len(data)) / float(len(data) - 1) * 100
+    fig.add_trace(
+        go.Scatter(
+            x=data,
+            y=p,
+            mode="lines",
+            name=labels["day_ahead_price_q"],
+            line=dict(color=colors["day_ahead_price_q"]),
+            yaxis="y2"
+        )
+    )
+
+    # Update layout
+    fig.update_layout(
+        barmode="stack",
+        xaxis=dict(title="Time of Use"),
+        yaxis=dict(title="EUR/MWh"),
+        yaxis2=dict(title="%", overlaying="y", side="right"),
+        legend=dict(orientation="h", y=-0.3, x=0.5, xanchor="center"),
+        title="Consumer Price and Wholesale Price Analysis",
+        height=600,
+        width=1000
+    )
+
     return fig
 
 #%% FIGURE 7
