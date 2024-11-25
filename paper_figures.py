@@ -14,6 +14,7 @@ import datetime
 import matplotlib.gridspec as gridspec
 
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 import streamlit as st
 from st_files_connection import FilesConnection
@@ -113,7 +114,7 @@ def fig_5_plotly():
         "rp_grid": "lightgreen",
         "rp_levy": "pink",
         "rp_tax": "lightgrey",
-        "purchase": "burlywood",
+        "purchase": "burlywood",  # Added color for purchase
         "day_ahead_price_q": "lightblue",
     }
     labels = {
@@ -121,7 +122,7 @@ def fig_5_plotly():
         "rp_grid": "grid usage fee",
         "rp_levy": "levies",
         "rp_tax": "tax",
-        "purchase": "procurement",
+        "purchase": "procurement",  # Added label for purchase
         "day_ahead_price_q": "wholesale price",
     }
 
@@ -129,30 +130,50 @@ def fig_5_plotly():
     prices.loc["q00001", "rp_purchase"] = 59.6
     prices["purchase"] = prices[["rp_purchase", "time_of_use_q"]].fillna(0).sum(axis=1)
     prices.drop(columns=["rp_purchase", "time_of_use_q"], inplace=True)
-    
-    # calculate tax
     prices["rp_tax"] = (prices[["purchase", "rp_grid", "rp_levy"]].sum(axis=1) + 20.5) * 0.19 + 20.5
-    # order df
     prices = prices[["purchase", "rp_grid", "rp_levy", "rp_tax"]]
 
-    # Create the bar chart
-    fig = go.Figure()
+    # Create a subplot layout
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        column_widths=[0.3, 0.7],  # Adjust subplot proportions
+        shared_yaxes=False,        # Separate y-axes
+        specs=[[{"type": "scatter"}, {"type": "bar"}]],  # Define subplot types
+        subplot_titles=("Wholesale Prices", "Consumer Prices"),
+    )
 
+    # Line chart (left subplot)
+    x = np.arange(len(data))  # Generate x-axis values based on the index of the data
+    p = 1.0 * np.arange(len(data)) / float(len(data) - 1) * 100  # Cumulative percentage
+    fig.add_trace(
+        go.Scatter(
+            x=x,  # Use x-axis values
+            y=p,  # Cumulative percentage
+            mode="lines",
+            name=labels["day_ahead_price_q"],
+            line=dict(color=colors["day_ahead_price_q"]),
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Bar chart (right subplot)
     x_labels = ["Fix", "ToU (0-8)", "ToU (8-16)", "ToU (16-24)"]
     bar_components = ["purchase", "rp_grid", "rp_levy", "rp_tax"]
-
-    # Add bars for each component
     for component in bar_components:
         fig.add_trace(
             go.Bar(
                 name=labels[component],
                 x=x_labels,
                 y=prices[component],
-                marker_color=colors[component]
-            )
+                marker_color=colors[component],
+            ),
+            row=1,
+            col=2,
         )
 
-    # Add annotations for bar labels
+    # Add annotations for bar chart totals
     for i, index in enumerate(prices.index):
         total = prices.loc[index].sum()
         fig.add_annotation(
@@ -160,32 +181,22 @@ def fig_5_plotly():
             y=total + 5,
             text=f"{total:.1f}",
             showarrow=False,
-            font=dict(size=10)
+            font=dict(size=10),
+            row=1,
+            col=2,
         )
-
-    # Add line chart for the wholesale prices
-    p = 1. * np.arange(len(data)) / float(len(data) - 1) * 100
-    fig.add_trace(
-        go.Scatter(
-            x=data,
-            y=p,
-            mode="lines",
-            name=labels["day_ahead_price_q"],
-            line=dict(color=colors["day_ahead_price_q"]),
-            yaxis="y2"
-        )
-    )
 
     # Update layout
     fig.update_layout(
         barmode="stack",
-        xaxis=dict(title="Time of Use"),
-        yaxis=dict(title="EUR/MWh"),
-        yaxis2=dict(title="%", overlaying="y", side="right"),
-        legend=dict(orientation="h", y=-0.3, x=0.5, xanchor="center"),
-        title="Consumer Price and Wholesale Price Analysis",
         height=600,
-        width=1000
+        width=1000,
+        title="Consumer Price and Wholesale Price Analysis",
+        legend=dict(orientation="h", y=-0.3, x=0.5, xanchor="center"),
+        xaxis_title="EUR/MWh",
+        xaxis2_title="Time of Use",
+        yaxis=dict(title="%"),
+        yaxis2=dict(title="EUR/MWh"),
     )
 
     return fig
