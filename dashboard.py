@@ -17,9 +17,10 @@ st.title('VISE-D Dashboard')
 st.write('Welcome to the VISE-D Dashboard! This is a demo of the tool developed in the VISE-D project.')
 
 # Load data
-conn = st.connection('gcs', type=FilesConnection)
+# conn = st.connection('gcs', type=FilesConnection)
 # df = conn.read("vise-d/240912_inputs_online_tool.csv", input_format="csv", ttl=600)
-df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
+# df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
+df = pd.read_csv('./data/figures/example_data_10000.csv')
 
 # Sidebar
 with st.sidebar:

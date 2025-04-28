@@ -22,12 +22,14 @@ from st_files_connection import FilesConnection
 #%% FIGURE 5
 def fig_5():
     
-    conn = st.connection('gcs', type=FilesConnection)
-    prices = conn.read("vise-d/prices.csv", input_format="csv", ttl=100)
+    # conn = st.connection('gcs', type=FilesConnection)
+    # prices = conn.read("vise-d/prices.csv", input_format="csv", ttl=100)
+    prices = pd.read_csv('./data/figures/prices.csv')
     prices.index = prices["Unnamed: 0"]
     prices.drop(columns=["Unnamed: 0"], inplace=True)
     
-    data = np.array(conn.read("vise-d/da_data.csv", input_format="csv", ttl=100))
+    # data = np.array(conn.read("vise-d/da_data.csv", input_format="csv", ttl=100))
+    data = pd.read_csv('./data/figures/da_data.csv')
 
     colors = {"offpeak":"burlywood","median":"burlywood","peak":"burlywood","rp_purchase":"burlywood","rp_grid":"lightgreen","rp_levy":"pink","rp_tax":"lightgrey","mean":"grey","day_ahead_price_q":"lightblue"}
     labels = {"offpeak":"burlywood","median":"burlywood","peak":"burlywood","rp_purchase":"procurement","rp_grid":"grid usage fee","rp_levy":"levies","rp_tax":"tax","mean":"mean","day_ahead_price_q":"wholesale price"}
@@ -102,12 +104,14 @@ def fig_5():
 
 def fig_5_plotly():
     # Simulated connection and data (replace with actual data fetching)
-    conn = st.connection('gcs', type=FilesConnection)
-    prices = conn.read("vise-d/prices.csv", input_format="csv", ttl=100)
+    # conn = st.connection('gcs', type=FilesConnection)
+    # prices = conn.read("vise-d/prices.csv", input_format="csv", ttl=100)
+    prices = pd.read_csv('./data/figures/prices.csv')
     prices.index = prices["Unnamed: 0"]
     prices.drop(columns=["Unnamed: 0"], inplace=True)
     
-    data = np.array(conn.read("vise-d/da_data.csv", input_format="csv", ttl=100))
+    # data = np.array(conn.read("vise-d/da_data.csv", input_format="csv", ttl=100))
+    data = pd.read_csv('./data/figures/da_data.csv')
 
     colors = {
         "rp_purchase": "burlywood",
@@ -204,13 +208,15 @@ def fig_5_plotly():
 #%% FIGURE 7
 def fig_7():
 
-    conn = st.connection('gcs', type=FilesConnection)
-    trafo_loadings = conn.read("vise-d/trafo_loadings.json", input_format="json", ttl=100)
+    # conn = st.connection('gcs', type=FilesConnection)
+    # trafo_loadings = conn.read("vise-d/trafo_loadings.json", input_format="json", ttl=100)
+    trafo_loadings = pd.read_json('./data/figures/trafo_loadings.json')
     
     dRates = ['dRate_30', 'dRate_50', 'dRate_70']
     costs = {}
     for key in dRates:
-        costs[key] = conn.read(f'vise-d/{key}_costs.csv', input_format="csv", ttl=100, header=[0, 1], index_col=[0])
+        # costs[key] = conn.read(f'vise-d/{key}_costs.csv', input_format="csv", ttl=100, header=[0, 1], index_col=[0])
+        costs[key] = pd.read_csv(f'./data/figures/{key}_costs.csv', header=[0, 1], index_col=[0])
 
     start_time = datetime.time(0, 0)
     # end_time = datetime.time(23, 59)
@@ -234,26 +240,26 @@ def fig_7():
 
     # dRate 30
     ax.append(fig.add_subplot(gs[0, 0]))
-    ax[0].plot(range(1, len(trafo_loadings['30']['0'])+1), trafo_loadings['30']['0'], color='black', linewidth=linewidth, linestyle='dashed')
-    ax[0].plot(range(1, len(trafo_loadings['30']['2'])+1), trafo_loadings['30']['1'], color=color2, linewidth=linewidth)
-    ax[0].plot(range(1, len(trafo_loadings['30']['1'])+1), trafo_loadings['30']['2'], color=color3, linewidth=linewidth)
-    # ax[0].plot(range(1, len(trafo_loadings['30'][2])+1), np.ones(len(trafo_loadings['30'][2])) * 100, color='red', linewidth=linewidth)
+    ax[0].plot(range(1, len(trafo_loadings[30][0])+1), trafo_loadings[30][0], color='black', linewidth=linewidth, linestyle='dashed')
+    ax[0].plot(range(1, len(trafo_loadings[30][2])+1), trafo_loadings[30][1], color=color2, linewidth=linewidth)
+    ax[0].plot(range(1, len(trafo_loadings[30][1])+1), trafo_loadings[30][2], color=color3, linewidth=linewidth)
+    # ax[0].plot(range(1, len(trafo_loadings[30][2])+1), np.ones(len(trafo_loadings[30][2])) * 100, color='red', linewidth=linewidth)
     ax[0].set_ylabel(r'$\mathbf{dRate\ 30}$' +'\n\nMVA', fontsize=8)
 
     # dRate 50
     ax.append(fig.add_subplot(gs[1, 0]))
-    ax[1].plot(range(1, len(trafo_loadings['50']['0'])+1), trafo_loadings['50']['0'], color='black', linewidth=linewidth, linestyle='dashed')
-    ax[1].plot(range(1, len(trafo_loadings['50']['2'])+1), trafo_loadings['50']['1'], color=color2, linewidth=linewidth)
-    ax[1].plot(range(1, len(trafo_loadings['50']['1'])+1), trafo_loadings['50']['2'], color=color3, linewidth=linewidth)
-    # ax[1].plot(range(1, len(trafo_loadings['40'][2])+1), np.ones(len(trafo_loadings['40'][2])) * 100, color='red', linewidth=linewidth)
+    ax[1].plot(range(1, len(trafo_loadings[50][0])+1), trafo_loadings[50][0], color='black', linewidth=linewidth, linestyle='dashed')
+    ax[1].plot(range(1, len(trafo_loadings[50][2])+1), trafo_loadings[50][1], color=color2, linewidth=linewidth)
+    ax[1].plot(range(1, len(trafo_loadings[50][1])+1), trafo_loadings[50][2], color=color3, linewidth=linewidth)
+    # ax[1].plot(range(1, len(trafo_loadings[40][2])+1), np.ones(len(trafo_loadings[40][2])) * 100, color='red', linewidth=linewidth)
     ax[1].set_ylabel(r'$\mathbf{dRate\ 50}$' +'\n\nMVA', fontsize=8)
 
     # dRate 70
     ax.append(fig.add_subplot(gs[2, 0]))
-    ax[2].plot(range(1, len(trafo_loadings['70']['0'])+1), trafo_loadings['70']['0'], color='black', linewidth=linewidth, linestyle='dashed')
-    ax[2].plot(range(1, len(trafo_loadings['70']['2'])+1), trafo_loadings['70']['1'], color=color2, linewidth=linewidth)
-    ax[2].plot(range(1, len(trafo_loadings['70']['1'])+1), trafo_loadings['70']['2'], color=color3, linewidth=linewidth)
-    # ax[2].plot(range(1, len(trafo_loadings['50'][2])+1), np.ones(len(trafo_loadings['50'][2])) * 100, color='red', linewidth=linewidth)
+    ax[2].plot(range(1, len(trafo_loadings[70][0])+1), trafo_loadings[70][0], color='black', linewidth=linewidth, linestyle='dashed')
+    ax[2].plot(range(1, len(trafo_loadings[70][2])+1), trafo_loadings[70][1], color=color2, linewidth=linewidth)
+    ax[2].plot(range(1, len(trafo_loadings[70][1])+1), trafo_loadings[70][2], color=color3, linewidth=linewidth)
+    # ax[2].plot(range(1, len(trafo_loadings[50][2])+1), np.ones(len(trafo_loadings[50][2])) * 100, color='red', linewidth=linewidth)
     ax[2].set_ylabel(r'$\mathbf{dRate\ 70}$' +'\n\nMVA', fontsize=8)
 
 
@@ -443,12 +449,13 @@ def fig_8():
 
 def fig_9():
     
-    conn = st.connection('gcs', type=FilesConnection)
+    # conn = st.connection('gcs', type=FilesConnection)
     
     dRates = ['dRate_30', 'dRate_50', 'dRate_70']
     boxplot = {}
     for key in dRates:
-        boxplot[key] = conn.read(f'vise-d/{key}_boxplot.csv', input_format="csv", ttl=100, header=[0, 1], index_col=[0])
+        # boxplot[key] = conn.read(f'vise-d/{key}_boxplot.csv', input_format="csv", ttl=100, header=[0, 1], index_col=[0])
+        boxplot[key] = pd.read_csv(f'./data/figures/{key}_boxplot.csv', header=[0, 1], index_col=[0])
     
     # first dimension = scenario with different penetrations
     # second dimension = Use Case
