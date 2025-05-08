@@ -23,63 +23,65 @@ st.write('Willkommen beim VISE-D Dashboard! Die Seite befindet sich noch in der 
 # df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
 df = pd.read_csv('./data/figures/example_data_10000.csv')
 
-# Sidebar
-# with st.sidebar:
-#     st.title('VISE-D')
-    
-#     grid_type = df.grid_type.unique()
-#     ev_diffusion = sorted(df.diffusion_evs.unique())
-#     hp_diffusion = df.diffusion_hps.unique()
-#     pv_storage_diffusion = df.diffusion_pv_storage.unique()
-#     curtailment = df.curtailment.unique()
-#     wholesale_tariff = df.tariff_wholesale.unique()
-#     grid_usage_fees = df.tariff_grid_usage_fee.unique()
-    
-#     selected_grid_type = st.selectbox('Netz Typ', grid_type)
-#     selected_ev_diffusion = st.selectbox('EV Diffusion', ev_diffusion)
-#     selected_hp_diffusion = st.selectbox('WP Diffusion', hp_diffusion)
-#     selected_pv_storage_diffusion = st.selectbox('PV Speicher Diffusion', pv_storage_diffusion)
-#     selected_curtailment = st.selectbox('Curtailment', curtailment)
-#     selected_wholesale_tariff = st.selectbox('Wholesale Tariff', wholesale_tariff)
-#     selected_grid_usage_fees = st.selectbox('Netznutzungsgebühren', grid_usage_fees)
-    
-# def update_violin_plot(df,
-#                        ev_penetration, 
-#                        curtailment,
-#                        selected_grid_type, 
-#                        selected_hp_diffusion, 
-#                        selected_pv_storage_diffusion,
-#                        selected_wholesale_tariff, 
-#                        selected_grid_usage_fees):
+def update_violin_plot(df,
+                       ev_penetration, 
+                       curtailment,
+                       selected_grid_type, 
+                       selected_hp_diffusion, 
+                       selected_pv_storage_diffusion,
+                       selected_wholesale_tariff, 
+                       selected_grid_usage_fees):
              
-#     # df = pd.read_csv('data_example.csv', index_col=0)
-#     df_selected = df[(df['diffusion_evs'] == ev_penetration) 
-#                     & (df['curtailment'] == curtailment) 
-#                     & (df['grid_type'] == selected_grid_type)
-#                     & (df['diffusion_hps'] == selected_hp_diffusion)
-#                     & (df['diffusion_pv_storage'] == selected_pv_storage_diffusion)
-#                     & (df['tariff_wholesale'] == selected_wholesale_tariff)
-#                     & (df['tariff_grid_usage_fee'] == selected_grid_usage_fees)
-#                     ]
+    # df = pd.read_csv('data_example.csv', index_col=0)
+    df_selected = df[(df['diffusion_evs'] == ev_penetration) 
+                    & (df['curtailment'] == curtailment) 
+                    & (df['grid_type'] == selected_grid_type)
+                    & (df['diffusion_hps'] == selected_hp_diffusion)
+                    & (df['diffusion_pv_storage'] == selected_pv_storage_diffusion)
+                    & (df['tariff_wholesale'] == selected_wholesale_tariff)
+                    & (df['tariff_grid_usage_fee'] == selected_grid_usage_fees)
+                    ]
     
-#     fig = px.violin(df_selected, 
-#                     y='value', 
-#                     box=True, 
-#                     points="all"
-#                     )
-#     return fig
+    fig = px.violin(df_selected, 
+                    y='value', 
+                    box=True, 
+                    points="all"
+                    )
+    return fig
 
-# st.write('## Violin Plot')
+# Sidebar
 
-# st.plotly_chart(update_violin_plot(df,
-#                                    selected_ev_diffusion, 
-#                                    selected_curtailment,
-#                                    selected_grid_type, 
-#                                    selected_hp_diffusion, 
-#                                    selected_pv_storage_diffusion,
-#                                    selected_wholesale_tariff, 
-#                                    selected_grid_usage_fees)
-#                 )
+def Violinplot():
+    with st.sidebar:
+        st.title('VISE-D')
+        
+        grid_type = df.grid_type.unique()
+        ev_diffusion = sorted(df.diffusion_evs.unique())
+        hp_diffusion = df.diffusion_hps.unique()
+        pv_storage_diffusion = df.diffusion_pv_storage.unique()
+        curtailment = df.curtailment.unique()
+        wholesale_tariff = df.tariff_wholesale.unique()
+        grid_usage_fees = df.tariff_grid_usage_fee.unique()
+        
+        selected_grid_type = st.selectbox('Netz Typ', grid_type)
+        selected_ev_diffusion = st.selectbox('EV Diffusion', ev_diffusion)
+        selected_hp_diffusion = st.selectbox('WP Diffusion', hp_diffusion)
+        selected_pv_storage_diffusion = st.selectbox('PV Speicher Diffusion', pv_storage_diffusion)
+        selected_curtailment = st.selectbox('Curtailment', curtailment)
+        selected_wholesale_tariff = st.selectbox('Wholesale Tariff', wholesale_tariff)
+        selected_grid_usage_fees = st.selectbox('Netznutzungsgebühren', grid_usage_fees)
+
+    st.write('## Violin Plot')
+
+    st.plotly_chart(update_violin_plot(df,
+                                    selected_ev_diffusion, 
+                                    selected_curtailment,
+                                    selected_grid_type, 
+                                    selected_hp_diffusion, 
+                                    selected_pv_storage_diffusion,
+                                    selected_wholesale_tariff, 
+                                    selected_grid_usage_fees)
+                    )
 
 def Forschungsergebnisse():
     st.write('## Integration von E-Fahrzeugen in Verteilnetze - Untersuchung der Auswirkungen \
@@ -184,5 +186,5 @@ def Forschungsergebnisse():
 def Netzberechnungen():
     pp_networks()
     
-pg = st.navigation([st.Page(Forschungsergebnisse), st.Page(Netzberechnungen)])
+pg = st.navigation([st.Page(Forschungsergebnisse), st.Page(Netzberechnungen), st.Page(Violinplot)])
 pg.run()
