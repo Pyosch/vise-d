@@ -23,62 +23,61 @@ st.write('Welcome to the VISE-D Dashboard! This is a demo of the tool developed 
 df = pd.read_csv('./data/figures/example_data_10000.csv')
 
 # Sidebar
-# with st.sidebar:
-#     st.title('VISE-D')
+with st.sidebar:
+    st.title('VISE-D')
     
-#     grid_type = df.grid_type.unique()
-#     ev_diffusion = sorted(df.diffusion_evs.unique())
-#     hp_diffusion = df.diffusion_hps.unique()
-#     pv_storage_diffusion = df.diffusion_pv_storage.unique()
-#     curtailment = df.curtailment.unique()
-#     wholesale_tariff = df.tariff_wholesale.unique()
-#     grid_usage_fees = df.tariff_grid_usage_fee.unique()
+    grid_type = df.grid_type.unique()
+    ev_diffusion = sorted(df.diffusion_evs.unique())
+    hp_diffusion = df.diffusion_hps.unique()
+    pv_storage_diffusion = df.diffusion_pv_storage.unique()
+    curtailment = df.curtailment.unique()
+    wholesale_tariff = df.tariff_wholesale.unique()
+    grid_usage_fees = df.tariff_grid_usage_fee.unique()
     
-#     selected_grid_type = st.selectbox('Netz Typ', grid_type)
-#     selected_ev_diffusion = st.selectbox('EV Diffusion', ev_diffusion)
-#     selected_hp_diffusion = st.selectbox('WP Diffusion', hp_diffusion)
-#     selected_pv_storage_diffusion = st.selectbox('PV Speicher Diffusion', pv_storage_diffusion)
-#     selected_curtailment = st.selectbox('Curtailment', curtailment)
-#     selected_wholesale_tariff = st.selectbox('Wholesale Tariff', wholesale_tariff)
-#     selected_grid_usage_fees = st.selectbox('Netznutzungsgebühren', grid_usage_fees)
+    selected_grid_type = st.selectbox('Netz Typ', grid_type)
+    selected_ev_diffusion = st.selectbox('EV Diffusion', ev_diffusion)
+    selected_hp_diffusion = st.selectbox('WP Diffusion', hp_diffusion)
+    selected_pv_storage_diffusion = st.selectbox('PV Speicher Diffusion', pv_storage_diffusion)
+    selected_curtailment = st.selectbox('Curtailment', curtailment)
+    selected_wholesale_tariff = st.selectbox('Wholesale Tariff', wholesale_tariff)
+    selected_grid_usage_fees = st.selectbox('Netznutzungsgebühren', grid_usage_fees)
     
-# def update_violin_plot(df,
-#                        ev_penetration, 
-#                        curtailment,
-#                        selected_grid_type, 
-#                        selected_hp_diffusion, 
-#                        selected_pv_storage_diffusion,
-#                        selected_wholesale_tariff, 
-#                        selected_grid_usage_fees):
-             
-#     # df = pd.read_csv('data_example.csv', index_col=0)
-#     df_selected = df[(df['diffusion_evs'] == ev_penetration) 
-#                     & (df['curtailment'] == curtailment) 
-#                     & (df['grid_type'] == selected_grid_type)
-#                     & (df['diffusion_hps'] == selected_hp_diffusion)
-#                     & (df['diffusion_pv_storage'] == selected_pv_storage_diffusion)
-#                     & (df['tariff_wholesale'] == selected_wholesale_tariff)
-#                     & (df['tariff_grid_usage_fee'] == selected_grid_usage_fees)
-#                     ]
+def update_violin_plot(df,
+                        ev_penetration, 
+                        curtailment,
+                        selected_grid_type, 
+                        selected_hp_diffusion, 
+                        selected_pv_storage_diffusion,
+                        selected_wholesale_tariff, 
+                      selected_grid_usage_fees):            
+    #  df = pd.read_csv('data_example.csv', index_col=0)
+      df_selected = df[(df['diffusion_evs'] == ev_penetration) 
+                     & (df['curtailment'] == curtailment) 
+                     & (df['grid_type'] == selected_grid_type)
+                     & (df['diffusion_hps'] == selected_hp_diffusion)
+                     & (df['diffusion_pv_storage'] == selected_pv_storage_diffusion)
+                     & (df['tariff_wholesale'] == selected_wholesale_tariff)
+                     & (df['tariff_grid_usage_fee'] == selected_grid_usage_fees)
+                     ]
     
-#     fig = px.violin(df_selected, 
-#                     y='value', 
-#                     box=True, 
-#                     points="all"
-#                     )
-#     return fig
+      fig = px.violin(df_selected, 
+                     y='value', 
+                     box=True, 
+                     points="all"
+                     )
+      return fig
 
-# st.write('## Violin Plot')
+st.write('## Violin Plot')
 
-# st.plotly_chart(update_violin_plot(df,
-#                                    selected_ev_diffusion, 
-#                                    selected_curtailment,
-#                                    selected_grid_type, 
-#                                    selected_hp_diffusion, 
-#                                    selected_pv_storage_diffusion,
-#                                    selected_wholesale_tariff, 
-#                                    selected_grid_usage_fees)
-#                 )
+st.plotly_chart(update_violin_plot(df,
+                                    selected_ev_diffusion, 
+                                    selected_curtailment,
+                                    selected_grid_type, 
+                                    selected_hp_diffusion, 
+                                    selected_pv_storage_diffusion,
+                                    selected_wholesale_tariff, 
+                                    selected_grid_usage_fees)
+                 )
 
 
 st.write('## Integration von E-Fahrzeugen in Verteilnetze - Untersuchung der Auswirkungen \
@@ -179,3 +178,91 @@ with footer_cols[1]:
         """,
         unsafe_allow_html=True
     )
+
+# Initialize session state for BEV settings if not already present
+if "bev_settings" not in st.session_state:
+    st.session_state.bev_settings = {
+        "max_battery_capacity": 0.0,
+        "min_battery_capacity": 0.0,
+        "battery_usage": 0.0,
+        "charging_power": 0.0,
+        "charging_efficiency": 0.0
+    }
+
+# Page title
+st.title("Battery Electric Vehicle (BEV) Settings")
+
+# Form layout
+with st.form(key="bev_settings_form"):
+    # Max Battery Capacity
+    st.markdown("**Max. Battery Capacity**")
+    max_battery_capacity = st.number_input(
+        "Enter max battery capacity (kWh)",
+        min_value=0.0,
+        value=float(st.session_state.bev_settings["max_battery_capacity"]),
+        placeholder="e.g. 100 kWh",
+        key="max_battery_capacity"
+    )
+
+    # Min Battery Capacity
+    st.markdown("**Min. Battery Capacity**")
+    min_battery_capacity = st.number_input(
+        "Enter min battery capacity (kWh)",
+        min_value=0.0,
+        value=float(st.session_state.bev_settings["min_battery_capacity"]),
+        placeholder="e.g. 15 kWh",
+        key="min_battery_capacity"
+    )
+
+    # Battery Usage
+    st.markdown("**Battery Usage**")
+    battery_usage = st.number_input(
+        "Enter battery usage",
+        min_value=0.0,
+        value=float(st.session_state.bev_settings["battery_usage"]),
+        placeholder="e.g. ???",
+        key="battery_usage"
+    )
+    st.markdown("*Note: Battery usage definition may need clarification.*")
+
+    # Charging Power
+    st.markdown("**Charging Power**")
+    charging_power = st.number_input(
+        "Enter charging power (kW)",
+        min_value=0.0,
+        value=float(st.session_state.bev_settings["charging_power"]),
+        placeholder="e.g. 11 kW",
+        key="charging_power"
+    )
+
+    # Charging Efficiency
+    st.markdown("**Charging Efficiency**")
+    charging_efficiency = st.number_input(
+        "Enter charging efficiency (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=float(st.session_state.bev_settings["charging_efficiency"] * 100),
+        placeholder="e.g. 90%",
+        key="charging_efficiency"
+    )
+
+    # Submit button
+    submit_button = st.form_submit_button("Submit Settings")
+
+# Handle form submission
+if submit_button:
+    # Update session state with new settings
+ #   st.session_state.bev_settings = {
+ #       "max_battery_capacity": max_battery_capacity,
+ #       "min_battery_capacity": min_battery_capacity,
+ #       "battery_usage": battery_usage,
+ #       "charging_power": charging_power,
+ #       "charging_efficiency": charging_efficiency / 100  # Convert percentage to decimal
+ #   }
+    st.success("BEV settings updated successfully!")
+    # Display the updated settings for user confirmation
+    st.json(st.session_state.bev_settings)
+
+# Optional: Display current settings
+st.markdown("### Current BEV Settings")
+st.json(st.session_state.bev_settings)
