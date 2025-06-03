@@ -5,10 +5,19 @@ import plotly.express as px
 import datetime
 import streamlit as st
 from st_files_connection import FilesConnection
+import os
 
 from paper_figures import fig_5, fig_7, fig_8, fig_9, fig_5_plotly
 from pp_networks import pp_networks
-
+import matplotlib.pyplot as plt
+from vpplib.battery_electric_vehicle import BatteryElectricVehicle
+from vpplib.environment import Environment
+from vpplib.heat_pump import HeatPump
+from vpplib.user_profile import UserProfile
+from vpplib.environment import Environment
+from vpplib.photovoltaic import Photovoltaic
+from vpplib.wind_power import WindPower
+from vpplib import ElectricalEnergyStorage
 st.set_page_config(page_title='VISE-D Dashboard', 
                     page_icon=':bar_chart:',
                     layout='centered',
@@ -20,9 +29,9 @@ st.title('VISE-D Dashboard')
 st.write('Willkommen beim VISE-D Dashboard! Die Seite befindet sich noch in der Entwicklung.')
 
 # Load data
-# conn = st.connection('gcs', type=FilesConnection)
-# df = conn.read("vise-d/240912_inputs_online_tool.csv", input_format="csv", ttl=600)
-# df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
+#conn = st.connection('gcs', type=FilesConnection)
+#df = conn.read("vise-d/240912_inputs_online_tool.csv", input_format="csv", ttl=600)
+#df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
 df = pd.read_csv('./data/figures/example_data_10000.csv')
 
 def update_violin_plot(df,
@@ -196,10 +205,14 @@ if "bev_settings" not in st.session_state:
         "charging_efficiency": 0.0,
         "load_degradation_begin": 0.0,
         "user_profile": "None",
-        "environment": "None",
+        "selected_environment": "None",
+        "start_time": datetime.time(0, 0,0),
+        "end_time": datetime.time(0, 0,0),
+        "timebase": 15
     }
 
 # Page title
+
 
 def battery_electric_vehicle_settings():
     st.title("Battery Electric Vehicle (BEV) Settings")
@@ -276,12 +289,36 @@ def battery_electric_vehicle_settings():
                 key="user_profile"
             )
             
-            st.markdown("**environment**")
-            environment = st.selectbox(
-                "Select environment",
-                options=["None", "Environment 1", "Environment 2"],
-                index=0 if st.session_state.bev_settings["environment"] == "None" else 1 if st.session_state.bev_settings["environment"] == "Environment 1" else 2,
-                key="environment"
+        #    st.markdown("**environment**")
+        #    selected_environment = st.selectbox(
+        #        "Select environment",
+        #        options=["None", "Environment 1", "Environment 2"],
+        #        index=0 if st.session_state.bev_settings["selected_environment"] == "None" else 1 if st.session_state.bev_settings["selected_environment"] == "Environment 1" else 2,
+        #        key="environment"
+        #    )
+            
+            st.markdown("**Start Time**")
+            start_time = st.time_input(
+                "Enter Start Time HH:MM:SS",
+                datetime.time(0,0,0)
+                
+            )
+            
+            st.markdown("**End Time**")
+            end_time = st.time_input(
+                "Enter End Time HH:MM:SS",
+                datetime.time(0,0,0)
+                
+            )
+            
+            st.markdown("**Timebase**")
+            timebase = st.number_input(
+                "Enter Timebase (minutes)",
+                min_value=1,
+                max_value=60,
+                value=15,
+                step=1,
+                key="timebase"
             )
             
             
@@ -293,16 +330,42 @@ def battery_electric_vehicle_settings():
         if submit_button:
             
         # Update session state with new settings
-        #   st.session_state.bev_settings = {
-        #       "max_battery_capacity": max_battery_capacity,
-        #       "min_battery_capacity": min_battery_capacity,
-        #       "battery_usage": battery_usage,
-        #       "charging_power": charging_power,
-        #       "charging_efficiency": charging_efficiency / 100  # Convert percentage to decimal
-        #   }
-            st.success("BEV settings updated successfully!")
+            st.session_state.bev_settings = {
+                "max_battery_capacity": max_battery_capacity,
+                "min_battery_capacity": min_battery_capacity,
+                "battery_usage": battery_usage,
+                "charging_power": charging_power,
+                "charging_efficiency": charging_efficiency / 100,
+                "load_degradation_begin":load_degradation_begin,
+                "user_profile": user_profile,
+                #   "environment": selected_environment,
+                "start_time": start_time,
+                "end_time": end_time,
+                "timebase": timebase
+            }
+           
+            # start = "2015-06-01 00:00:00"
+            # end = "2015-06-01 23:45:00"
+            # timestamp_int = 48
+            # timestamp_str = "2015-06-01 12:00:00"
+            # env = Environment(start=start, end=end, timebase=timebase)
+            
+            # # Initialize BEV with form inputs
+            # bev = BatteryElectricVehicle(
+            #     unit="kW",
+            #     identifier="bev_1",
+            #     environment=env,
+            #     battery_max=max_battery_capacity,
+            #     battery_min=min_battery_capacity,
+            #     battery_usage=battery_usage,
+            #     charging_power=charging_power,
+            #     load_degradation_begin=load_degradation_begin,
+            #     charge_efficiency=charging_efficiency / 100
+            # )
+           
+        st.success("BEV settings updated successfully!")
             # Display the updated settings for user confirmation
-            st.json(st.session_state.bev_settings)
+    #    st.json(st.session_state.bev_settings)
 
         # Optional: Display current settings
     #    st.markdown("### Current BEV Settings")
@@ -311,9 +374,9 @@ def battery_electric_vehicle_settings():
 
  # Create DataFrame for table
     data = {
-    "Metric": ["Max Battery Capacity", "Min Battery Capacity", "Battery Usage", "Charging Power", "Charging Efficiency", "Load Degradation Begin", "User Profile", "Environment"],
-    "Value": [max_battery_capacity, min_battery_capacity, battery_usage, charging_power, charging_efficiency, load_degradation_begin, user_profile, environment],
-    "Unit": ["kWh", "kWh", "kWh", "kW", "%", "kWh", "", ""]
+    "Metric": ["Max Battery Capacity", "Min Battery Capacity", "Battery Usage", "Charging Power", "Charging Efficiency", "Load Degradation Begin", "User Profile","start_time","end_time","timebase"],
+    "Value": [max_battery_capacity, min_battery_capacity, battery_usage, charging_power, charging_efficiency, load_degradation_begin, user_profile,start_time,end_time,timebase],
+    "Unit": ["kWh", "kWh", "kWh", "kW", "%", "kWh", "","HH:MM:SS", "HH:MM:SS", "minutes"]
 }
     df = pd.DataFrame(data)
 
@@ -337,6 +400,56 @@ def battery_electric_vehicle_settings():
     use_container_width=True,
     hide_index=True
 )
+    with st.form(key="bev_simulation_form"):
+        # BEV simulation button
+        bev_simulation_button = st.form_submit_button("Simulate BEV")
+           
+        if bev_simulation_button:
+            start = "2015-06-01 00:00:00"
+            end = "2015-06-01 23:45:00"
+            timestamp_int = 48
+            timestamp_str = "2015-06-01 12:00:00"
+            env = Environment(start=start, end=end, timebase=timebase)
+            
+            # Initialize BEV with form inputs
+            st.session_state.bev = BatteryElectricVehicle(
+                unit="kW",
+                identifier="bev_1",
+                environment=env,
+                battery_max=st.session_state.bev_settings["max_battery_capacity"],
+                battery_min=st.session_state.bev_settings["min_battery_capacity"],
+                battery_usage=st.session_state.bev_settings["battery_usage"],
+                charging_power=st.session_state.bev_settings["charging_power"],
+                load_degradation_begin=st.session_state.bev_settings["load_degradation_begin"],
+                charge_efficiency=st.session_state.bev_settings["charging_efficiency"]
+            )
+        
+            st.session_state.bev.prepare_time_series()
+            st.write("**Time Series Data (First 5 Rows):**")
+            st.dataframe(st.session_state.bev.timeseries)  # Display the timeseries data for debugging
+
+            # Create a Matplotlib figure
+            fig, ax = plt.subplots(figsize=(16, 9))
+            st.session_state.bev.timeseries.plot(ax=ax)  # Plot the timeseries on the provided axes
+            ax.set_title("BEV Time Series")
+            ax.set_xlabel("Time")
+            ax.set_ylabel("Value (kW)")
+            plt.tight_layout()
+
+            # Display the plot in Streamlit
+            st.pyplot(fig)
+
+    # # # Rest of the functions remain unchanged
+    # def test_value_for_timestamp(bev, timestamp):
+    #     timestepvalue = bev.value_for_timestamp(timestamp)
+    #     st.write("**Value for Timestamp:**")
+    #     st.write(timestepvalue)
+
+    # def test_observations_for_timestamp(bev, timestamp):
+    #     observation = bev.observations_for_timestamp(timestamp)
+    #     st.write("**Observations for Timestamp:**")
+    #     st.write(observation)
+
     
     
 
@@ -460,12 +573,12 @@ def heatpump_settings():
     st.title("Heat Pump Configuration")
     if heatpump_settings not in st.session_state:
         st.session_state.heatpump_settings = {
-            "Identifier": "None",
-            "Environment": "None",
+            "identifier": "None",
+        #    "Environment": "None",
             "user_profile": "None",
-            "Type Heatpump": "Air",
+            "heat_pump_type": "Air",
             "Heat System Temperature": 0.0,
-            "Power": 0.0,
+            "el_power": 0.0,
             "th_power":0.0,
             "Ramp Up Time" : datetime.time(0,0),
             "Ramp Down Time":datetime.time(0,0),
@@ -478,19 +591,19 @@ def heatpump_settings():
         # Input Section
         st.header("Enter Heat Pump Settings")
 
-        Identifier = st.selectbox(
+        identifier = st.selectbox(
         "Select Identifier",
         options=["None", "hp1", "hp2"],
-        index=0 if st.session_state.heatpump_settings["Identifier"] == "None" else 1 if st.session_state.heatpump_settings["Identifier"] == "hp1" else 2,
-        key="Identifier"
+        index=0 if st.session_state.heatpump_settings["identifier"] == "None" else 1 if st.session_state.heatpump_settings["identifier"] == "hp1" else 2,
+        key="identifier"
         )
         
-        Environment = st.selectbox(
-        "Select Environment",
-        options=["None", "Environment 1", "Environment 2"],
-        index=0 if st.session_state.heatpump_settings["Environment"] == "None" else 1 if st.session_state.heatpump_settings["Environment"] == "Environment 1" else 2,
-        key="Environment"
-        )
+        # Environment = st.selectbox(
+        # "Select Environment",
+        # options=["None", "Environment 1", "Environment 2"],
+        # index=0 if st.session_state.heatpump_settings["Environment"] == "None" else 1 if st.session_state.heatpump_settings["Environment"] == "Environment 1" else 2,
+        # key="Environment"
+        # )
         
         user_profile = st.selectbox(
             "user Profile",
@@ -500,7 +613,7 @@ def heatpump_settings():
         ) 
 
     # Dropdown for Heat Pump Type
-        heatpump_type = st.selectbox(
+        heat_pump_type = st.selectbox(
         "Type of Heat Pump",
         options=["Air", "Ground"],
         index=0,
@@ -518,8 +631,8 @@ def heatpump_settings():
     )
 
     # Number input for Electrical Power
-        electrical_power = st.number_input(
-        "Electrical Power (kW)",
+        el_power = st.number_input(
+        "el_power (kW)",
         min_value=0.0,
         max_value=100.0,
         value=0.0,
@@ -567,11 +680,11 @@ def heatpump_settings():
         if st.button("Submit Settings",key="submit_heatpump_settings"):
         # Store settings in session state
             st.session_state.heatpump_settings = {
-                "Identifier": Identifier,
-                "Type Heatpump": heatpump_type,
+                "identifier": identifier,
+                "heat_pump_type": heat_pump_type,
                 "Heat System Temperature": system_temperature,
-                "Power": electrical_power,
-                "Environment": Environment,
+                "el_power": el_power,
+        #        "Environment": Environment,
                 "user_profile": user_profile,
                 "th_power":th_power,
                 "Ramp Up Time" : ramp_up_time,
@@ -599,35 +712,147 @@ def heatpump_settings():
                 "Value": st.column_config.TextColumn("Value", width="large")
             }
         )
-        st.json(st.session_state.heatpump_settings)
+   #     st.json(st.session_state.heatpump_settings)
 
-    # Create a pie chart to visualize the settings
-        st.header("Settings Visualization")
-        labels = ["Heat System Temperature (°C)", "Electrical Power (kW)"]
-        values = [
-        abs(st.session_state.heatpump_settings["Heat System Temperature"]),  # Use abs to handle negative values
-        st.session_state.heatpump_settings["Power"]
-    ]
+    # # Create a pie chart to visualize the settings
+    #     st.header("Settings Visualization")
+    #     labels = ["Heat System Temperature (°C)", "Electrical Power (kW)"]
+    #     values = [
+    #     abs(st.session_state.heatpump_settings["Heat System Temperature"]),  # Use abs to handle negative values
+    #     st.session_state.heatpump_settings["Power"]
+    # ]
  
-    # Create pie chart using Plotly
-        fig = go.Figure(
-            data=[
-                go.Pie(
-                labels=labels,
-                values=values,
-                textinfo="label+percent",
-                hoverinfo="label+value",
-                marker=dict(colors=["#1f77b4", "#ff7f0e"])
-            )
-        ]
-     )
-        fig.update_layout(
-            title=f"Heat Pump Settings ({st.session_state.heatpump_settings['Type Heatpump']} Type)",
-            showlegend=True
-    )
+    # # Create pie chart using Plotly
+    #     fig = go.Figure(
+    #         data=[
+    #             go.Pie(
+    #             labels=labels,
+    #             values=values,
+    #             textinfo="label+percent",
+    #             hoverinfo="label+value",
+    #             marker=dict(colors=["#1f77b4", "#ff7f0e"])
+    #         )
+    #     ]
+    #  )
+    #     fig.update_layout(
+    #         title=f"Heat Pump Settings ({st.session_state.heatpump_settings['Type Heatpump']} Type)",
+    #         showlegend=True
+    # )
     
-        # Display the pie chart
-        st.plotly_chart(fig, use_container_width=True)   
+    #     # Display the pie chart
+    #     st.plotly_chart(fig, use_container_width=True)   
+
+
+
+
+    with st.form(key="heatpump_simulation_form"):
+        # Heat Pump simulation button
+        heatpump_simulation_button = st.form_submit_button("Simulate Heat Pump")
+           
+        if heatpump_simulation_button:
+            # Values for environment
+            start = "2015-01-01 00:00:00"
+            end = "2015-12-31 23:45:00"
+            year = "2015"
+            time_freq = "15 min"
+            timestamp_int = 48
+            timestamp_str = "2015-12-07 12:00:00"
+            timebase = 15
+            latitude = 50.941357
+            longitude = 6.958307
+
+            # Values for user_profile
+            yearly_thermal_energy_demand = 12500
+            building_type = "DE_HEF33"
+            t_0 = 40
+            env = Environment(
+                timebase=timebase, 
+                start=start, 
+                end=end, 
+                year=year, 
+                time_freq=time_freq, 
+                surpress_output_globally=False
+            )
+            
+            # if isinstance(env.mean_temp_hours, list):
+            # # Create a datetime index for the year 2015 at hourly frequency
+            #     date_range = pd.date_range(start=start, end=end, freq="H")
+            # if len(env.mean_temp_hours) == len(date_range):
+            #     env.mean_temp_hours = pd.Series(env.mean_temp_hours, index=date_range)
+            # else:
+            #     st.error("Length of mean_temp_hours does not match expected hourly range.")
+            #     return
+            
+            
+            env.get_dwd_mean_temp_hours(lat=latitude,lon=longitude)
+            env.get_dwd_mean_temp_days(lat=latitude,lon=longitude)
+            user_profile = UserProfile(
+             identifier=None,
+             latitude=None,
+             longitude=None,
+             thermal_energy_demand_yearly=yearly_thermal_energy_demand,
+             mean_temp_days=env.mean_temp_days,
+             mean_temp_hours=env.mean_temp_hours,
+             mean_temp_quarter_hours=env.mean_temp_hours.resample("15 Min").interpolate(),
+             building_type=building_type,
+             comfort_factor=None,
+             t_0=t_0,
+         )
+            
+            
+            # Convert mean_temp_hours to a pandas Series if it's a list
+            
+        
+            user_profile.get_thermal_energy_demand()
+            # Initialize Heat Pump with form inputs
+            st.session_state.hp = HeatPump(
+                identifier=st.session_state.heatpump_settings["identifier"],
+                unit = "kW",
+                thermal_energy_demand = user_profile.thermal_energy_demand,
+                environment=env,
+            #   user_profile=st.session_state.heatpump_settings["user_profile"],
+                heat_pump_type=st.session_state.heatpump_settings["heat_pump_type"],
+                heat_sys_temp = st.session_state.heatpump_settings["Heat System Temperature"],
+                el_power=st.session_state.heatpump_settings["el_power"],
+                th_power=st.session_state.heatpump_settings["th_power"],
+                ramp_up_time=st.session_state.heatpump_settings["Ramp Up Time"],
+                ramp_down_time=st.session_state.heatpump_settings["Ramp Down Time"],
+                min_runtime=st.session_state.heatpump_settings["Minimum Run Time"],
+                min_stop_time=st.session_state.heatpump_settings["Minimum Stop Time"]
+            )
+        
+            st.success("Heat Pump settings updated successfully!")
+            
+            
+            # def test_get_thermal_energy_demand(user_profile):
+
+            
+            #user_profile.thermal_energy_demand.plot()
+            #plt.show()
+
+
+            # test_get_thermal_energy_demand(user_profile)  
+            
+            
+            print("get_cop:")
+            st.session_state.hp.get_cop()
+            st.session_state.hp.cop.plot(figsize=(16, 9))
+            plt.show() 
+            st.session_state.hp.prepare_time_series()
+            st.write("**Time Series Data (First 5 Rows):**")
+            st.dataframe(st.session_state.hp.timeseries)  # Display the timeseries data for debugging
+
+            # Create a Matplotlib figure
+            fig, ax = plt.subplots(figsize=(16, 9))
+            st.session_state.hp.timeseries.plot(ax=ax)  # Plot the timeseries on the provided axes
+            ax.set_title("Heat Pump Time Series")
+            ax.set_xlabel("Time")
+            ax.set_ylabel("Value (kW)")
+            plt.tight_layout()
+
+            # Display the plot in Streamlit
+            st.pyplot(fig)
+
 
 
 
@@ -729,8 +954,8 @@ def pv_settings():
 
     # Display stored settings
     if "pv_settings" in st.session_state:
-        st.header("Current PV Settings")
-        st.json(st.session_state.pv_settings)
+      #  st.header("Current PV Settings")
+      #  st.json(st.session_state.pv_settings)
 
         # Create DataFrame for table
         data = {
@@ -781,36 +1006,96 @@ def pv_settings():
         ])
         st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
-        # Pie chart visualization
-        st.header("Settings Visualization")
-        labels = ["Surface Tilt (°)", "Surface Azimuth (°)", "Modules per String", "Strings per Inverter"]
-        values = [
-            st.session_state.pv_settings["PV Surface Tilt"],
-            st.session_state.pv_settings["PV Surface Azimuth"],
-            st.session_state.pv_settings["PV Modules per String"],
-            st.session_state.pv_settings["PV Strings per Inverter"]
-        ]
-        filtered_labels = [label for label, value in zip(labels, values) if value > 0]
-        filtered_values = [value for value in values if value > 0]
+        # # Pie chart visualization
+        # st.header("Settings Visualization")
+        # labels = ["Surface Tilt (°)", "Surface Azimuth (°)", "Modules per String", "Strings per Inverter"]
+        # values = [
+        #     st.session_state.pv_settings["PV Surface Tilt"],
+        #     st.session_state.pv_settings["PV Surface Azimuth"],
+        #     st.session_state.pv_settings["PV Modules per String"],
+        #     st.session_state.pv_settings["PV Strings per Inverter"]
+        # ]
+        # filtered_labels = [label for label, value in zip(labels, values) if value > 0]
+        # filtered_values = [value for value in values if value > 0]
 
-        if filtered_values:
-            fig = go.Figure(
-                data=[go.Pie(
-                    labels=filtered_labels,
-                    values=filtered_values,
-                    textinfo="label+percent",
-                    hoverinfo="label+value",
-                    marker=dict(colors=["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"])
-                )]
+        # if filtered_values:
+        #     fig = go.Figure(
+        #         data=[go.Pie(
+        #             labels=filtered_labels,
+        #             values=filtered_values,
+        #             textinfo="label+percent",
+        #             hoverinfo="label+value",
+        #             marker=dict(colors=["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"])
+        #         )]
+        #     )
+        #     fig.update_layout(title="PV Numeric Settings Distribution", showlegend=True)
+        #     st.plotly_chart(fig, use_container_width=True)
+        # else:
+        #     st.warning("No valid numeric values to display in the pie chart.")
+
+    with st.form(key="pv_simulation_form"):
+        # PV simulation button
+        pv_simulation_button = st.form_submit_button("Simulate PV")
+           
+        if pv_simulation_button:
+            latitude = 51.4
+            longitude = 6.97
+            identifier = "Cologne"
+            timestamp_int = 48
+            timestamp_str = "2015-11-09 12:00:00"
+            env = Environment(
+            start = "2015-01-01 00:00:00", 
+            end = "2015-12-31 23:45:00", 
+            use_timezone_aware_time_index = True, 
+            surpress_output_globally = False)
+            env.get_dwd_pv_data(lat=latitude, lon=longitude)    
+            # Initialize PV with form inputs
+            
+            st.session_state.pv = Photovoltaic(
+                identifier="Cologne",
+                unit="kW",
+                latitude = 51.4,
+                longitude = 6.97,
+                environment=env,
+                module_lib=st.session_state.pv_settings["PV Module Library"],
+                module=st.session_state.pv_settings["PV Module"],
+                inverter_lib=st.session_state.pv_settings["PV Inverter Library"],
+                inverter=st.session_state.pv_settings["PV Inverter"],
+                surface_tilt=st.session_state.pv_settings["PV Surface Tilt"],
+                surface_azimuth=st.session_state.pv_settings["PV Surface Azimuth"],
+                modules_per_string=st.session_state.pv_settings["PV Modules per String"],
+                strings_per_inverter=st.session_state.pv_settings["PV Strings per Inverter"],
+                temp_lib='sapm',
+                temp_model='open_rack_glass_glass'
             )
-            fig.update_layout(title="PV Numeric Settings Distribution", showlegend=True)
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("No valid numeric values to display in the pie chart.")
+        
+            st.success("PV settings updated successfully!")
+            
+            # st.session_state.pv.prepare_time_series()
+            # st.write("**Time Series Data (First 5 Rows):**")
+            # st.dataframe(st.session_state.pv.timeseries.head(5))
+            # print("prepare_time_series:") 
+            # st.session_state.pv.timeseries.plot(figsize=(16, 9))
+            # plt.show()
+            
+            st.session_state.pv.prepare_time_series()
+            st.write("**Time Series Data (First 5 Rows):**")
+            st.dataframe(st.session_state.pv.timeseries.head(5))  # Display the timeseries data for debugging
 
+            # Create a Matplotlib figure
+            fig, ax = plt.subplots(figsize=(16, 9))
+            st.session_state.pv.timeseries.plot(ax=ax)  # Plot the timeseries on the provided axes
+            ax.set_title("PV Time Series")
+            ax.set_xlabel("Time")
+            ax.set_ylabel("Month")
+            plt.tight_layout()
+
+            # Display the plot in Streamlit
+            st.pyplot(fig)
+    
 def wind():
-    if "wind" not in st.session_state:
-        st.session_state.wind = {
+    if "wind_settings" not in st.session_state:
+        st.session_state.wind_settings = {
             "Turbine Type": "E-140",
             "Hub Height" : 0,
             "Rotor Diameter" : 0,
@@ -819,10 +1104,10 @@ def wind():
             "Wind Speed Model": "logarithmic",
             "Density Model" : "Barometric",
             "Temperature Model" : "Linear Gradient",
-            "Power Model Output": "power_curve",
+            "power_output_model": "power_curve",
             "Density Correction": False,
             "Obstacle Height": 0.0,
-            "Hellmann Exponent": 0.2
+            "hellman_exp": 0.2
             
         }
         
@@ -831,7 +1116,7 @@ def wind():
         
         turbine_type = st.selectbox(
             "Turbine Type",
-            options=["E-140/4200", "E-141/4200","E-144/4400"],
+            options=["E-140/4200", "E-141/4200","E-126/4200"],
             index=0 if "Turbine Type"=="E-140/4200" else 1 if "Turbine Type"=="E-141/4200" else 2,
             key="Turbine Type"
         )
@@ -840,7 +1125,7 @@ def wind():
             "Hub Height",
             min_value = 0,
             max_value = 100,
-            value = int(st.session_state.wind["Hub Height"]),
+            value = int(st.session_state.wind_settings["Hub Height"]),
             step = 1
         )
         
@@ -848,7 +1133,7 @@ def wind():
             "Rotor Diameter",
             min_value = 0,
             max_value = 100,
-            value = int(st.session_state.wind["Rotor Diameter"]),
+            value = int(st.session_state.wind_settings["Rotor Diameter"]),
             step = 1
         )
         
@@ -856,7 +1141,7 @@ def wind():
             "Comfort Factor",
             min_value = 0.0,
             max_value = 1.0,
-            value = float(st.session_state.wind["Comfort Factor"]),
+            value = float(st.session_state.wind_settings["Comfort Factor"]),
             step = 1.0
         )  
         
@@ -888,11 +1173,11 @@ def wind():
             key = "Temperature Model"
         )
         
-        power_model_output= st.selectbox(
-            "Power Model Output",
+        power_output_model= st.selectbox(
+            "power_output_model",
             options = ['power_curve', 'power_coefficient_curve'],
-            index = 0 if "Power Model Output"=="power_curve" else 1,
-            key = "Power Model Output"
+            index = 0 if "power_output_model"=="power_curve" else 1,
+            key = "power_output_model"
         )   
          
         density_correction= st.selectbox(
@@ -907,20 +1192,20 @@ def wind():
             "Obstacle Height",
             min_value = 0.0,
             max_value = 100.0,
-            value = float(st.session_state.wind["Obstacle Height"]),
+            value = float(st.session_state.wind_settings["Obstacle Height"]),
             step = 1.0
         )
         
-        hellmann_exp = st.number_input(
-            "Hellmann Exponent",
+        hellman_exp = st.number_input(
+            "hellman_exp",
             min_value = 0.0,
             max_value = 1.0,
-            value = float(st.session_state.wind["Hellmann Exponent"]),
+            value = float(st.session_state.wind_settings["hellman_exp"]),
             step = 1.0  
         )
 
         if st.button("Submit Settings", key="submit_wind_settings"):
-            st.session_state.wind = {
+            st.session_state.wind_settings = {
                 "Turbine Type": turbine_type,
                 "Hub Height": hub_height,
                 "Rotor Diameter": rotor_diameter,
@@ -929,15 +1214,15 @@ def wind():
                 "Wind Speed Model": wind_speed_model,
                 "Density Model": density_model,
                 "Temperature Model": temperature_model,
-                "Power Model Output": power_model_output,
+                "power_output_model": power_output_model,
                 "Density Correction": density_correction,
                 "Obstacle Height": obstacle_height,
-                "Hellmann Exponent": hellmann_exp
+                "hellman_exp": hellman_exp
             }
             st.success("Wind settings updated successfully!")
             
     # Display stored settings
-    if "wind" in st.session_state:
+    if "wind_settings" in st.session_state:
         st.header("Current Wind Settings")
        # st.json(st.session_state.wind)
         # Create DataFrame for table
@@ -951,24 +1236,24 @@ def wind():
                 "Wind Speed Model",
                 "Density Model",
                 "Temperature Model",
-                "Power Model Output",
+                "power_output_model",
                 "Density Correction",
                 "Obstacle Height",
-                "Hellmann Exponent"
+                "hellman_exp"
             ],
             "Value": [
-                st.session_state.wind["Turbine Type"],
-                st.session_state.wind["Hub Height"],
-                st.session_state.wind["Rotor Diameter"],
-                st.session_state.wind["Comfort Factor"],
-                st.session_state.wind["Data Source"],
-                st.session_state.wind["Wind Speed Model"],
-                st.session_state.wind["Density Model"],
-                st.session_state.wind["Temperature Model"],
-                st.session_state.wind["Power Model Output"],
-                st.session_state.wind["Density Correction"],
-                st.session_state.wind["Obstacle Height"],
-                st.session_state.wind["Hellmann Exponent"]
+                st.session_state.wind_settings["Turbine Type"],
+                st.session_state.wind_settings["Hub Height"],
+                st.session_state.wind_settings["Rotor Diameter"],
+                st.session_state.wind_settings["Comfort Factor"],
+                st.session_state.wind_settings["Data Source"],
+                st.session_state.wind_settings["Wind Speed Model"],
+                st.session_state.wind_settings["Density Model"],
+                st.session_state.wind_settings["Temperature Model"],
+                st.session_state.wind_settings["power_output_model"],
+                st.session_state.wind_settings["Density Correction"],
+                st.session_state.wind_settings["Obstacle Height"],
+                st.session_state.wind_settings["hellman_exp"]
             ]
             
         }
@@ -976,7 +1261,7 @@ def wind():
         df = pd.DataFrame(data)
         
     # Define numeric metrics for formatting
-    numeric_metrics = ["Hub Height", "Rotor Diameter", "Comfort Factor"]
+    numeric_metrics = ["Hub Height", "Rotor Diameter", "Comfort Factor","Obstacle Height", "hellman_exp"]
     # Pre-format the 'Value' column
     df['Value'] = df.apply(
     lambda row: f"{float(row['Value']):.1f}" if row['Metric'] in numeric_metrics else str(row['Value']),
@@ -998,14 +1283,64 @@ def wind():
         ])
     st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
+    with st.form(key="wind_simulation_form"):
+        # Wind simulation button
+        wind_simulation_button = st.form_submit_button("Simulate Wind Turbine")
+           
+        if wind_simulation_button:
+            latitude = 51.200001
+            longitude = 6.433333
+            timestamp_int = 12
+            timestamp_str = "2015-01-09 12:00:00"
+            env = Environment(
+            start = "2015-01-01 00:00:00", 
+            end = "2015-12-31 23:45:00", 
+            use_timezone_aware_time_index = True, 
+            surpress_output_globally = False
+            )
+            env.get_dwd_wind_data(lat=latitude, lon=longitude)
+            # Initialize Wind Turbine with form inputs
+            st.session_state.wind_turbine = WindPower(
+                identifier=None,
+                unit="kW",
+                environment = env,
+                hub_height=st.session_state.wind_settings["Hub Height"],
+                rotor_diameter=st.session_state.wind_settings["Rotor Diameter"],
+        #       comfort_factor=st.session_state.wind["Comfort Factor"],
+                data_source="oedb",
+                wind_speed_model=st.session_state.wind_settings["Wind Speed Model"],
+                density_model=st.session_state.wind_settings["Density Model"],
+                temperature_model=st.session_state.wind_settings["Temperature Model"],
+                power_output_model=st.session_state.wind_settings["power_output_model"],
+                density_correction=st.session_state.wind_settings["Density Correction"],
+                obstacle_height=st.session_state.wind_settings["Obstacle Height"],
+                hellman_exp=st.session_state.wind_settings["hellman_exp"],
+                fetch_curve= "power_curve",
+                turbine_type=st.session_state.wind_settings["Turbine Type"]
+                
+            )
+        
+            st.success("Wind settings updated successfully!")
+            
+            st.session_state.wind_turbine.prepare_time_series()
+            st.write("**Time Series Data (First 5 Rows):**")
+            st.dataframe(st.session_state.wind_turbine.timeseries.head(5))
+    
+    
+    
+    
+    
+    
+    
 
 def electrical_storage():
-    if electrical_storage not in st.session_state:
+    if "electrical_storage" not in st.session_state:
         st.session_state.electrical_storage={
             "Charge Efficiency": 0,
             "Discharge Efficiency": 0,
             "Max Power" : 0,
-            "Max Capacity": 0
+            "Max Capacity": 0,
+            "max_c":0
             
         }
     st.title("Electrical_Storage")
@@ -1043,21 +1378,31 @@ def electrical_storage():
         
         st.markdown("**Max Capacity**")
         max_capacity = st.number_input(
-                "Enter max capacity (kWh)",
-                min_value=0.0,
-                value=float(st.session_state.electrical_storage["Max Capacity"]),
-                placeholder="e.g. 100 kWh",
-                key="max_capacity"
-            )
+        "Enter max capacity (kWh)",
+        min_value=0.0,
+        value=float(st.session_state.electrical_storage["Max Capacity"]),  # Use "max_c" and provide default
+        placeholder="e.g. 100 kWh",
+        key="max_capacity"
+        )
+
+        st.markdown("**Max Charge Rate**")
+        max_c = st.number_input(
+        "Enter max charge rate",
+        min_value=0.0,
+        value=float(st.session_state.electrical_storage.get("max_c", 0.5)),  # Provide default value
+        placeholder="e.g. 0.5",
+        key="max_c"
+        )
         
         # Submit button
         if st.button("Submit Settings", key="submit_electrical_storage_settings"):
             st.session_state.electrical_storage = {
-                "Charge Efficiency": charging_efficiency,
-                "Discharge Efficiency": discharging_efficiency,
-                "Max Power": max_power,
-                "Max Capacity": max_capacity
-            }
+                 "Charge Efficiency": charging_efficiency/100,
+                 "Discharge Efficiency": discharging_efficiency / 100,
+                 "Max Power": max_power,
+                 "Max Capacity": max_capacity,
+                 "max_c": max_c
+                 }
             st.success("Electrical Storage settings updated successfully!")
         
     # Display stored settings
@@ -1071,15 +1416,17 @@ def electrical_storage():
                 "Charge Efficiency",
                 "Discharge Efficiency",
                 "Max Power",
-                "Max Capacity"
+                "Max Capacity",
+                "max_c"
             ],
             "Value": [
                 st.session_state.electrical_storage["Charge Efficiency"],
                 st.session_state.electrical_storage["Discharge Efficiency"],
                 st.session_state.electrical_storage["Max Power"],
-                st.session_state.electrical_storage["Max Capacity"]
+                st.session_state.electrical_storage["Max Capacity"],
+                st.session_state.electrical_storage["max_c"]
             ],
-            "Unit": ["%", "%", "kW", "kWh"]
+            "Unit": [",", ",", "kW", "kWh","."]
         }
         df = pd.DataFrame(data)
 
@@ -1097,8 +1444,99 @@ def electrical_storage():
         ])
         st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
+    with st.form(key="electrical_storage_simulation_form"):
+        # Electrical Storage simulation button
+        electrical_storage_simulation_button = st.form_submit_button("Simulate Electrical Storage")
+           
+        if electrical_storage_simulation_button:
+            start = "2015-06-01 00:00:00"
+            end = "2015-06-07 23:45:00"
+            year = "2015"
+            timebase = 15
+            timestamp_int = 48
+            timestamp_str = "2015-06-01 12:00:00"
+            name = "bus"
+            max_c = 1
+            env = Environment(timebase=timebase, start=start, end=end, year=year)
+            env.get_pv_data(file="./input/pv/dwd_pv_data_2015.csv")
+            # PhotoV = Photovoltaic(
+            #     unit="KW",
+            #     latitude=50.941357,
+            #     longitude=6.958307,
+            #     identifier=(name + "_pv"),
+            #     environment=env,
+            #     module_lib=st.session_state.pv_settings["PV Module Library"],
+            #     module=st.session_state.pv_settings["PV Module"],
+            #     inverter_lib=st.session_state.pv_settings["PV Inverter Library"],
+            #     inverter=st.session_state.pv_settings["PV Inverter"],
+            #     surface_tilt=20,
+            #     surface_azimuth=200,
+            #     modules_per_string=4,
+            #     strings_per_inverter=2,
+            #     temp_lib= 'sapm',
+            #     temp_model='open_rack_glass_glass'
+            # )
+            PhotoV = st.session_state.pv
+            PhotoV.identifier = (name + "_pv")
+            PhotoV.environment = env    
+            PhotoV.inverter = "Connect_Renewable_Energy__CE_4000__240V_"
+            
+            
+            PhotoV.prepare_time_series()
+            # Initialize Electrical Storage with form inputs
+            st.session_state.es = ElectricalEnergyStorage(
+                environment = env,
+                identifier=(name + "_storage"),
+                unit="kW",
+                charge_efficiency=st.session_state.electrical_storage["Charge Efficiency"],
+                discharge_efficiency=st.session_state.electrical_storage["Discharge Efficiency"],
+                max_power=st.session_state.electrical_storage["Max Power"],
+                max_c=st.session_state.electrical_storage["max_c"],
+                capacity = st.session_state.electrical_storage["Max Capacity"]
+            )
+        
+            st.success("Electrical Storage settings updated successfully!")
+            
+            PhotoV.prepare_time_series()
+        #    PhotoV.timeseries.bus_pv = PhotoV.timeseries.bus_pv.groupby(PhotoV.timeseries.bus_pv.index).mean()
+            
+            baseload = pd.read_csv("./input/baseload/df_S_15min.csv")
+            baseload.drop(columns=["Time"], inplace=True)
+            
+            
+            baseload.set_index(env.pv_data.index, inplace=True)
+        
+            # # combine baseload and pv timeseries to get residual load
+            # baseload["0"] = baseload["0"].tz_localize(None)  # Add this
+            # PhotoV.timeseries.bus_pv = PhotoV.timeseries.bus_pv.tz_localize(None)
+            
+            
+            house_loadshape = pd.DataFrame(baseload["0"].loc[start:end] / 1000)
+            house_loadshape["pv_gen"] = PhotoV.timeseries.loc[start:end]
+            house_loadshape["residual_load"] = (
+                 baseload["0"].loc[start:end] / 1000 - PhotoV.timeseries.bus_pv
+            )
+            # assign residual load to storage
+            st.session_state.es.residual_load = house_loadshape.residual_load
+            
+            # Prepare time series data for Electrical Storage
+            st.session_state.es.prepare_time_series()
+            st.write("**Time Series Data (First 5 Rows):**")
+            st.dataframe(st.session_state.es.timeseries.head(5))
+            
+            # Create a Matplotlib figure
+            fig, ax = plt.subplots(figsize=(16, 9))
+            st.session_state.es.timeseries.plot(ax=ax)
+            plt.tight_layout()
+            st.pyplot(fig)
+
+
+
+
+
+
 def thermal_storage_settings():
-    if thermal_storage_settings not in st.session_state:
+    if "thermal_storage_settings" not in st.session_state:
         st.session_state.thermal_storage_settings={
             "target temperature": 0,
             "minimum temperature" : 0,
