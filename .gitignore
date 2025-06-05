@@ -1,3 +1,7 @@
+.gitignore
+*.cpython
+*.pyc
 data/*
 .streamlit/secrets.toml
 __pycache__/*
+*.zip
