@@ -51,6 +51,7 @@ fig = px.scatter_mapbox(gdf_solar,
                         center={"lat": city_district.centroid[location].y,  
                                 "lon": city_district.centroid[location].x},
                         mapbox_style='open-street-map',
+                        hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
                         # title='Solaranlagen in Troisdorf'
                         )
 
