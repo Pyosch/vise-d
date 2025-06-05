@@ -11,12 +11,10 @@ import pickle
 
 from mastr_preprocessing import fetch_solar, df_to_gdf, add_centroids, revise_power_values
 from mastr_preprocessing import pick_pvsystem_mastr, prepare_time_series_mastr, aggregate_time_series
-from private import mapbox_token
 
 import pvlib
 from vpplib import Environment, Photovoltaic
 import logging
-px.set_mapbox_access_token(mapbox_token)
 location = 'Troisdorf'
 
 df_solar = fetch_solar(Ort=location)
