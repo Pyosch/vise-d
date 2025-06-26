@@ -6,12 +6,16 @@ from open_mastr import Mastr
 import geopandas
 import osmnx as ox
 
-def download_mastr_data():
+# def download_mastr_data():
     
-    db = Mastr()
-    db.download()
+#     db = Mastr()
+#     db.download()
 
-def fetch_data(table_name, columns, filter_column=None, filter_values=None, mastr_db_path='data/mastr/open-mastr.db'):
+# download_mastr_data()
+
+
+#download_mastr_data()
+def fetch_data(table_name, columns, filter_column=None, filter_values=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
     conn = connect(os.path.join(os.path.dirname(__file__), mastr_db_path))
     
     if filter_values is not None:
@@ -30,7 +34,7 @@ def fetch_data(table_name, columns, filter_column=None, filter_values=None, mast
     
     return df
 
-def fetch_solar(Ort=None, solar_columns=None, mastr_db_path='data/mastr/open-mastr.db'):
+def fetch_solar(Ort=None, solar_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
     
     #Umrechnungswerte für die Ausrichtung und Neigung
     ausrichtung_mapping = {
@@ -94,7 +98,7 @@ def fetch_solar(Ort=None, solar_columns=None, mastr_db_path='data/mastr/open-mas
 
     return df_solar
 
-def fetch_wind(Ort=None, wind_columns=None, mastr_db_path='data/mastr/open-mastr.db'):
+def fetch_wind(Ort=None, wind_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
     
     if wind_columns is None:
         wind_columns = ['EinheitMastrNummer',
@@ -129,7 +133,7 @@ def fetch_wind(Ort=None, wind_columns=None, mastr_db_path='data/mastr/open-mastr
                       mastr_db_path=mastr_db_path
                       )
 
-def read_storage_units(mastr_db_path='data/mastr/open-mastr.db', ):
+def read_storage_units(mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db' ):
     
     conn = connect(os.path.join(os.path.dirname(__file__), mastr_db_path))
 
@@ -147,7 +151,7 @@ def read_storage_units(mastr_db_path='data/mastr/open-mastr.db', ):
     return storage_units
 
 
-def fetch_storage(Ort=None, storage_columns=None, mastr_db_path='data/mastr/open-mastr.db'):
+def fetch_storage(Ort=None, storage_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
     
     if storage_columns is None:
         storage_columns = ['EinheitMastrNummer',
@@ -188,7 +192,7 @@ def fetch_storage(Ort=None, storage_columns=None, mastr_db_path='data/mastr/open
     
     return df_storage
 
-def fetch_grid_connections(grid_connections_columns=None, mastr_db_path='data/mastr/open-mastr.db'):
+def fetch_grid_connections(grid_connections_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
     conn = connect(os.path.join(os.path.dirname(__file__), mastr_db_path))
     
     if grid_connections_columns is None:
@@ -219,7 +223,7 @@ def fetch_grid_connections(grid_connections_columns=None, mastr_db_path='data/ma
     
     return df_grid_connections
 
-def fetch_grids(grid_columns=None, mastr_db_path='data/mastr/open-mastr.db'):
+def fetch_grids(grid_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
     
     conn = connect(os.path.join(os.path.dirname(__file__), mastr_db_path))
     

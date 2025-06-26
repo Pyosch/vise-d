@@ -118,10 +118,10 @@ def init_windturbines_mastr(gdf,
             unit="kW",
             identifier=gdf.loc[i, 'EinheitMastrNummer'],
             environment=ref_env,
-            user_profile=UserProfile(identifier=gdf.loc[i, 'EinheitMastrNummer'], 
-                                    latitude=gdf.loc[i, 'Breitengrad'],
-                                    longitude=gdf.loc[i, 'Laengengrad'],
-                                    ),
+            # user_profile=UserProfile(identifier=gdf.loc[i, 'EinheitMastrNummer'], 
+            #                         latitude=gdf.loc[i, 'Breitengrad'],
+            #                         longitude=gdf.loc[i, 'Laengengrad'],
+            #                         ),
             turbine_type=gdf.loc[i, 'WPLTurbine'],
             hub_height=gdf.loc[i, 'Nabenhoehe'],
             rotor_diameter=gdf.loc[i, 'Rotordurchmesser'],
@@ -167,9 +167,11 @@ aggregated_time_series = aggregate_time_series(windturbines_dict)
 print(aggregated_time_series.head())
 
 #%%
-px.line(pd.DataFrame({key: windturbines_dict[key].timeseries for key in windturbines_dict.keys()}), 
+fig = px.line(pd.DataFrame({key: windturbines_dict[key].timeseries for key in windturbines_dict.keys()}), 
         title="Wind Power Generation", 
         labels={"index": "Time", "value": "Power [kW]"})
+
+fig.show()
 
 #%%
 # city_district = ox.geocode_to_gdf(['Jüchen', 'Bedburg', 'Erkelenz', 'Titz'])

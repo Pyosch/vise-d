@@ -9,37 +9,37 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pickle
 
-from mastr_preprocessing import fetch_solar, df_to_gdf, add_centroids
+from mastr_preprocessing import fetch_wind, df_to_gdf, add_centroids
 #from mastr_preprocessing import pick_pvsystem_mastr, prepare_time_series_mastr, aggregate_time_series
 
 import pvlib
 from vpplib import Environment, Photovoltaic
 import logging
-location = 'Troisdorf'
+location = 'Riepsdorf'
 #location = 'Essen'
 
-df_solar = fetch_solar(Ort=location)
-gdf_solar = df_to_gdf(df_solar)
-gdf_solar = add_centroids(gdf_solar)
+df_wind = fetch_wind(Ort=location)
+gdf_wind = df_to_gdf(df_wind)
+#gdf_wind = add_centroids(gdf_wind)
 
 city_district = ox.geocode_to_gdf([location])
 
-start_pv = "2015-07-07 00:00:00"
-end_pv = "2015-07-07 23:45:00"
+start_wind = "2015-07-07 00:00:00"
+end_wind = "2015-07-07 23:45:00"
 
-ref_env = Environment(start=start_pv, end=end_pv)
-ref_env.get_dwd_pv_data(lat=city_district.centroid.y, 
-                        lon=city_district.centroid.x)
+# ref_env = Environment(start=start_wind, end=end_wind)
+# ref_env.get_dwd_wind_data(lat=city_district.centroid.y, 
+#                         lon=city_district.centroid.x)
 
 # gdf_solar.explore()
 
 
-# ##%%Plot map
+#%%Plot map
 
-# city_district = ox.geocode_to_gdf([location])
-# city_district.set_index('name', inplace=True)
+city_district = ox.geocode_to_gdf([location])
+city_district.set_index('name', inplace=True)
 
-# fig = px.scatter_mapbox(gdf_solar,
+# fig = px.scatter_mapbox(gdf_wind,
 #                             lat='Breitengrad',
 #                             lon='Laengengrad',
 #                             # color='Bruttoleistung',
@@ -106,40 +106,30 @@ ref_env.get_dwd_pv_data(lat=city_district.centroid.y,
 # plt.show()
 
 
-'''
 
-This code prepares solar data for a specified location, fetching solar power generation data, 
-converting it to a GeoDataFrame, and adding centroids for geographical reference. 
-It also sets up an environment for photovoltaic data analysis.
 
-'''
-def prepare_solar_data(location='Essen', start_pv="2015-07-07 00:00:00", end_pv="2015-07-07 23:45:00"):
+def prepare_wind_data(location=location, start_pv="2015-01-01 00:00:00", end_pv="2015-07-07 23:45:00"):
     
-
     try:
-            df_solar = fetch_solar(Ort=location)
-            gdf_solar = df_to_gdf(df_solar)
-            gdf_solar = add_centroids(gdf_solar)
+            df_wind = fetch_wind(Ort=location)
+            gdf_wind = df_to_gdf(df_wind)
+            gdf_wind = add_centroids(gdf_wind)
             
             city_district = ox.geocode_to_gdf([location])
             
         #     ref_env = Environment(start=start_pv, end=end_pv)
-        #     ref_env.get_dwd_pv_data(lat=city_district.centroid.y, 
+        #     ref_env.get_dwd_wind_data(lat=city_district.centroid.y, 
         #                             lon=city_district.centroid.x)
             
             # Commenting out revise_power_values since it's undefined
             # If it exists in your setup, uncomment and ensure it's accessible
             # gdf_solar = revise_power_values(gdf_solar)
             
-            return gdf_solar, city_district
+            return gdf_wind, city_district
     except Exception as e:
-            
-            
             raise Exception(f"Error preparing data for {location}: {str(e)}")
-
-
-
-
+        
+        
 
 if __name__ == "__main__":
-    gdf_solar, city_district = prepare_solar_data()
+    gdf_wind, city_district = prepare_wind_data()
