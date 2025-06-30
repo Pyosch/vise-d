@@ -56,6 +56,7 @@ def fetch_solar(Ort=None, solar_columns=None, mastr_db_path=os.path.join(os.path
     if solar_columns is None:
         solar_columns = ['EinheitMastrNummer',
                         'NameStromerzeugungseinheit',
+                        'LokationMastrNummer',
                         'Gemarkung', 
                         'Leistungsbegrenzung',
                         'ZugeordneteWirkleistungWechselrichter',
@@ -95,16 +96,22 @@ def fetch_solar(Ort=None, solar_columns=None, mastr_db_path=os.path.join(os.path
     return df_solar
 
 def prepare_solar_data(location='Essen', mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
-    
 
     try:
             df_solar = fetch_solar(Ort=location, mastr_db_path=mastr_db_path)
+            df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
+            df_solar = df_solar.merge(df_grid_connections, 
+                                      how='left', 
+                                      on='LokationMastrNummer'
+                                      )
+            
             gdf_solar = df_to_gdf(df_solar)
             gdf_solar = add_centroids(gdf_solar)
             
             city_district = ox.geocode_to_gdf([location])
             
             return gdf_solar, city_district
+
     except Exception as e:
             raise Exception(f"Error preparing data for {location}: {str(e)}")
 
@@ -112,6 +119,7 @@ def fetch_wind(Ort=None, wind_columns=None, mastr_db_path=os.path.join(os.path.d
     
     if wind_columns is None:
         wind_columns = ['EinheitMastrNummer',
+                        'LokationMastrNummer',
                         'NameWindpark', 
                         'NameStromerzeugungseinheit',
                         'Gemarkung', 
@@ -147,6 +155,12 @@ def prepare_wind_data(location='Essen', mastr_db_path=os.path.join(os.path.dirna
     
     try:
             df_wind = fetch_wind(Ort=location, mastr_db_path=mastr_db_path)
+            df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
+            df_wind = df_wind.merge(df_grid_connections, 
+                                    how='left', 
+                                    on='LokationMastrNummer'
+                                    )
+            
             gdf_wind = df_to_gdf(df_wind)
             gdf_wind = add_centroids(gdf_wind)
             
@@ -181,6 +195,7 @@ def fetch_storage(Ort=None, storage_columns=None, mastr_db_path=os.path.join(os.
     if storage_columns is None:
         storage_columns = ['EinheitMastrNummer',
                         'NameStromerzeugungseinheit',
+                        'LokationMastrNummer',
                         'SpeMastrNummer',
                         #    'NutzbareSpeicherkapazitaet', #Column is empty. Data in storage_units
                         'Technologie',
@@ -221,8 +236,15 @@ def prepare_storage_data(location='Essen', mastr_db_path=os.path.join(os.path.di
     
     try:
             df_storage = fetch_storage(Ort=location, mastr_db_path=mastr_db_path)
+            df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
+            df_storage = df_storage.merge(df_grid_connections, 
+                                          how='left', 
+                                          on='LokationMastrNummer'
+                                          )
+
             gdf_storage = df_to_gdf(df_storage)
             gdf_storage = add_centroids(gdf_storage)
+            
             
             city_district = ox.geocode_to_gdf([location])
             
@@ -326,21 +348,23 @@ def add_centroids(gdf):
     return gdf
 
 if __name__ == '__main__':
-    # df_solar = fetch_solar(Ort='Troisdorf')
-    # gdf_solar = df_to_gdf(df_solar)
+    location = 'Jüchen'
+    df_solar = fetch_solar(Ort=location)
+    gdf_solar = df_to_gdf(df_solar)
     # print(gdf_solar.head())
     # gdf_solar.explore()
     
-    # df_storage = fetch_storage(Ort='Troisdorf')
-    # df_storage_units = read_storage_units()
-    # gdf_storage = df_to_gdf(df_storage)
-    # gdf_storage = add_centroids(gdf_storage)
+    df_storage = fetch_storage(Ort=location)
+    df_storage_units = read_storage_units()
+    gdf_storage = df_to_gdf(df_storage)
+    gdf_storage = add_centroids(gdf_storage)
     # gdf_storage.explore()
     # with open('data/mastr/storage_troisdorf_columns.txt', 'w') as f:
     #     for col in df_storage.columns:
     #         f.write(f"{col}\n")
 
-    df_wind = fetch_wind(Ort='Bedburg')
-    gdf_wind = df_to_gdf(df_wind)
-    gdf_wind = add_centroids(gdf_wind)
-    gdf_wind.explore()
+    # df_wind = fetch_wind(Ort=location)
+    # gdf_wind = df_to_gdf(df_wind)
+    # gdf_wind = add_centroids(gdf_wind)
+    gdf_wind, city_district = prepare_wind_data(location=location)
+    # gdf_wind.explore()
