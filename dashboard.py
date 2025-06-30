@@ -1,14 +1,11 @@
-
 # Installing Relevant libraries
 import pandas as pd
 import plotly.express as px
-
 
 import datetime
 import streamlit as st
 from st_files_connection import FilesConnection
 import os
-import sys
 import osmnx as ox
 
 from paper_figures import fig_5, fig_7, fig_8, fig_9, fig_5_plotly
@@ -22,37 +19,22 @@ from vpplib.environment import Environment
 from vpplib.photovoltaic import Photovoltaic
 from vpplib.wind_power import WindPower
 from vpplib import ElectricalEnergyStorage
-#from Technologies.bev import battery_electric_vehicle_settings
+
 from Technologies.bev import battery_electric_vehicle_settings
 from Technologies.HP_SETTINGS import heatpump_settings
 from Technologies.Photovolts import pv_settings
 from Technologies.WindEnergie import wind
 from Technologies.ElectricalStorage import electrical_storage
-import sys
-import os
 
-# Build the path to the mastr directory
-mastr_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'vise', 'vise-d', 'mastr'))
+from mastr_preprocessing import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
 
-# Add to sys.path if not already there
-if mastr_dir not in sys.path:
-    sys.path.append(mastr_dir)
+mastr_db_path= os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
 
-from mastr_main import prepare_solar_data
-from mastr_wind import prepare_wind_data
-from mastr_storage import prepare_storage_data
-from mastr_grid_connections import prepare_grid_connections_data
-
-
-# Import the data preparation function from mastr_main
-#from vise-d.mastr import prepare_solar_data
 st.set_page_config(page_title='VISE-D Dashboard', 
                     page_icon=':bar_chart:',
                     layout='centered',
                     initial_sidebar_state='expanded'
                     )
-
-
 
 st.title('VISE-D Dashboard')
 
@@ -1025,13 +1007,9 @@ def Wind_Installation_Mastr():
     if st.button("Visualize"):
         if location:
             try:
-                # Get data from matr_main
+                # Get data 
                 with st.spinner("Loading data..."):
                     gdf_wind, city_district = prepare_wind_data(location=location)
-
-                # Set index for city_district
-                city_district.set_index('name', inplace=True)
-                
                 
                 district_geom = city_district.loc[location].geometry
                 gdf_wind_filtered = gdf_wind[gdf_wind.geometry.within(district_geom)]
