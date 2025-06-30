@@ -6,17 +6,13 @@ from open_mastr import Mastr
 import geopandas
 import osmnx as ox
 
-# def download_mastr_data():
+def download_mastr_data():
     
-#     db = Mastr()
-#     db.download()
+    db = Mastr()
+    db.download()
 
-# download_mastr_data()
-
-
-#download_mastr_data()
-def fetch_data(table_name, columns, filter_column=None, filter_values=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
-    conn = connect(os.path.join(os.path.dirname(__file__), mastr_db_path))
+def fetch_data(table_name, columns, filter_column=None, filter_values=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+    conn = connect(mastr_db_path)
     
     if filter_values is not None:
         # Ensure filter_values is a list
@@ -34,7 +30,7 @@ def fetch_data(table_name, columns, filter_column=None, filter_values=None, mast
     
     return df
 
-def fetch_solar(Ort=None, solar_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
+def fetch_solar(Ort=None, solar_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
     
     #Umrechnungswerte für die Ausrichtung und Neigung
     ausrichtung_mapping = {
@@ -98,7 +94,21 @@ def fetch_solar(Ort=None, solar_columns=None, mastr_db_path='C:/Users/mashu/.ope
 
     return df_solar
 
-def fetch_wind(Ort=None, wind_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
+def prepare_solar_data(location='Essen', mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+    
+
+    try:
+            df_solar = fetch_solar(Ort=location, mastr_db_path=mastr_db_path)
+            gdf_solar = df_to_gdf(df_solar)
+            gdf_solar = add_centroids(gdf_solar)
+            
+            city_district = ox.geocode_to_gdf([location])
+            
+            return gdf_solar, city_district
+    except Exception as e:
+            raise Exception(f"Error preparing data for {location}: {str(e)}")
+
+def fetch_wind(Ort=None, wind_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
     
     if wind_columns is None:
         wind_columns = ['EinheitMastrNummer',
@@ -133,9 +143,24 @@ def fetch_wind(Ort=None, wind_columns=None, mastr_db_path='C:/Users/mashu/.open-
                       mastr_db_path=mastr_db_path
                       )
 
-def read_storage_units(mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db' ):
+def prepare_wind_data(location='Essen', mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
     
-    conn = connect(os.path.join(os.path.dirname(__file__), mastr_db_path))
+    try:
+            df_wind = fetch_wind(Ort=location, mastr_db_path=mastr_db_path)
+            gdf_wind = df_to_gdf(df_wind)
+            gdf_wind = add_centroids(gdf_wind)
+            
+            city_district = ox.geocode_to_gdf([location])
+            city_district.set_index('name', inplace=True)
+            
+            return gdf_wind, city_district
+
+    except Exception as e:
+            raise Exception(f"Error preparing data for {location}: {str(e)}")
+
+def read_storage_units(mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+    
+    conn = connect(mastr_db_path)
 
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
@@ -151,7 +176,7 @@ def read_storage_units(mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/ope
     return storage_units
 
 
-def fetch_storage(Ort=None, storage_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
+def fetch_storage(Ort=None, storage_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
     
     if storage_columns is None:
         storage_columns = ['EinheitMastrNummer',
@@ -192,8 +217,23 @@ def fetch_storage(Ort=None, storage_columns=None, mastr_db_path='C:/Users/mashu/
     
     return df_storage
 
-def fetch_grid_connections(grid_connections_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
-    conn = connect(os.path.join(os.path.dirname(__file__), mastr_db_path))
+def prepare_storage_data(location='Essen', mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+    
+    try:
+            df_storage = fetch_storage(Ort=location, mastr_db_path=mastr_db_path)
+            gdf_storage = df_to_gdf(df_storage)
+            gdf_storage = add_centroids(gdf_storage)
+            
+            city_district = ox.geocode_to_gdf([location])
+            
+            return gdf_storage, city_district
+            
+    except Exception as e:
+            raise Exception(f"Error preparing data for {location}: {str(e)}")
+
+
+def fetch_grid_connections(grid_connections_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+    conn = connect(mastr_db_path)
     
     if grid_connections_columns is None:
         grid_connections_columns = ['NetzanschlusspunktMastrNummer', 
@@ -223,9 +263,9 @@ def fetch_grid_connections(grid_connections_columns=None, mastr_db_path='C:/User
     
     return df_grid_connections
 
-def fetch_grids(grid_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'):
+def fetch_grids(grid_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
     
-    conn = connect(os.path.join(os.path.dirname(__file__), mastr_db_path))
+    conn = connect(mastr_db_path)
     
     if grid_columns is None:
         grid_columns = ['MastrNummer', 
@@ -253,6 +293,21 @@ def fetch_grids(grid_columns=None, mastr_db_path='C:/Users/mashu/.open-MaStR/dat
     
     return df_grids
 
+def prepare_grid_connections_data(location='Essen', mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+    try:
+        df_grid_connections = fetch_grid_connections(mastr_db_path=mastr_db_path).head(20)
+        df_grids = fetch_grids(mastr_db_path=mastr_db_path)
+
+        df_grid_connections = df_grid_connections.merge(df_grids, 
+                                                         how='left', 
+                                                         on='NetzMastrNummer'
+                                                         )
+
+        return df_grid_connections
+
+    except Exception as e:
+        raise Exception(f"Error preparing data for {location}: {str(e)}")
+
 def df_to_gdf(df):
     gdf = geopandas.GeoDataFrame(
     df, geometry=geopandas.points_from_xy(df.Laengengrad, df.Breitengrad), crs="EPSG:4326"
@@ -276,11 +331,16 @@ if __name__ == '__main__':
     # print(gdf_solar.head())
     # gdf_solar.explore()
     
-    df_storage = fetch_storage(Ort='Troisdorf')
-    df_storage_units = read_storage_units()
-    gdf_storage = df_to_gdf(df_storage)
-    gdf_storage = add_centroids(gdf_storage)
-    gdf_storage.explore()
+    # df_storage = fetch_storage(Ort='Troisdorf')
+    # df_storage_units = read_storage_units()
+    # gdf_storage = df_to_gdf(df_storage)
+    # gdf_storage = add_centroids(gdf_storage)
+    # gdf_storage.explore()
     # with open('data/mastr/storage_troisdorf_columns.txt', 'w') as f:
     #     for col in df_storage.columns:
     #         f.write(f"{col}\n")
+
+    df_wind = fetch_wind(Ort='Bedburg')
+    gdf_wind = df_to_gdf(df_wind)
+    gdf_wind = add_centroids(gdf_wind)
+    gdf_wind.explore()
