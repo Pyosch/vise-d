@@ -5,3 +5,4 @@ data/*
 .streamlit/secrets.toml
 __pycache__/*
 *.zip
+*.json
