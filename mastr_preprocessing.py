@@ -349,15 +349,21 @@ def add_centroids(gdf):
 
 if __name__ == '__main__':
     location = 'Jüchen'
-    df_solar = fetch_solar(Ort=location)
-    gdf_solar = df_to_gdf(df_solar)
+    # df_solar = fetch_solar(Ort=location)
+    # gdf_solar = df_to_gdf(df_solar)
+    
+    gdf_solar, city_district = prepare_solar_data(location=location)
+    
     # print(gdf_solar.head())
     # gdf_solar.explore()
     
-    df_storage = fetch_storage(Ort=location)
-    df_storage_units = read_storage_units()
-    gdf_storage = df_to_gdf(df_storage)
-    gdf_storage = add_centroids(gdf_storage)
+    # df_storage = fetch_storage(Ort=location)
+    # df_storage_units = read_storage_units()
+    # gdf_storage = df_to_gdf(df_storage)
+    # gdf_storage = add_centroids(gdf_storage)
+    
+    gdf_storage, city_district = prepare_storage_data(location=location)
+    
     # gdf_storage.explore()
     # with open('data/mastr/storage_troisdorf_columns.txt', 'w') as f:
     #     for col in df_storage.columns:

@@ -926,72 +926,58 @@ def Solar_Installation_Mastr():
     # Button to trigger visualization
     if st.button("Visualize"):
         if location:
-            try:
-                # Get data from matr_main
-                with st.spinner("Loading data..."):
-                    gdf_solar, city_district = prepare_solar_data(location=location)
+            # try:
+            # Get data from mastr_main
+            with st.spinner("Loading data..."):
+                gdf_solar, city_district = prepare_solar_data(location=location)
 
-                # Set index for city_district
-                city_district.set_index('name', inplace=True)
+            # Create scatter map
+            fig = px.scatter_mapbox(
+                gdf_solar,
+                lat='Breitengrad',
+                lon='Laengengrad',
+                size_max=45,
+                color_discrete_sequence=['red'],
+                zoom=10,
+                center={"lat": city_district.lat.item(),  
+                        "lon": city_district.lon.item()},
+                mapbox_style='open-street-map',
+                hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
+            )
+
+            # Create choropleth map
+            choropleth = px.choropleth_mapbox(
+                city_district,
+                geojson=city_district.geometry,
+                locations=city_district.index,
+                color=None,
+                opacity=0.3,
+                labels={location: 'City District'},
+            )
+
+            # Add choropleth trace to the figure
+            fig.add_trace(choropleth.data[0])
+
+            # Move the choropleth trace to the background
+            fig.data = fig.data[::-1]
+
+            # Update layout
+            fig.update_layout(
+                margin={"r":0, "t":0, "l":0, "b":0},
+            )
+            
+            # Display the plot in Streamlit
+            st.plotly_chart(fig, use_container_width=True)
+            
+            
+            # Display DataFrame below map
+            st.subheader("Plotted Solar Installations")
+            st.dataframe(
+                gdf_solar[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']]
+            )
                 
-                   # Spatial filter installations inside the district polygon
-                district_geom = city_district.loc[location].geometry
-                gdf_solar_filtered = gdf_solar[gdf_solar.geometry.within(district_geom)]
-
-                # Create scatter map
-                fig = px.scatter_mapbox(
-                    gdf_solar,
-                    lat='Breitengrad',
-                    lon='Laengengrad',
-                    size_max=45,
-                    color_discrete_sequence=['red'],
-                    zoom=10,
-                    center={"lat": city_district.centroid[location].y,  
-                            "lon": city_district.centroid[location].x},
-                    mapbox_style='open-street-map',
-                    hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
-                )
-
-                # Create choropleth map
-                choropleth = px.choropleth_mapbox(
-                    city_district,
-                    geojson=city_district.geometry,
-                    locations=city_district.index,
-                    color=None,
-                    opacity=0.3,
-                    labels={location: 'City District'},
-                )
-
-                # Add choropleth trace to the figure
-                fig.add_trace(choropleth.data[0])
-
-                # Move the choropleth trace to the background
-                fig.data = fig.data[::-1]
-
-                # Update layout
-                fig.update_layout(
-                    margin={"r":0, "t":0, "l":0, "b":0},
-                )
-                
-                # Display the plot in Streamlit
-                st.plotly_chart(fig, use_container_width=True)
-                
-                
-                # Display DataFrame below map
-                st.subheader("Plotted Solar Installations")
-                st.dataframe(
-                    gdf_solar_filtered[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']]
-                    .rename(columns={
-                        'NameStromerzeugungseinheit': 'Name',
-                        'Bruttoleistung': 'Gross Capacity',
-                        'Nettonennleistung': 'Net Capacity',
-                        'Breitengrad': 'Latitude',
-                        'Laengengrad': 'Longitude'
-                    })
-                )
-                
-            except Exception as e:
-                st.error(f"Failed to visualize data for {location}: {str(e)}")
+            # except Exception as e:
+            #     st.error(f"Failed to visualize data for {location}: {str(e)}")
         else:
             st.warning("Please enter a city name.")
     # Key Features in dashboard.py
@@ -1006,67 +992,58 @@ def Wind_Installation_Mastr():
     # Button to trigger visualization
     if st.button("Visualize"):
         if location:
-            try:
+            # try:
                 # Get data 
-                with st.spinner("Loading data..."):
-                    gdf_wind, city_district = prepare_wind_data(location=location)
-                
-                district_geom = city_district.loc[location].geometry
-                gdf_wind_filtered = gdf_wind[gdf_wind.geometry.within(district_geom)]
+            with st.spinner("Loading data..."):
+                gdf_wind, city_district = prepare_wind_data(location=location)
 
-                # Create scatter map
-                fig = px.scatter_mapbox(
-                    gdf_wind,
-                    lat='Breitengrad',
-                    lon='Laengengrad',
-                    size_max=15,
-                    color_discrete_sequence=['brown'],
-                    zoom=10,
-                    center={"lat": city_district.centroid[location].y,  
-                            "lon": city_district.centroid[location].x},
-                    mapbox_style='open-street-map',
-                    hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
+            # Create scatter map
+            fig = px.scatter_mapbox(
+                gdf_wind,
+                lat='Breitengrad',
+                lon='Laengengrad',
+                size_max=15,
+                color_discrete_sequence=['brown'],
+                zoom=10,
+                center={"lat": city_district.lat.item(),  
+                        "lon": city_district.lon.item()},
+                mapbox_style='open-street-map',
+                hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
+            )
+
+            # Create choropleth map
+            choropleth = px.choropleth_mapbox(
+                city_district,
+                geojson=city_district.geometry,
+                locations=city_district.index,
+                color=None,
+                opacity=0.3,
+                labels={location: 'City District'},
+            )
+
+            # Add choropleth trace to the figure
+            fig.add_trace(choropleth.data[0])
+
+            # Move the choropleth trace to the background
+            fig.data = fig.data[::-1]
+
+            # Update layout
+            fig.update_layout(
+                margin={"r":0, "t":0, "l":0, "b":0},
+            )
+
+            # Display the plot in Streamlit
+            st.plotly_chart(fig, use_container_width=True)
+            
+            
+                # Display DataFrame below map
+            st.subheader("Plotted Wind Installations")
+            st.dataframe(
+                gdf_wind[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']]
                 )
 
-                # Create choropleth map
-                choropleth = px.choropleth_mapbox(
-                    city_district,
-                    geojson=city_district.geometry,
-                    locations=city_district.index,
-                    color=None,
-                    opacity=0.3,
-                    labels={location: 'City District'},
-                )
-
-                # Add choropleth trace to the figure
-                fig.add_trace(choropleth.data[0])
-
-                # Move the choropleth trace to the background
-                fig.data = fig.data[::-1]
-
-                # Update layout
-                fig.update_layout(
-                    margin={"r":0, "t":0, "l":0, "b":0},
-                )
-
-                # Display the plot in Streamlit
-                st.plotly_chart(fig, use_container_width=True)
-                
-                
-                    # Display DataFrame below map
-                st.subheader("Plotted Wind Installations")
-                st.dataframe(
-                    gdf_wind_filtered[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']]
-                    .rename(columns={
-                        'NameStromerzeugungseinheit': 'Name',
-                        'Bruttoleistung': 'Gross Capacity',
-                        'Nettonennleistung': 'Net Capacity',
-                        'Breitengrad': 'Latitude',
-                        'Laengengrad': 'Longitude'
-                    })
-                )
-            except Exception as e:
-                st.error(f"Failed to visualize data for {location}: {str(e)}")
+            # except Exception as e:
+            #     st.error(f"Failed to visualize data for {location}: {str(e)}")
         else:
             st.warning("Please enter a city name.")
     # Key Features in dashboard.py
@@ -1080,108 +1057,91 @@ def Storage_Installation_Mastr():
     # Button to trigger visualization
     if st.button("Visualize"):
         if location:
-            try:
-                # Get data from matr_main
-                with st.spinner("Loading data..."):
-                    gdf_storage, city_district = prepare_storage_data(location=location)
+            # try:
+            # Get data from matr_main
+            with st.spinner("Loading data..."):
+                gdf_storage, city_district = prepare_storage_data(location=location)
 
-                # Set index for city_district
-                city_district.set_index('name', inplace=True)
+            # Create scatter map
+            fig = px.scatter_mapbox(
+                gdf_storage,
+                lat='Breitengrad',
+                lon='Laengengrad',
+                size_max=15,
+                color_discrete_sequence=['purple'],
+                zoom=10,
+                center={"lat": city_district.lat.item(),  
+                        "lon": city_district.lon.item()},
+                mapbox_style='open-street-map',
+                hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
+            )
 
-                # # Spatial filter installations inside the district polygon
-                district_geom = city_district.loc[location].geometry
-                gdf_storage_filtered = gdf_storage[gdf_storage.geometry.within(district_geom)]
-                
-              #  gdf_storage_filtered = gdf_storage[gdf_storage['Ort'].str.lower() == location.lower()]
-                
-                # Create scatter map
-                fig = px.scatter_mapbox(
-                    gdf_storage,
-                    lat='Breitengrad',
-                    lon='Laengengrad',
-                    size_max=15,
-                    color_discrete_sequence=['purple'],
-                    zoom=10,
-                    center={"lat": city_district.centroid[location].y,  
-                            "lon": city_district.centroid[location].x},
-                    mapbox_style='open-street-map',
-                    hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
+            # Create choropleth map
+            choropleth = px.choropleth_mapbox(
+                city_district,
+                geojson=city_district.geometry,
+                locations=city_district.index,
+                color=None,
+                opacity=0.3,
+                labels={location: 'City District'},
+            )
+
+            # Add choropleth trace to the figure
+            fig.add_trace(choropleth.data[0])
+
+            # Move the choropleth trace to the background
+            fig.data = fig.data[::-1]
+
+            # Update layout
+            fig.update_layout(
+                margin={"r":0, "t":0, "l":0, "b":0},
+            )
+
+            # Display the plot in Streamlit
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Display the filtered data as a DataFrame and Pie Chart side by side
+            st.subheader("Plotted Storage Installations")
+            
+            # Display DataFrame
+            st.dataframe(
+                    gdf_storage[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad', 'Ort']]
                 )
 
-                # Create choropleth map
-                choropleth = px.choropleth_mapbox(
-                    city_district,
-                    geojson=city_district.geometry,
-                    locations=city_district.index,
-                    color=None,
-                    opacity=0.3,
-                    labels={location: 'City District'},
+            # Create Pie Chart for EinheitBetriebsstatus Distribution
+            tech_counts = gdf_storage['EinheitBetriebsstatus'].value_counts()
+            pie_fig = px.pie(
+                    values=tech_counts.values,
+                    names=tech_counts.index,
+                    title="Distribution by Technology",
+                    hole=0.3  # Optional: Make it a donut chart for aesthetics
                 )
-
-                # Add choropleth trace to the figure
-                fig.add_trace(choropleth.data[0])
-
-                # Move the choropleth trace to the background
-                fig.data = fig.data[::-1]
-
-                # Update layout
-                fig.update_layout(
-                    margin={"r":0, "t":0, "l":0, "b":0},
+            pie_fig.update_layout(
+                    margin={"r":0, "t":50, "l":0, "b":0},  # Adjust margins for compact display
+                    height=300  # Set height to align with DataFrame
                 )
+            st.plotly_chart(pie_fig, use_container_width=True)
+            
+            st.subheader("Bar Graph for Storage Installations")
+            # Define bins and sort them
+            bins = [0, 50, 200, 1000, gdf_storage['Nettonennleistung'].max()]
+            bins = sorted(bins)  # Ensure increasing order for pd.cut internally
+            labels = ['<50 kW', '50–200 kW', '200–1000 kW', '>1000 kW']
 
-                # Display the plot in Streamlit
-                st.plotly_chart(fig, use_container_width=True)
+            # Create a temporary column with binned data
+            gdf_storage['Capacity_Range'] = pd.cut(gdf_storage['Nettonennleistung'], bins=bins, labels=labels, ordered=False)
+
+            # Plot bar chart using value counts
+            capacity_fig = px.bar(
+                gdf_storage['Capacity_Range'].value_counts(),
+                labels={'index': 'Capacity Range', 'value': 'Number of Installations'},
+                title="Storage Installations by Net Capacity Range"
+            )
+
+            st.plotly_chart(capacity_fig, use_container_width=True)
                 
-                # Display the filtered data as a DataFrame and Pie Chart side by side
-                st.subheader("Plotted Storage Installations")
-                
-                # Display DataFrame
-                st.dataframe(
-                        gdf_storage[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad','Ort']]
-                        .rename(columns={
-                            'NameStromerzeugungseinheit': 'Name',
-                            'Bruttoleistung': 'Gross Capacity',
-                            'Nettonennleistung': 'Net Capacity',
-                            'Breitengrad': 'Latitude',
-                            'Laengengrad': 'Longitude',
-                            'Ort': 'Location'
-                        })
-                    )
-
-                # Create Pie Chart for EinheitBetriebsstatus Distribution
-                tech_counts = gdf_storage_filtered['EinheitBetriebsstatus'].value_counts()
-                pie_fig = px.pie(
-                        values=tech_counts.values,
-                        names=tech_counts.index,
-                        title="Distribution by Technology",
-                        hole=0.3  # Optional: Make it a donut chart for aesthetics
-                    )
-                pie_fig.update_layout(
-                        margin={"r":0, "t":50, "l":0, "b":0},  # Adjust margins for compact display
-                        height=300  # Set height to align with DataFrame
-                    )
-                st.plotly_chart(pie_fig, use_container_width=True)
-                
-                st.subheader("Bar Graph for Storage Installations")
-                # Define bins and sort them
-                bins = [0, 50, 200, 1000, gdf_storage['Nettonennleistung'].max()]
-                bins = sorted(bins)  # Ensure increasing order for pd.cut internally
-                labels = ['<50 kW', '50–200 kW', '200–1000 kW', '>1000 kW']
-
-                # Create a temporary column with binned data
-                gdf_storage['Capacity_Range'] = pd.cut(gdf_storage['Nettonennleistung'], bins=bins, labels=labels, ordered=False)
-
-                # Plot bar chart using value counts
-                capacity_fig = px.bar(
-                    gdf_storage['Capacity_Range'].value_counts(),
-                    labels={'index': 'Capacity Range', 'value': 'Number of Installations'},
-                    title="Storage Installations by Net Capacity Range"
-                )
-
-                st.plotly_chart(capacity_fig, use_container_width=True)
-                
-            except Exception as e:
-                st.error(f"Failed to visualize data for {location}: {str(e)}")
+            # except Exception as e:
+            #     st.error(f"Failed to visualize data for {location}: {str(e)}")
 
         else:
             st.warning("Please enter a city name.")
