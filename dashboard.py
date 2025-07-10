@@ -27,8 +27,9 @@ from Technologies.WindEnergie import wind
 from Technologies.ElectricalStorage import electrical_storage
 
 from mastr_preprocessing import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
+from mastr_preprocessing import fetch_solar, fetch_wind, fetch_storage,get_unique_solar_locations,get_unique_wind_locations,get_unique_storage_locations
 
-mastr_db_path= os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
+mastr_db_path= "C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"
 
 st.set_page_config(page_title='VISE-D Dashboard', 
                     page_icon=':bar_chart:',
@@ -46,6 +47,8 @@ st.write('Willkommen beim VISE-D Dashboard! Die Seite befindet sich noch in der 
 #df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
 df = pd.read_csv('./data/figures/example_data_10000.csv')
 
+@st.cache_data
+@st.cache_resource
 def update_violin_plot(df,
                        ev_penetration, 
                        curtailment,
@@ -71,6 +74,8 @@ def update_violin_plot(df,
                     )
     return fig
 
+@st.cache_data
+@st.cache_resource
 def Violinplot():
     with st.sidebar:
         st.title('VISE-D')
@@ -103,6 +108,8 @@ def Violinplot():
                                     selected_grid_usage_fees)
                     )
 
+@st.cache_data
+@st.cache_resource
 def Forschungsergebnisse():
     st.write('## Integration von E-Fahrzeugen in Verteilnetze - Untersuchung der Auswirkungen \
         verschiedener DSO-Eingriffsstrategien auf optimiertes Laden')
@@ -202,7 +209,9 @@ def Forschungsergebnisse():
             """,
             unsafe_allow_html=True
         )
-        
+
+@st.cache_data    
+@st.cache_resource    
 def Netzberechnungen():
     pp_networks()
     
@@ -223,6 +232,7 @@ if "bev_settings" not in st.session_state:
         "timebase": 15
     }
 
+@st.cache_data
 def BEV_settings():
    
     """_summary_
@@ -301,7 +311,8 @@ def BEV_settings():
 
         
         
-
+@st.cache_data
+@st.cache_resource
 def hydrogen_electrolyzer_settings():   
     
     """_summary_
@@ -401,7 +412,8 @@ def hydrogen_electrolyzer_settings():
 #import streamlit as st
 import plotly.graph_objects as go
 
-
+@st.cache_data
+@st.cache_resource
 def heatpump_configuaration():
     
     """_summary_
@@ -509,7 +521,8 @@ def heatpump_configuaration():
             st.pyplot(fig)
 
 
-        
+@st.cache_data    
+@st.cache_resource    
 def PV_configuration(): 
     
     pv_settings(form_key_suffix="pv1")
@@ -573,7 +586,9 @@ def PV_configuration():
 
             # Display the plot in Streamlit
             st.pyplot(fig)
-    
+
+@st.cache_data  
+@st.cache_resource  
 def wind_configuration(key_suffix="wind1"):
     
     wind(form_key_suffix=key_suffix)
@@ -639,7 +654,8 @@ def wind_configuration(key_suffix="wind1"):
             # Display the plot in Streamlit
             st.pyplot(fig)
             
-            
+@st.cache_data    
+@st.cache_resource        
 def electrical_storage_configuration():
     
     electrical_storage(form_key_suffix="electrical_storage1")
@@ -710,6 +726,9 @@ def electrical_storage_configuration():
             plt.tight_layout()
             st.pyplot(fig)
 
+
+@st.cache_data
+@st.cache_resource
 def thermal_storage_settings():
     if "thermal_storage_settings" not in st.session_state:
         st.session_state.thermal_storage_settings={
@@ -917,77 +936,83 @@ def thermal_storage_settings():
         st.dataframe(styled_df, use_container_width=True, hide_index=True)
         
 
+
+
 def Solar_Installation_Mastr():
     st.title("Solar Installations Dashboard")
 
-# Text input for location
-    location = st.text_input("Enter city name", value="Essen")
+    # Fetch unique locations for dropdown
+    unique_locations = get_unique_solar_locations()
+
+    # Dropdown for location selection
+    location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
 
     # Button to trigger visualization
     if st.button("Visualize"):
         if location:
-            # try:
-            # Get data from mastr_main
-            with st.spinner("Loading data..."):
-                gdf_solar, city_district = prepare_solar_data(location=location)
+            try:
+                # Get data from prepare_solar_data
+                with st.spinner("Loading data..."):
+                    gdf_solar, city_district = prepare_solar_data(location=location)
 
-            # Create scatter map
-            fig = px.scatter_mapbox(
-                gdf_solar,
-                lat='Breitengrad',
-                lon='Laengengrad',
-                size_max=45,
-                color_discrete_sequence=['red'],
-                zoom=10,
-                center={"lat": city_district.lat.item(),  
-                        "lon": city_district.lon.item()},
-                mapbox_style='open-street-map',
-                hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
-            )
+                # Create scatter map
+                fig = px.scatter_mapbox(
+                    gdf_solar,
+                    lat='Breitengrad',
+                    lon='Laengengrad',
+                    size_max=45,
+                    color_discrete_sequence=['red'],
+                    zoom=10,
+                    center={"lat": city_district.lat.item(),  
+                            "lon": city_district.lon.item()},
+                    mapbox_style='open-street-map',
+                    hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
+                )
 
-            # Create choropleth map
-            choropleth = px.choropleth_mapbox(
-                city_district,
-                geojson=city_district.geometry,
-                locations=city_district.index,
-                color=None,
-                opacity=0.3,
-                labels={location: 'City District'},
-            )
+                # Create choropleth map
+                choropleth = px.choropleth_mapbox(
+                    city_district,
+                    geojson=city_district.geometry,
+                    locations=city_district.index,
+                    color=None,
+                    opacity=0.3,
+                    labels={location: 'City District'},
+                )
 
-            # Add choropleth trace to the figure
-            fig.add_trace(choropleth.data[0])
+                # Add choropleth trace to the figure
+                fig.add_trace(choropleth.data[0])
 
-            # Move the choropleth trace to the background
-            fig.data = fig.data[::-1]
+                # Move the choropleth trace to the background
+                fig.data = fig.data[::-1]
 
-            # Update layout
-            fig.update_layout(
-                margin={"r":0, "t":0, "l":0, "b":0},
-            )
-            
-            # Display the plot in Streamlit
-            st.plotly_chart(fig, use_container_width=True)
-            
-            
-            # Display DataFrame below map
-            st.subheader("Plotted Solar Installations")
-            st.dataframe(
-                gdf_solar[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']]
-            )
+                # Update layout
+                fig.update_layout(
+                    margin={"r":0, "t":0, "l":0, "b":0},
+                )
                 
-            # except Exception as e:
-            #     st.error(f"Failed to visualize data for {location}: {str(e)}")
+                # Display the plot in Streamlit
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Display DataFrame below map
+                st.subheader("Plotted Solar Installations")
+                st.dataframe(
+                    gdf_solar[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']]
+                )
+                
+            except Exception as e:
+                st.error(f"Failed to visualize data for {location}: {str(e)}")
         else:
-            st.warning("Please enter a city name.")
-    # Key Features in dashboard.py
+            st.warning("Please select a city.")
 
 
 def Wind_Installation_Mastr():
     st.title("Wind Installations Dashboard")
+    
+        # Fetch unique locations for dropdown
+    unique_locations = get_unique_wind_locations()
 
-# Text input for location
-    location = st.text_input("Enter city name", value="Essen")
+    # Dropdown for location selection
+    location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
 
     # Button to trigger visualization
     if st.button("Visualize"):
@@ -1048,11 +1073,16 @@ def Wind_Installation_Mastr():
             st.warning("Please enter a city name.")
     # Key Features in dashboard.py
 
+
+
 def Storage_Installation_Mastr():
     st.title("Storage Installations Dashboard")
+    
+        # Fetch unique locations for dropdown
+    unique_locations = get_unique_storage_locations()
 
-    # Text input for location
-    location = st.text_input("Enter city name", value="Essen")
+    # Dropdown for location selection
+    location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
 
     # Button to trigger visualization
     if st.button("Visualize"):
@@ -1146,7 +1176,7 @@ def Storage_Installation_Mastr():
         else:
             st.warning("Please enter a city name.")
     
-    
+  
 pg = st.navigation([st.Page(Forschungsergebnisse), 
                     st.Page(Netzberechnungen), 
                     st.Page(Violinplot), 
