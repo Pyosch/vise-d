@@ -29,7 +29,8 @@ from Technologies.ElectricalStorage import electrical_storage
 from mastr_preprocessing import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
 from mastr_preprocessing import fetch_solar, fetch_wind, fetch_storage,get_unique_solar_locations,get_unique_wind_locations,get_unique_storage_locations
 
-mastr_db_path= "C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"
+mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
+# mastr_db_path = 'C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'
 
 st.set_page_config(page_title='VISE-D Dashboard', 
                     page_icon=':bar_chart:',
@@ -1020,7 +1021,7 @@ def Wind_Installation_Mastr():
             # try:
                 # Get data 
             with st.spinner("Loading data..."):
-                gdf_wind, city_district = prepare_wind_data(location=location)
+                gdf_wind, city_district = prepare_wind_data(location=location, mastr_db_path=mastr_db_path)
 
             # Create scatter map
             fig = px.scatter_mapbox(
@@ -1090,7 +1091,7 @@ def Storage_Installation_Mastr():
             # try:
             # Get data from matr_main
             with st.spinner("Loading data..."):
-                gdf_storage, city_district = prepare_storage_data(location=location)
+                gdf_storage, city_district = prepare_storage_data(location=location, mastr_db_path=mastr_db_path)
 
             # Create scatter map
             fig = px.scatter_mapbox(
