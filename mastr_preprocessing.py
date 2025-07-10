@@ -5,6 +5,7 @@ from sqlite3 import connect
 from open_mastr import Mastr
 import geopandas
 import osmnx as ox
+import sqlite3
 
 def download_mastr_data():
     
@@ -95,7 +96,7 @@ def fetch_solar(Ort=None, solar_columns=None, mastr_db_path=os.path.join(os.path
 
     return df_solar
 
-def prepare_solar_data(location='Essen', mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+def prepare_solar_data(location='Essen', mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
 
     try:
             df_solar = fetch_solar(Ort=location, mastr_db_path=mastr_db_path)
@@ -114,6 +115,20 @@ def prepare_solar_data(location='Essen', mastr_db_path=os.path.join(os.path.dirn
 
     except Exception as e:
             raise Exception(f"Error preparing data for {location}: {str(e)}")
+
+
+def get_unique_solar_locations(mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
+    try:
+        # Connect to the database
+        conn = sqlite3.connect(mastr_db_path)
+        # Query distinct Ort values
+        query = "SELECT DISTINCT Ort FROM solar_extended WHERE Ort IS NOT NULL"
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        # Return sorted unique locations
+        return sorted(df['Ort'].tolist())
+    except Exception as e:
+        raise Exception(f"Failed to fetch unique locations: {str(e)}")
 
 def fetch_wind(Ort=None, wind_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
     
@@ -151,8 +166,8 @@ def fetch_wind(Ort=None, wind_columns=None, mastr_db_path=os.path.join(os.path.d
                       mastr_db_path=mastr_db_path
                       )
 
-def prepare_wind_data(location='Essen', mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
-    
+def prepare_wind_data(location='Essen', mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
+
     try:
             df_wind = fetch_wind(Ort=location, mastr_db_path=mastr_db_path)
             df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
@@ -171,6 +186,19 @@ def prepare_wind_data(location='Essen', mastr_db_path=os.path.join(os.path.dirna
 
     except Exception as e:
             raise Exception(f"Error preparing data for {location}: {str(e)}")
+
+def get_unique_wind_locations(mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
+    try:
+        # Connect to the database
+        conn = sqlite3.connect(mastr_db_path)
+        # Query distinct Ort values
+        query = "SELECT DISTINCT Ort FROM wind_extended WHERE Ort IS NOT NULL"
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        # Return sorted unique locations
+        return sorted(df['Ort'].tolist())
+    except Exception as e:
+        raise Exception(f"Failed to fetch unique locations: {str(e)}")
 
 def read_storage_units(mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
     
@@ -232,7 +260,7 @@ def fetch_storage(Ort=None, storage_columns=None, mastr_db_path=os.path.join(os.
     
     return df_storage
 
-def prepare_storage_data(location='Essen', mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+def prepare_storage_data(location='Essen', mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
     
     try:
             df_storage = fetch_storage(Ort=location, mastr_db_path=mastr_db_path)
@@ -252,6 +280,19 @@ def prepare_storage_data(location='Essen', mastr_db_path=os.path.join(os.path.di
             
     except Exception as e:
             raise Exception(f"Error preparing data for {location}: {str(e)}")
+
+def get_unique_storage_locations(mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
+    try:
+        # Connect to the database
+        conn = sqlite3.connect(mastr_db_path)
+        # Query distinct Ort values
+        query = "SELECT DISTINCT Ort FROM storage_extended WHERE Ort IS NOT NULL"
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        # Return sorted unique locations
+        return sorted(df['Ort'].tolist())
+    except Exception as e:
+        raise Exception(f"Failed to fetch unique locations: {str(e)}")
 
 
 def fetch_grid_connections(grid_connections_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
