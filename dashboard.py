@@ -32,24 +32,26 @@ from mastr_preprocessing import fetch_solar, fetch_wind, fetch_storage,get_uniqu
 mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
 # mastr_db_path = 'C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'
 
+
+
 st.set_page_config(page_title='VISE-D Dashboard', 
                     page_icon=':bar_chart:',
                     layout='centered',
                     initial_sidebar_state='expanded'
                     )
 
-st.title('VISE-D Dashboard')
-
 st.write('Willkommen beim VISE-D Dashboard! Die Seite befindet sich noch in der Entwicklung.')
 
+
+st.cache_data
+st.cache_resource
 # Load data
 #conn = st.connection('gcs', type=FilesConnection)
 #df = conn.read("vise-d/240912_inputs_online_tool.csv", input_format="csv", ttl=600)
 #df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
 df = pd.read_csv('./data/figures/example_data_10000.csv')
 
-@st.cache_data
-@st.cache_resource
+
 def update_violin_plot(df,
                        ev_penetration, 
                        curtailment,
@@ -75,8 +77,7 @@ def update_violin_plot(df,
                     )
     return fig
 
-@st.cache_data
-@st.cache_resource
+
 def Violinplot():
     with st.sidebar:
         st.title('VISE-D')
@@ -109,8 +110,8 @@ def Violinplot():
                                     selected_grid_usage_fees)
                     )
 
-@st.cache_data
-@st.cache_resource
+
+
 def Forschungsergebnisse():
     st.write('## Integration von E-Fahrzeugen in Verteilnetze - Untersuchung der Auswirkungen \
         verschiedener DSO-Eingriffsstrategien auf optimiertes Laden')
@@ -211,8 +212,8 @@ def Forschungsergebnisse():
             unsafe_allow_html=True
         )
 
-@st.cache_data    
-@st.cache_resource    
+   
+    
 def Netzberechnungen():
     pp_networks()
     
@@ -233,7 +234,7 @@ if "bev_settings" not in st.session_state:
         "timebase": 15
     }
 
-@st.cache_data
+
 def BEV_settings():
    
     """_summary_
@@ -312,8 +313,8 @@ def BEV_settings():
 
         
         
-@st.cache_data
-@st.cache_resource
+
+
 def hydrogen_electrolyzer_settings():   
     
     """_summary_
@@ -413,8 +414,8 @@ def hydrogen_electrolyzer_settings():
 #import streamlit as st
 import plotly.graph_objects as go
 
-@st.cache_data
-@st.cache_resource
+
+
 def heatpump_configuaration():
     
     """_summary_
@@ -522,8 +523,8 @@ def heatpump_configuaration():
             st.pyplot(fig)
 
 
-@st.cache_data    
-@st.cache_resource    
+ 
+    
 def PV_configuration(): 
     
     pv_settings(form_key_suffix="pv1")
@@ -588,8 +589,7 @@ def PV_configuration():
             # Display the plot in Streamlit
             st.pyplot(fig)
 
-@st.cache_data  
-@st.cache_resource  
+ 
 def wind_configuration(key_suffix="wind1"):
     
     wind(form_key_suffix=key_suffix)
@@ -655,8 +655,8 @@ def wind_configuration(key_suffix="wind1"):
             # Display the plot in Streamlit
             st.pyplot(fig)
             
-@st.cache_data    
-@st.cache_resource        
+   
+        
 def electrical_storage_configuration():
     
     electrical_storage(form_key_suffix="electrical_storage1")
@@ -728,8 +728,8 @@ def electrical_storage_configuration():
             st.pyplot(fig)
 
 
-@st.cache_data
-@st.cache_resource
+
+
 def thermal_storage_settings():
     if "thermal_storage_settings" not in st.session_state:
         st.session_state.thermal_storage_settings={
@@ -1177,9 +1177,123 @@ def Storage_Installation_Mastr():
         else:
             st.warning("Please enter a city name.")
     
-  
-pg = st.navigation([st.Page(Forschungsergebnisse), 
-                    st.Page(Netzberechnungen), 
+from mastr_energy_generation import pick_pvsystem_mastr, prepare_pv_time_series_mastr, aggregate_pv_time_series,revise_power_values,wind_turbine_matching
+
+
+def energy_generation_solar():
+    st.title("Energy Generation from Solar Installations")
+    
+    # Fetch unique locations for dropdown
+    unique_locations = get_unique_solar_locations()
+
+    # Dropdown for location selection
+    location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
+    if location:
+        if st.button("Simulate Energy Generation"):
+            with st.spinner("Preparing and simulating PV systems..."):
+                try:
+                    start = "2015-07-07 00:00:00"
+                    end = "2015-07-07 23:45:00"
+                    gdf_solar, city_district = prepare_solar_data(location=location)
+                    gdf_solar = revise_power_values(gdf_solar)
+                    ref_env = Environment(start=start, end=end)
+                    ref_env.get_dwd_pv_data(lat=city_district.lat, 
+                        lon=city_district.lon)
+                    pv_system_mastr = pick_pvsystem_mastr(gdf_solar.head(10), ref_env)
+                    prepare_pv_time_series_mastr(pv_system_mastr)
+                    pv_systems_aggregated = aggregate_pv_time_series(pv_system_mastr)
+                    # Plotting code
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    for name, pv_system in pv_systems_aggregated.items():
+                        if hasattr(pv_system, 'plot'):
+                            pv_system.plot(ax=ax, label=name)
+                        else:
+                            # Fallback for non-plottable objects (e.g., if pv_system is a string or list)
+                            st.warning(f"System {name} is not directly plottable ({type(pv_system)}), attempting manual plotting")
+                            try:
+                                # Assume pv_system is a list or array-like (e.g., time series data)
+                                ax.plot(pv_system, label=name)
+                            except Exception as plot_error:
+                                st.error(f"Failed to plot {name}: {plot_error}")
+                    ax.set_title(f"Solar Energy Generation in {location} ({start} to {end})")
+                    ax.set_xlabel("Time")
+                    ax.set_ylabel("Power (kW)")
+                    ax.legend()
+                    ax.grid(True)
+                    st.pyplot(fig)
+                    plt.close(fig) 
+
+                except Exception as e:
+                    st.error(f"Simulation failed: {e}")
+
+import pvlib
+from mastr_energy_generation import init_windturbines_mastr, prepare_wind_time_series_mastr, aggregate_wind_time_series
+def wind_energy_generation():
+    st.title("Energy Generation from Wind Installations")
+    
+    # Fetch unique locations for dropdown
+    unique_locations = get_unique_wind_locations()
+
+    # Dropdown for location selection
+    location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
+    
+    if location:
+        if st.button("Simulate Energy Generation"):
+            with st.spinner("Preparing and simulating Wind systems..."):
+                try:
+                    start = "2015-07-07 00:00:00"
+                    end = "2015-07-07 23:45:00"
+                    ref_env = Environment(start=start, end=end)
+                    gdf_wind, city_district = prepare_wind_data(location=location)
+                    gdf_wind = wind_turbine_matching(gdf_wind)
+                    test_data, meta, inputs = pvlib.iotools.get_pvgis_hourly(city_district.centroid.y, 
+                                                         city_district.centroid.x, 
+                                                         start=pd.to_datetime(start), 
+                                                         end=pd.to_datetime(end), 
+                                                         raddatabase='PVGIS-SARAH2', 
+                                                         components=True, 
+                                                         surface_tilt= 0, 
+                                                         surface_azimuth= 0, 
+                                                         outputformat='json', 
+                                                         usehorizon=True, 
+                                                         userhorizon=None, 
+                                                         pvcalculation=False, 
+                                                         peakpower=None, 
+                                                         pvtechchoice='crystSi', 
+                                                         mountingplace='free', 
+                                                         loss=0, 
+                                                         trackingtype=0, 
+                                                         optimal_surface_tilt=False, 
+                                                         optimalangles=False, 
+                                                         url='https://re.jrc.ec.europa.eu/api/v5_2/', 
+                                                         map_variables=True, 
+                                                         timeout=30)
+                    filtered_data_wind = test_data[['wind_speed', 'temp_air']]
+                    filtered_data_wind['temp_air'] = filtered_data_wind['temp_air'] + 273.15 # in Kelvin
+                    filtered_data_wind['roughness_length'] = [0.15 for i in range (8760)]
+                    filtered_data_wind['pressure'] = [101325 for i in range (8760)]
+                    new_order = ['wind_speed', 'pressure', 'temp_air', 'roughness_length']
+                    filtered_data_wind = filtered_data_wind.reindex(columns=new_order)
+                    filtered_data_wind = filtered_data_wind.rename(columns={"temp_air": "temperature"})
+                    filtered_data_wind.columns = [filtered_data_wind.columns, ['10', '0', '2', '0']]
+                    test_data_15min_w = filtered_data_wind.resample('15T').mean().interpolate()
+                    
+                    ref_env.wind_data = test_data_15min_w
+    
+                    windturbines_dict = init_windturbines_mastr(gdf_wind, environment=ref_env)
+                    prepare_wind_time_series_mastr(windturbines_dict)
+                    windturbines_aggregated = aggregate_wind_time_series(windturbines_dict)
+
+                 
+
+
+                
+                except Exception as e:
+                    st.error(f"Simulation failed: {e}")
+
+
+pg = st.navigation([st.Page(Forschungsergebnisse),
+                    st.Page(Netzberechnungen),
                     st.Page(Violinplot), 
                     st.Page(BEV_settings),
                     st.Page(hydrogen_electrolyzer_settings),
@@ -1190,6 +1304,8 @@ pg = st.navigation([st.Page(Forschungsergebnisse),
                     st.Page(thermal_storage_settings),
                     st.Page(Solar_Installation_Mastr),
                     st.Page(Wind_Installation_Mastr),
-                    st.Page(Storage_Installation_Mastr)
+                    st.Page(Storage_Installation_Mastr),
+                    st.Page(energy_generation_solar),
+                    st.Page(wind_energy_generation),
                     ])
 pg.run()

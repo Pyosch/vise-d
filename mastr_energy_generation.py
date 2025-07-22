@@ -8,6 +8,7 @@ from fuzzywuzzy import fuzz
 import math
 import random
 import matplotlib.pyplot as plt
+from windpowerlib import WindTurbine, ModelChain
 
 from vpplib import Photovoltaic, WindPower, UserProfile, Environment
 from mastr_preprocessing import prepare_solar_data, prepare_wind_data
@@ -309,7 +310,7 @@ def aggregate_pv_time_series(pv_systems_dict):
     return pv_systems_aggregated
 
 ### WINDENERGY ###
-
+df_efficiency_curve = pd.read_csv('median_windpower_curve.csv')
 def wind_turbine_matching(gdf):
     """
     Matches wind turbine types from a GeoDataFrame to the closest entries in a turbine database using fuzzy string matching.
@@ -404,7 +405,7 @@ def init_windturbines_mastr(gdf,
             turbine_type=gdf.loc[i, 'WPLTurbine'],
             hub_height=gdf.loc[i, 'Nabenhoehe'],
             rotor_diameter=gdf.loc[i, 'Rotordurchmesser'],
-            fetch_curve="power_curve",
+            fetch_curve = 'power_curve',
             data_source="oedb",
             wind_speed_model=wind_speed_model,
             density_model=density_model,
@@ -414,6 +415,7 @@ def init_windturbines_mastr(gdf,
             obstacle_height=obstacle_height,
             hellman_exp=hellman_exp,
             )
+
         
     return windturbines_dict
 
@@ -477,6 +479,9 @@ if __name__ == "__main__":
         pv_system.plot(ax=ax, label=name)
 
     plt.show()
+    
+
+    
     
     ### Windenergie ###
     gdf_wind, city_district = prepare_wind_data(location=location)
