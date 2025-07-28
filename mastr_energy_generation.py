@@ -10,7 +10,6 @@ import math
 import random
 import matplotlib.pyplot as plt
 from windpowerlib import WindTurbine, ModelChain
-from windpowerlib import data as wt
 
 from vpplib import Photovoltaic, WindPower, UserProfile, Environment
 from mastr_preprocessing import prepare_solar_data, prepare_wind_data
@@ -400,10 +399,10 @@ def init_windturbines_mastr(gdf,
     """
     
     windturbines_dict = {}
-    wt_data = wt.get_turbine_types(print_out=False)
+    turbine_database = wpl.data.store_turbine_data_from_oedb()
     
     for i in gdf.index:
-        if wt_data.loc[wt_data.turbine_type == gdf.loc[i, 'WPLTurbine']].has_power_curve.item() == True:
+        if turbine_database.loc[turbine_database.turbine_type == gdf.loc[i, 'WPLTurbine']].has_power_curve.item() == True:
             windturbines_dict[gdf.loc[i, 'EinheitMastrNummer']] = WindPower(
                 unit="kW",
                 identifier=gdf.loc[i, 'EinheitMastrNummer'],
@@ -457,8 +456,41 @@ def prepare_wind_time_series_mastr(gen_dict):
         """
         
         for key, value in gen_dict.items():
-            value.prepare_time_series()
-            
+            if value.data_source == 'oedb':
+                value.prepare_time_series()
+            else:
+                # Check if norm_power_curve exists in the current scope
+                if 'norm_power_curve' not in locals() and 'norm_power_curve' not in globals():
+                    norm_power_curve = pd.read_csv(path_to_power_curve)
+                if 'turbine_database' not in locals() and 'turbine_database' not in globals():
+                    turbine_database = wpl.data.store_turbine_data_from_oedb()
+                    
+                nom_power = turbine_database.loc[turbine_database.turbine_type == value.turbine_type].nominal_power.item()
+                
+                turbine_data = {
+                    'nominal_power': nom_power,
+                    'hub_height': value.hub_height,
+                    'rotor_diameter': value.rotor_diameter,
+                    'power_curve': wpl.create_power_curve(
+                        wind_speed=norm_power_curve['wind_speed'],
+                        power=norm_power_curve['value'] * nom_power, # windpowerlib works with Watt
+                    )
+                }
+                
+                value.WindTurbine = WindTurbine(**turbine_data)
+                value.ModelChain = ModelChain(
+                    power_plant=value.WindTurbine,
+                    wind_speed_model=value.wind_speed_model,
+                    density_model=value.density_model,
+                    temperature_model=value.temperature_model,
+                    power_output_model=value.power_output_model,
+                    density_correction=value.density_correction,
+                    obstacle_height=value.obstacle_height,
+                    hellman_exp=value.hellman_exp
+                )
+                value.ModelChain.run_model(value.environment.wind_data)
+                value.timeseries = value.ModelChain.power_output / 1000  # Convert from W to kW
+
 def aggregate_wind_time_series(gen_dict):
     """
     Aggregates wind generation time series data from a dictionary of generator objects.
@@ -487,25 +519,25 @@ def aggregate_wind_time_series(gen_dict):
 if __name__ == "__main__":
     
     mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
-    location = 'Jüchen'
+    location = 'Aachen'
     start = "2015-07-07 00:00:00"
     end = "2015-07-07 23:45:00"
 
-    gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
-    gdf_solar = revise_power_values(gdf_solar)
+    # gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
+    # gdf_solar = revise_power_values(gdf_solar)
     ref_env = Environment(start=start, end=end)
-    ref_env.get_dwd_pv_data(lat=city_district.lat, 
-                        lon=city_district.lon)
+    # ref_env.get_dwd_pv_data(lat=city_district.lat, 
+    #                     lon=city_district.lon)
     
-    pv_systems_dict = pick_pvsystem_mastr(gdf_solar.head(), ref_env) # Change to choose all PV systems later
-    prepare_pv_time_series_mastr(pv_systems_dict)
-    pv_systems_aggregated = aggregate_pv_time_series(pv_systems_dict)
+    # pv_systems_dict = pick_pvsystem_mastr(gdf_solar.head(), ref_env) # Change to choose all PV systems later
+    # prepare_pv_time_series_mastr(pv_systems_dict)
+    # pv_systems_aggregated = aggregate_pv_time_series(pv_systems_dict)
     
-    fig, ax = plt.subplots()
-    for name, pv_system in pv_systems_aggregated.items():
-        pv_system.plot(ax=ax, label=name)
+    # fig, ax = plt.subplots()
+    # for name, pv_system in pv_systems_aggregated.items():
+    #     pv_system.plot(ax=ax, label=name)
 
-    plt.show()
+    # plt.show()
     
 
     
