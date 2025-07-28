@@ -8,3 +8,4 @@ __pycache__/*
 *.json
 *.log
 *.db
+*.html
