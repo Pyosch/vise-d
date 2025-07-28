@@ -27,7 +27,8 @@ from Technologies.WindEnergie import wind
 from Technologies.ElectricalStorage import electrical_storage
 
 from mastr_preprocessing import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
-from mastr_preprocessing import fetch_solar, fetch_wind, fetch_storage,get_unique_solar_locations,get_unique_wind_locations,get_unique_storage_locations
+from mastr_preprocessing import fetch_solar, fetch_wind, fetch_storage
+from mastr_preprocessing import get_unique_solar_locations, get_unique_wind_locations, get_unique_storage_locations
 
 mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
 # mastr_db_path = 'C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'
@@ -943,7 +944,7 @@ def Solar_Installation_Mastr():
     st.title("Solar Installations Dashboard")
 
     # Fetch unique locations for dropdown
-    unique_locations = get_unique_solar_locations()
+    unique_locations = get_unique_solar_locations(mastr_db_path=mastr_db_path)
 
     # Dropdown for location selection
     location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
@@ -1010,7 +1011,7 @@ def Wind_Installation_Mastr():
     st.title("Wind Installations Dashboard")
     
         # Fetch unique locations for dropdown
-    unique_locations = get_unique_wind_locations()
+    unique_locations = get_unique_wind_locations(mastr_db_path=mastr_db_path)
 
     # Dropdown for location selection
     location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
@@ -1080,7 +1081,7 @@ def Storage_Installation_Mastr():
     st.title("Storage Installations Dashboard")
     
         # Fetch unique locations for dropdown
-    unique_locations = get_unique_storage_locations()
+    unique_locations = get_unique_storage_locations(mastr_db_path=mastr_db_path)
 
     # Dropdown for location selection
     location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
@@ -1232,7 +1233,7 @@ def wind_energy_generation():
     st.title("Energy Generation from Wind Installations")
     
     # Fetch unique locations for dropdown
-    unique_locations = get_unique_wind_locations()
+    unique_locations = get_unique_wind_locations(mastr_db_path=mastr_db_path)
 
     # Dropdown for location selection
     location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
@@ -1244,7 +1245,7 @@ def wind_energy_generation():
                     start = "2015-07-07 00:00:00"
                     end = "2015-07-07 23:45:00"
                     ref_env = Environment(start=start, end=end)
-                    gdf_wind, city_district = prepare_wind_data(location=location)
+                    gdf_wind, city_district = prepare_wind_data(location=location, mastr_db_path=mastr_db_path)
                     gdf_wind = wind_turbine_matching(gdf_wind)
                     test_data, meta, inputs = pvlib.iotools.get_pvgis_hourly(city_district.centroid.y, 
                                                          city_district.centroid.x, 
