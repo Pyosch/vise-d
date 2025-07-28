@@ -1,4 +1,5 @@
 import logging
+import os
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
@@ -9,9 +10,12 @@ import math
 import random
 import matplotlib.pyplot as plt
 from windpowerlib import WindTurbine, ModelChain
+from windpowerlib import data as wt
 
 from vpplib import Photovoltaic, WindPower, UserProfile, Environment
 from mastr_preprocessing import prepare_solar_data, prepare_wind_data
+
+path_to_power_curve = os.path.join(os.path.dirname(__file__), 'median_windpower_curve.csv')
 
 def revise_power_values(gdf):
     """
@@ -396,25 +400,46 @@ def init_windturbines_mastr(gdf,
     """
     
     windturbines_dict = {}
+    wt_data = wt.get_turbine_types(print_out=False)
     
     for i in gdf.index:
-        windturbines_dict[gdf.loc[i, 'EinheitMastrNummer']] = WindPower(
-            unit="kW",
-            identifier=gdf.loc[i, 'EinheitMastrNummer'],
-            environment=environment,
-            turbine_type=gdf.loc[i, 'WPLTurbine'],
-            hub_height=gdf.loc[i, 'Nabenhoehe'],
-            rotor_diameter=gdf.loc[i, 'Rotordurchmesser'],
-            fetch_curve = 'power_curve',
-            data_source="oedb",
-            wind_speed_model=wind_speed_model,
-            density_model=density_model,
-            temperature_model=temperature_model,
-            power_output_model=power_output_model,
-            density_correction=density_correction,
-            obstacle_height=obstacle_height,
-            hellman_exp=hellman_exp,
-            )
+        if wt_data.loc[wt_data.turbine_type == gdf.loc[i, 'WPLTurbine']].has_power_curve.item() == True:
+            windturbines_dict[gdf.loc[i, 'EinheitMastrNummer']] = WindPower(
+                unit="kW",
+                identifier=gdf.loc[i, 'EinheitMastrNummer'],
+                environment=environment,
+                turbine_type=gdf.loc[i, 'WPLTurbine'],
+                hub_height=gdf.loc[i, 'Nabenhoehe'],
+                rotor_diameter=gdf.loc[i, 'Rotordurchmesser'],
+                fetch_curve = 'power_curve',
+                data_source="oedb",
+                wind_speed_model=wind_speed_model,
+                density_model=density_model,
+                temperature_model=temperature_model,
+                power_output_model=power_output_model,
+                density_correction=density_correction,
+                obstacle_height=obstacle_height,
+                hellman_exp=hellman_exp,
+                )
+        else:
+            windturbines_dict[gdf.loc[i, 'EinheitMastrNummer']] = WindPower(
+                unit="kW",
+                identifier=gdf.loc[i, 'EinheitMastrNummer'],
+                environment=environment,
+                turbine_type=gdf.loc[i, 'WPLTurbine'],
+                hub_height=gdf.loc[i, 'Nabenhoehe'],
+                rotor_diameter=gdf.loc[i, 'Rotordurchmesser'],
+                fetch_curve = 'power_curve',
+                data_source=path_to_power_curve, # Uses the median wind power curve instead of oedb data
+                wind_speed_model=wind_speed_model,
+                density_model=density_model,
+                temperature_model=temperature_model,
+                power_output_model=power_output_model,
+                density_correction=density_correction,
+                obstacle_height=obstacle_height,
+                hellman_exp=hellman_exp,
+                )
+            
 
         
     return windturbines_dict
@@ -460,11 +485,13 @@ def aggregate_wind_time_series(gen_dict):
 
 
 if __name__ == "__main__":
+    
+    mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
     location = 'Jüchen'
     start = "2015-07-07 00:00:00"
     end = "2015-07-07 23:45:00"
-    
-    gdf_solar, city_district = prepare_solar_data(location=location)
+
+    gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
     gdf_solar = revise_power_values(gdf_solar)
     ref_env = Environment(start=start, end=end)
     ref_env.get_dwd_pv_data(lat=city_district.lat, 
