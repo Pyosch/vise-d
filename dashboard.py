@@ -955,7 +955,7 @@ def Solar_Installation_Mastr():
             try:
                 # Get data from prepare_solar_data
                 with st.spinner("Loading data..."):
-                    gdf_solar, city_district = prepare_solar_data(location=location)
+                    gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
 
                 # Create scatter map
                 fig = px.scatter_mapbox(
@@ -1185,7 +1185,7 @@ def energy_generation_solar():
     st.title("Energy Generation from Solar Installations")
     
     # Fetch unique locations for dropdown
-    unique_locations = get_unique_solar_locations()
+    unique_locations = get_unique_solar_locations(mastr_db_path=mastr_db_path)
 
     # Dropdown for location selection
     location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
@@ -1195,7 +1195,7 @@ def energy_generation_solar():
                 try:
                     start = "2015-07-07 00:00:00"
                     end = "2015-07-07 23:45:00"
-                    gdf_solar, city_district = prepare_solar_data(location=location)
+                    gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
                     gdf_solar = revise_power_values(gdf_solar)
                     ref_env = Environment(start=start, end=end)
                     ref_env.get_dwd_pv_data(lat=city_district.lat, 
@@ -1283,12 +1283,23 @@ def wind_energy_generation():
     
                     windturbines_dict = init_windturbines_mastr(gdf_wind, environment=ref_env)
                     prepare_wind_time_series_mastr(windturbines_dict)
-                    windturbines_aggregated = aggregate_wind_time_series(windturbines_dict)
+                    
+                    # Plot simulation results
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    for name, windturbine in windturbines_dict.items():
 
-                 
+                        try:
+                            ax.plot(windturbine.timeseries, label=name)
+                        except Exception as plot_error:
+                            st.error(f"Failed to plot {name}: {plot_error}")
 
+                    ax.set_title("Wind Power Generation")
+                    ax.set_xlabel("Time")
+                    ax.set_ylabel("Power (kW)")
+                    ax.legend()
+                    plt.tight_layout()
+                    st.pyplot(fig)
 
-                
                 except Exception as e:
                     st.error(f"Simulation failed: {e}")
 
