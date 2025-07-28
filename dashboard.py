@@ -1296,7 +1296,7 @@ def wind_energy_generation():
                     ax.set_title("Wind Power Generation")
                     ax.set_xlabel("Time")
                     ax.set_ylabel("Power (kW)")
-                    ax.legend()
+                    ax.legend(title='Wind Turbines')
                     plt.tight_layout()
                     st.pyplot(fig)
 

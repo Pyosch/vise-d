@@ -589,7 +589,7 @@ if __name__ == "__main__":
     plt.title('Wind Energy Generation Time Series')
     plt.xlabel('Time')
     plt.ylabel('Power (kW)')
-    plt.legend(title='Wind Turbines')
+    plt.legend(title='Wind Turbines', loc='lower center', bbox_to_anchor=(0.5, -0.8), ncol=3)
         
     plt.show()
     
