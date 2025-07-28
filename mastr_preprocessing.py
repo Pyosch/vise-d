@@ -96,7 +96,7 @@ def fetch_solar(Ort=None, solar_columns=None, mastr_db_path=os.path.join(os.path
 
     return df_solar
 
-def prepare_solar_data(location='Essen', mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
+def prepare_solar_data(location='Essen', mastr_db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))):
 
     try:
             df_solar = fetch_solar(Ort=location, mastr_db_path=mastr_db_path)
@@ -117,7 +117,7 @@ def prepare_solar_data(location='Essen', mastr_db_path="C:/Users/mashu/.open-MaS
             raise Exception(f"Error preparing data for {location}: {str(e)}")
 
 
-def get_unique_solar_locations(mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
+def get_unique_solar_locations(mastr_db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))):
     try:
         # Connect to the database
         conn = sqlite3.connect(mastr_db_path)
@@ -166,7 +166,7 @@ def fetch_wind(Ort=None, wind_columns=None, mastr_db_path=os.path.join(os.path.d
                       mastr_db_path=mastr_db_path
                       )
 
-def prepare_wind_data(location='Essen', mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
+def prepare_wind_data(location='Essen', mastr_db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))):
 
     try:
             df_wind = fetch_wind(Ort=location, mastr_db_path=mastr_db_path)
@@ -187,7 +187,7 @@ def prepare_wind_data(location='Essen', mastr_db_path="C:/Users/mashu/.open-MaSt
     except Exception as e:
             raise Exception(f"Error preparing data for {location}: {str(e)}")
 
-def get_unique_wind_locations(mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
+def get_unique_wind_locations(mastr_db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))):
     try:
         # Connect to the database
         conn = sqlite3.connect(mastr_db_path)
@@ -260,7 +260,7 @@ def fetch_storage(Ort=None, storage_columns=None, mastr_db_path=os.path.join(os.
     
     return df_storage
 
-def prepare_storage_data(location='Essen', mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
+def prepare_storage_data(location='Essen', mastr_db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))):
     
     try:
             df_storage = fetch_storage(Ort=location, mastr_db_path=mastr_db_path)
@@ -281,7 +281,7 @@ def prepare_storage_data(location='Essen', mastr_db_path="C:/Users/mashu/.open-M
     except Exception as e:
             raise Exception(f"Error preparing data for {location}: {str(e)}")
 
-def get_unique_storage_locations(mastr_db_path="C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db"):
+def get_unique_storage_locations(mastr_db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))):
     try:
         # Connect to the database
         conn = sqlite3.connect(mastr_db_path)
