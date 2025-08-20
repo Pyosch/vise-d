@@ -59,7 +59,16 @@ from mastr_preprocessing import get_unique_solar_locations, get_unique_wind_loca
 mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
 # mastr_db_path = 'C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'
 
-
+# =============================================================================
+# PERFORMANCE CONFIGURATION
+# =============================================================================
+# Configure caching TTL (Time To Live) values for different operations
+CACHE_CONFIG = {
+    'DATA_LOAD_TTL': 3600,      # 1 hour for static data files
+    'DATABASE_TTL': 1800,       # 30 minutes for database queries  
+    'VISUALIZATION_TTL': 600,   # 10 minutes for plots and maps
+    'ENVIRONMENT_TTL': 3600,    # 1 hour for vpplib Environment objects
+}
 
 st.set_page_config(page_title='VISE-D Dashboard', 
                     page_icon=':bar_chart:',
@@ -67,16 +76,120 @@ st.set_page_config(page_title='VISE-D Dashboard',
                     initial_sidebar_state='expanded'
                     )
 
+# Add cache management in sidebar
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("**⚡ Performance**")
+    if st.button("🗑️ Clear Cache", help="Clear all cached data to free memory"):
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        st.success("✅ Cache cleared!")
+        st.rerun()
+
 st.write('Willkommen beim VISE-D Dashboard! Die Seite befindet sich noch in der Entwicklung.')
 
+# =============================================================================
+# CACHED DATA LOADING FUNCTIONS
+# =============================================================================
 
-st.cache_data
-st.cache_resource
-# Load data
-#conn = st.connection('gcs', type=FilesConnection)
-#df = conn.read("vise-d/240912_inputs_online_tool.csv", input_format="csv", ttl=600)
-#df = conn.read("vise-d/example_data_10000.csv", input_format="csv", ttl=600)
-df = pd.read_csv('./data/figures/example_data_10000.csv')
+@st.cache_data(ttl=CACHE_CONFIG['DATA_LOAD_TTL'])
+def load_example_data():
+    """Load example data with caching for performance"""
+    try:
+        return pd.read_csv('./data/figures/example_data_10000.csv')
+    except FileNotFoundError:
+        st.error("❌ Example data file not found. Please check the file path.")
+        return pd.DataFrame()  # Return empty DataFrame as fallback
+
+@st.cache_data(ttl=CACHE_CONFIG['DATABASE_TTL'])
+def get_cached_unique_locations(location_type: str, mastr_db_path: str):
+    """Get unique locations with caching to avoid repeated database queries"""
+    try:
+        if location_type == "solar":
+            return get_unique_solar_locations(mastr_db_path=mastr_db_path)
+        elif location_type == "wind":
+            return get_unique_wind_locations(mastr_db_path=mastr_db_path)
+        elif location_type == "storage":
+            return get_unique_storage_locations(mastr_db_path=mastr_db_path)
+        else:
+            return []
+    except Exception as e:
+        st.error(f"❌ Failed to load {location_type} locations: {str(e)}")
+        return []
+
+@st.cache_data(ttl=CACHE_CONFIG['DATABASE_TTL'])
+def get_cached_mastr_data(location: str, data_type: str, mastr_db_path: str):
+    """Cache expensive MaStR database operations"""
+    try:
+        if data_type == "solar":
+            return prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
+        elif data_type == "wind":
+            return prepare_wind_data(location=location, mastr_db_path=mastr_db_path)
+        elif data_type == "storage":
+            return prepare_storage_data(location=location, mastr_db_path=mastr_db_path)
+        else:
+            return None, None
+    except Exception as e:
+        st.error(f"❌ Failed to load {data_type} data for {location}: {str(e)}")
+        return None, None
+
+@st.cache_data(ttl=CACHE_CONFIG['VISUALIZATION_TTL'])
+def create_cached_violin_plot(df, ev_penetration, curtailment, selected_grid_type, 
+                             selected_hp_diffusion, selected_pv_storage_diffusion,
+                             selected_wholesale_tariff, selected_grid_usage_fees):
+    """Cache violin plot generation for better performance"""
+    df_selected = df[(df['diffusion_evs'] == ev_penetration) 
+                    & (df['curtailment'] == curtailment) 
+                    & (df['grid_type'] == selected_grid_type)
+                    & (df['diffusion_hps'] == selected_hp_diffusion)
+                    & (df['diffusion_pv_storage'] == selected_pv_storage_diffusion)
+                    & (df['tariff_wholesale'] == selected_wholesale_tariff)
+                    & (df['tariff_grid_usage_fee'] == selected_grid_usage_fees)
+                    ]
+    
+    return px.violin(df_selected, 
+                    y='value', 
+                    box=True, 
+                    points="all"
+                    )
+
+@st.cache_resource(ttl=CACHE_CONFIG['ENVIRONMENT_TTL'])
+def get_cached_environment(start: str, end: str, lat: float = None, lon: float = None):
+    """Cache expensive Environment operations"""
+    try:
+        env = Environment(start=start, end=end)
+        if lat is not None and lon is not None:
+            env.get_dwd_pv_data(lat=lat, lon=lon)
+        return env
+    except Exception as e:
+        st.error(f"❌ Failed to create environment: {str(e)}")
+        return None
+
+@st.cache_data(ttl=CACHE_CONFIG['VISUALIZATION_TTL'])
+def create_cached_scatter_map(gdf_data, lat_col: str, lon_col: str, hover_data: list, 
+                             center_lat: float, center_lon: float, color: str = 'red',
+                             title: str = "Installation Map"):
+    """Cache expensive map creation operations"""
+    try:
+        fig = px.scatter_mapbox(
+            gdf_data,
+            lat=lat_col,
+            lon=lon_col,
+            size_max=45,
+            color_discrete_sequence=[color],
+            zoom=10,
+            center={"lat": center_lat, "lon": center_lon},
+            mapbox_style='open-street-map',
+            hover_data=hover_data,
+            title=title
+        )
+        return fig
+    except Exception as e:
+        st.error(f"❌ Failed to create map: {str(e)}")
+        return None
+
+# Load cached data
+df = load_example_data()
 
 
 def update_violin_plot(df,
@@ -87,22 +200,12 @@ def update_violin_plot(df,
                        selected_pv_storage_diffusion,
                        selected_wholesale_tariff, 
                        selected_grid_usage_fees):
-             
-    df_selected = df[(df['diffusion_evs'] == ev_penetration) 
-                    & (df['curtailment'] == curtailment) 
-                    & (df['grid_type'] == selected_grid_type)
-                    & (df['diffusion_hps'] == selected_hp_diffusion)
-                    & (df['diffusion_pv_storage'] == selected_pv_storage_diffusion)
-                    & (df['tariff_wholesale'] == selected_wholesale_tariff)
-                    & (df['tariff_grid_usage_fee'] == selected_grid_usage_fees)
-                    ]
-    
-    fig = px.violin(df_selected, 
-                    y='value', 
-                    box=True, 
-                    points="all"
-                    )
-    return fig
+    """Updated to use cached plotting function"""           
+    return create_cached_violin_plot(
+        df, ev_penetration, curtailment, selected_grid_type,
+        selected_hp_diffusion, selected_pv_storage_diffusion,
+        selected_wholesale_tariff, selected_grid_usage_fees
+    )
 
 
 def violin_plot():
@@ -972,10 +1075,10 @@ def solar_installation_mastr():
     showing their locations, capacity, and technical specifications.
     """)
 
-    # Enhanced error handling for database operations
+    # Enhanced error handling for database operations with caching
     try:
         with st.spinner("🔄 Loading available locations from database..."):
-            unique_locations = get_unique_solar_locations(mastr_db_path=mastr_db_path)
+            unique_locations = get_cached_unique_locations("solar", mastr_db_path)
         
         if not unique_locations:
             st.error("❌ No locations available in the database")
@@ -1024,11 +1127,11 @@ def solar_installation_mastr():
             status_text = st.empty()
             
             try:
-                # Step 1: Load data
+                # Step 1: Load data with caching
                 status_text.text("🔄 Loading solar installation data...")
                 progress_bar.progress(20)
                 
-                gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
+                gdf_solar, city_district = get_cached_mastr_data(location, "solar", mastr_db_path)
                 
                 # Validate loaded data
                 if gdf_solar is None or len(gdf_solar) == 0:
@@ -1039,18 +1142,15 @@ def solar_installation_mastr():
                 progress_bar.progress(40)
                 status_text.text("🗺️ Creating interactive map...")
                 
-                # Step 2: Create visualization
-                fig = px.scatter_mapbox(
+                # Step 2: Create visualization with caching
+                fig = create_cached_scatter_map(
                     gdf_solar,
-                    lat='Breitengrad',
-                    lon='Laengengrad',
-                    size_max=45,
-                    color_discrete_sequence=['red'],
-                    zoom=10,
-                    center={"lat": city_district.lat.item(),  
-                            "lon": city_district.lon.item()},
-                    mapbox_style='open-street-map',
+                    lat_col='Breitengrad',
+                    lon_col='Laengengrad',
                     hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
+                    center_lat=city_district.lat.item(),
+                    center_lon=city_district.lon.item(),
+                    color='red',
                     title=f"Solar Installations in {location}"
                 )
                 
@@ -1345,8 +1445,8 @@ from mastr_energy_generation import pick_pvsystem_mastr, prepare_pv_time_series_
 def energy_generation_solar():
     st.title("Energy Generation from Solar Installations")
     
-    # Fetch unique locations for dropdown
-    unique_locations = get_unique_solar_locations(mastr_db_path=mastr_db_path)
+    # Fetch unique locations for dropdown with caching
+    unique_locations = get_cached_unique_locations("solar", mastr_db_path)
 
     # Dropdown for location selection
     location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
@@ -1356,7 +1456,7 @@ def energy_generation_solar():
                 try:
                     start = "2015-07-07 00:00:00"
                     end = "2015-07-07 23:45:00"
-                    gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
+                    gdf_solar, city_district = get_cached_mastr_data(location, "solar", mastr_db_path)
                     gdf_solar = revise_power_values(gdf_solar)
                     ref_env = Environment(start=start, end=end)
                     ref_env.get_dwd_pv_data(lat=city_district.lat, 
