@@ -23,7 +23,7 @@ from vpplib import ElectricalEnergyStorage
 from Technologies.bev import battery_electric_vehicle_settings
 from Technologies.HP_SETTINGS import heatpump_settings
 from Technologies.Photovolts import pv_settings
-from Technologies.WindEnergie import wind
+from Technologies.wind_energy import wind
 from Technologies.ElectricalStorage import electrical_storage
 
 from mastr_preprocessing import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
@@ -1136,7 +1136,7 @@ def Storage_Installation_Mastr():
                     gdf_storage[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad', 'Ort']]
                 )
 
-            # Create Pie Chart for EinheitBetriebsstatus Distribution
+            # Create Pie Chart for Operating Status Distribution
             tech_counts = gdf_storage['EinheitBetriebsstatus'].value_counts()
             pie_fig = px.pie(
                     values=tech_counts.values,
@@ -1301,8 +1301,8 @@ def wind_energy_generation():
 
 
 pg = st.navigation([
-    st.Page(Forschungsergebnisse, title="Forschungsergebnisse"),
-    st.Page(Netzberechnungen, title="Netzberechnungen"),
+    st.Page(Forschungsergebnisse, title="Research Results"),
+    st.Page(Netzberechnungen, title="Network Calculations"),
     st.Page(Violinplot, title="Violin Plot"), 
     st.Page(BEV_settings, title="BEV Settings"),
     st.Page(hydrogen_electrolyzer_settings, title="Hydrogen Electrolyzer"),
