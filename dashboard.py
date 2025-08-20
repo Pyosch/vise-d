@@ -28,6 +28,32 @@ from technologies.electrical_storage import electrical_storage
 
 from mastr_preprocessing import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
 from mastr_preprocessing import fetch_solar, fetch_wind, fetch_storage
+
+# Import validation and error handling utilities with fallback
+try:
+    from utils.validation import InputValidator, validate_energy_system_inputs, display_validation_results, validate_location_selection
+    from utils.error_handling import (
+        handle_database_errors, handle_api_errors, handle_data_processing_errors, 
+        safe_file_operation, log_user_action, show_loading_with_progress
+    )
+    ADVANCED_VALIDATION_AVAILABLE = True
+except ImportError:
+    # Fallback if utils are not available
+    st.warning("⚠️ Advanced validation and error handling features not fully available")
+    ADVANCED_VALIDATION_AVAILABLE = False
+    
+    # Define minimal fallback functions
+    def log_user_action(action, details=None):
+        pass
+    
+    def handle_database_errors(func):
+        return func
+    
+    def handle_api_errors(func):
+        return func
+    
+    def handle_data_processing_errors(func):
+        return func
 from mastr_preprocessing import get_unique_solar_locations, get_unique_wind_locations, get_unique_storage_locations
 
 mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
@@ -937,23 +963,83 @@ def thermal_storage_settings():
 
 
 def solar_installation_mastr():
-    st.title("Solar Installations Dashboard")
+    st.title("☀️ Solar Installations Dashboard")
+    
+    st.markdown("""
+    **Explore solar installations from the German MaStR (Market Master Data Register)**
+    
+    This dashboard visualizes real solar power installations registered in Germany, 
+    showing their locations, capacity, and technical specifications.
+    """)
 
-    # Fetch unique locations for dropdown
-    unique_locations = get_unique_solar_locations(mastr_db_path=mastr_db_path)
+    # Enhanced error handling for database operations
+    try:
+        with st.spinner("🔄 Loading available locations from database..."):
+            unique_locations = get_unique_solar_locations(mastr_db_path=mastr_db_path)
+        
+        if not unique_locations:
+            st.error("❌ No locations available in the database")
+            st.info("💡 Please check if the MaStR database file exists and contains data.")
+            return
+            
+    except Exception as e:
+        st.error("🗄️ **Database Connection Error**")
+        st.error("Unable to load location data from the MaStR database.")
+        
+        with st.expander("🔧 **Troubleshooting Steps**"):
+            st.markdown("""
+            1. **Check database file**: Ensure `data/open-mastr.db` exists
+            2. **Verify file permissions**: Make sure the database file is readable
+            3. **Database integrity**: The database file may be corrupted
+            4. **Restart application**: Try refreshing the page
+            """)
+        
+        with st.expander("🔍 **Technical Details**"):
+            st.code(str(e))
+        return
 
-    # Dropdown for location selection
-    location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
+    # Input validation for location selection
+    st.markdown("### 📍 **Location Selection**")
+    location = st.selectbox(
+        "Select city", 
+        options=unique_locations, 
+        index=unique_locations.index("Essen") if "Essen" in unique_locations else 0,
+        help="Choose a city to visualize its solar installations"
+    )
+    
+    # Validate location selection
+    if not location:
+        st.warning("⚠️ Please select a location from the dropdown")
+        return
+    
+    if location not in unique_locations:
+        st.error(f"❌ Selected location '{location}' is not available in the database")
+        return
 
-    # Button to trigger visualization
-    if st.button("Visualize"):
+    # Enhanced visualization button with progress tracking
+    if st.button("🗺️ Visualize Solar Installations", key="visualize_solar"):
         if location:
+            # Progress tracking
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
             try:
-                # Get data from prepare_solar_data
-                with st.spinner("Loading data..."):
-                    gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
-
-                # Create scatter map
+                # Step 1: Load data
+                status_text.text("🔄 Loading solar installation data...")
+                progress_bar.progress(20)
+                
+                gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
+                
+                # Validate loaded data
+                if gdf_solar is None or len(gdf_solar) == 0:
+                    st.error(f"❌ No solar installations found for {location}")
+                    st.info("💡 Try selecting a different location or check if the database contains data for this city.")
+                    return
+                
+                progress_bar.progress(40)
+                status_text.text("🗺️ Creating interactive map...")
+                
+                # Step 2: Create visualization
                 fig = px.scatter_mapbox(
                     gdf_solar,
                     lat='Breitengrad',
@@ -965,43 +1051,122 @@ def solar_installation_mastr():
                             "lon": city_district.lon.item()},
                     mapbox_style='open-street-map',
                     hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
-                )
-
-                # Create choropleth map
-                choropleth = px.choropleth_mapbox(
-                    city_district,
-                    geojson=city_district.geometry,
-                    locations=city_district.index,
-                    color=None,
-                    opacity=0.3,
-                    labels={location: 'City District'},
-                )
-
-                # Add choropleth trace to the figure
-                fig.add_trace(choropleth.data[0])
-
-                # Move the choropleth trace to the background
-                fig.data = fig.data[::-1]
-
-                # Update layout
-                fig.update_layout(
-                    margin={"r":0, "t":0, "l":0, "b":0},
+                    title=f"Solar Installations in {location}"
                 )
                 
-                # Display the plot in Streamlit
+                progress_bar.progress(60)
+                status_text.text("🏘️ Adding district boundaries...")
+
+                # Step 3: Create choropleth map with error handling
+                try:
+                    choropleth = px.choropleth_mapbox(
+                        city_district,
+                        geojson=city_district.geometry,
+                        locations=city_district.index,
+                        color=None,
+                        opacity=0.3,
+                        labels={location: 'City District'},
+                    )
+                    
+                    # Add choropleth trace to the figure
+                    fig.add_trace(choropleth.data[0])
+                    
+                except Exception as choropleth_error:
+                    st.warning("⚠️ Could not load district boundaries, showing installations only")
+                    st.write("District boundary error:", str(choropleth_error))
+                
+                progress_bar.progress(80)
+                status_text.text("📊 Generating statistics...")
+                
+                # Step 4: Calculate and display statistics
+                total_installations = len(gdf_solar)
+                total_capacity_brutto = gdf_solar['Bruttoleistung'].sum() / 1000  # Convert to MW
+                total_capacity_netto = gdf_solar['Nettonennleistung'].sum() / 1000  # Convert to MW
+                avg_capacity = gdf_solar['Bruttoleistung'].mean()
+                
+                progress_bar.progress(100)
+                status_text.text("✅ Visualization complete!")
+                
+                # Display results
+                st.success(f"✅ Successfully loaded {total_installations} solar installations for {location}")
+                
+                # Key metrics
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Installations", f"{total_installations:,}")
+                with col2:
+                    st.metric("Total Capacity (Gross)", f"{total_capacity_brutto:.1f} MW")
+                with col3:
+                    st.metric("Total Capacity (Net)", f"{total_capacity_netto:.1f} MW")
+                with col4:
+                    st.metric("Average Capacity", f"{avg_capacity:.1f} kW")
+                
+                # Display the map
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Display DataFrame below map
-                st.subheader("Plotted Solar Installations")
-                st.dataframe(
-                    gdf_solar[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']]
-                )
+                # Additional data insights
+                with st.expander("📊 **Detailed Statistics**"):
+                    st.subheader("Capacity Distribution")
+                    capacity_hist = px.histogram(
+                        gdf_solar, 
+                        x='Bruttoleistung',
+                        nbins=20,
+                        title="Distribution of Solar Installation Capacities",
+                        labels={'Bruttoleistung': 'Gross Capacity (kW)', 'count': 'Number of Installations'}
+                    )
+                    st.plotly_chart(capacity_hist, use_container_width=True)
+                    
+                    st.subheader("Installation Details")
+                    st.dataframe(
+                        gdf_solar[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']].head(10),
+                        use_container_width=True
+                    )
+                
+                # Clear progress indicators
+                progress_bar.empty()
+                status_text.empty()
                 
             except Exception as e:
-                st.error(f"Failed to visualize data for {location}: {str(e)}")
-        else:
-            st.warning("Please select a city.")
-
+                st.error("❌ **Visualization Failed**")
+                st.error(f"An error occurred while creating the visualization: {str(e)}")
+                
+                with st.expander("🔧 **Troubleshooting Steps**"):
+                    st.markdown("""
+                    1. **Check location data**: Verify the selected location has solar installations
+                    2. **Database connectivity**: Ensure the MaStR database is accessible
+                    3. **Data integrity**: The location data may be corrupted
+                    4. **Try another location**: Some cities may have incomplete data
+                    """)
+                
+                with st.expander("🔍 **Technical Details**"):
+                    st.code(str(e))
+                
+                # Clear progress indicators on error
+                progress_bar.empty()
+                status_text.empty()
+    
+    # Information panel
+    with st.expander("ℹ️ **About This Dashboard**"):
+        st.markdown("""
+        **Data Source**: German Market Master Data Register (MaStR)
+        
+        **What you can see**:
+        - 📍 Exact locations of registered solar installations
+        - ⚡ Power capacity (gross and net) for each installation
+        - 🏘️ District boundaries and administrative divisions
+        - 📊 Statistical distribution of installation sizes
+        
+        **Technical Notes**:
+        - Red dots represent individual solar installations
+        - Hover over installations to see detailed information
+        - District boundaries show administrative divisions
+        - Capacity values are from official registry data
+        """)
+        
+    # Show data source information
+    st.markdown("---")
+    st.markdown("**📊 Data source**: German Market Master Data Register (Marktstammdatenregister - MaStR)")
+    st.markdown("**🗓️ Last updated**: Based on available database content")
 
 def wind_installation_mastr():
     st.title("Wind Installations Dashboard")
