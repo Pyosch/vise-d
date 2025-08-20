@@ -61,6 +61,18 @@ The initial assessment was overly pessimistic due to IDE configuration issues th
 - **Dependencies**: Added `vpplib==0.0.5` to requirements.txt for reproducible builds
 - **Project Status**: Updated roadmap to reflect functional state
 
+### ✅ **Fixed: Naming Standardization (August 20, 2025)**
+- **UI Translation**: Converted major German UI elements to English (navigation, research content)
+- **File Structure**: Renamed `Technologies/WindEnergie.py` → `Technologies/wind_energy.py`
+- **Python Conventions**: Standardized all folder and file names to PEP 8 standards
+  - `Technologies/` → `technologies/` (lowercase package name)
+  - `ElectricalStorage.py` → `electrical_storage.py` (snake_case)
+  - `HP_SETTINGS.py` → `heat_pump_settings.py` (descriptive snake_case)
+  - `Photovolts.py` → `photovoltaics.py` (proper terminology)
+- **Documentation**: Translated 125+ lines of German research content to professional English
+- **Comments**: Updated German code comments to English
+- **Preservation**: Maintained German database column names for MaStR compatibility
+
 ## Remaining Areas for Improvement
 
 ### 1. **✅ Resolved: Core Functionality**
@@ -122,7 +134,10 @@ The initial assessment was overly pessimistic due to IDE configuration issues th
 
 #### 2.2 Code Quality Enhancement
 - [ ] Add proper docstrings to all functions
-- [ ] Standardize naming conventions (German → English)
+- [x] Standardize naming conventions (German → English)
+- [ ] Standardize function names (remaining German function names → English)
+- [ ] Standardize internal variable names for consistency
+- [ ] Translate remaining German error messages to English
 - [ ] Remove debugging print statements
 - [ ] Add type hints where beneficial
 
@@ -130,6 +145,8 @@ The initial assessment was overly pessimistic due to IDE configuration issues th
 - [ ] Create comprehensive README.md
 - [ ] Add installation instructions
 - [ ] Document environment setup requirements
+- [ ] Fully internationalize documentation (German → English)
+- [ ] Update all remaining German documentation files
 
 ### Phase 3: Architecture Refactoring (Week 3-6)
 
@@ -189,8 +206,11 @@ vise-d/
 
 #### 5.2 Multi-language Support
 - [ ] Internationalization framework
-- [ ] English translation for all UI elements
+- [x] English translation for major UI elements (navigation, research content, section headers)
+- [ ] Complete translation of remaining German function names and variables
+- [ ] Complete translation of remaining German error messages  
 - [ ] Configurable language settings
+- [ ] Full documentation internationalization
 
 #### 5.3 Advanced Analytics
 - [ ] Add scenario comparison functionality
@@ -219,12 +239,13 @@ vise-d/
 2. **Undefined variables** (FIXED: All variable references corrected)  
 3. **Import errors** (FIXED: All imports working correctly)
 4. **Basic navigation** (FIXED: Streamlit navigation functional)
+5. **Mixed language codebase** (LARGELY FIXED: UI, documentation, and file structure now in English with PEP 8 compliance)
 
 ### **Current High Priority Technical Debt**
 1. **Monolithic dashboard.py** (Effort: High, Impact: High) - 1,320 lines need modularization
-2. **Mixed language codebase** (Effort: Medium, Impact: Medium) - German/English inconsistency
-3. **No testing framework** (Effort: High, Impact: High) - Missing automated testing
-4. **Hardcoded configurations** (Effort: Medium, Impact: Medium) - Need configuration management
+2. **No testing framework** (Effort: High, Impact: High) - Missing automated testing
+3. **Hardcoded configurations** (Effort: Medium, Impact: Medium) - Need configuration management
+4. **Remaining naming inconsistencies** (Effort: Low, Impact: Low) - Function names and internal variables still mixed German/English
 
 ### **Medium Priority Technical Debt**
 1. **Technologies/ folder redundancy** (Effort: Medium, Impact: Medium) - Potential overlap with vpplib

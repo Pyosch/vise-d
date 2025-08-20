@@ -20,11 +20,11 @@ from vpplib.photovoltaic import Photovoltaic
 from vpplib.wind_power import WindPower
 from vpplib import ElectricalEnergyStorage
 
-from Technologies.bev import battery_electric_vehicle_settings
-from Technologies.HP_SETTINGS import heatpump_settings
-from Technologies.Photovolts import pv_settings
-from Technologies.wind_energy import wind
-from Technologies.ElectricalStorage import electrical_storage
+from technologies.bev import battery_electric_vehicle_settings
+from technologies.heat_pump_settings import heatpump_settings
+from technologies.photovoltaics import pv_settings
+from technologies.wind_energy import wind
+from technologies.electrical_storage import electrical_storage
 
 from mastr_preprocessing import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
 from mastr_preprocessing import fetch_solar, fetch_wind, fetch_storage
