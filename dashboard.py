@@ -1,6 +1,7 @@
 # Installing Relevant libraries
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 import datetime
 import streamlit as st
@@ -15,7 +16,6 @@ from vpplib.battery_electric_vehicle import BatteryElectricVehicle
 from vpplib.environment import Environment
 from vpplib.heat_pump import HeatPump
 from vpplib.user_profile import UserProfile
-from vpplib.environment import Environment
 from vpplib.photovoltaic import Photovoltaic
 from vpplib.wind_power import WindPower
 from vpplib import ElectricalEnergyStorage
@@ -345,8 +345,8 @@ def hydrogen_electrolyzer_settings():
 
         if submit:
             st.session_state.hydrogen_settings = {
-                "Power_Electrolyzer": power,
-                "Pressure_Hydrogen": pressure
+                "Power_Electrolyzer": power_electrolyzer,
+                "Pressure_Hydrogen": pressure_hydrogen
             }
 
     data = {
@@ -411,10 +411,6 @@ def hydrogen_electrolyzer_settings():
         ]
     }
 ))
-
-#import streamlit as st
-import plotly.graph_objects as go
-
 
 
 def heatpump_configuaration():
@@ -1304,20 +1300,21 @@ def wind_energy_generation():
                     st.error(f"Simulation failed: {e}")
 
 
-pg = st.navigation([st.Page(Forschungsergebnisse),
-                    st.Page(Netzberechnungen),
-                    st.Page(Violinplot), 
-                    st.Page(BEV_settings),
-                    st.Page(hydrogen_electrolyzer_settings),
-                    st.Page(heatpump_configuaration),
-                    st.Page(PV_configuration),
-                    st.Page(wind_configuration),
-                    st.Page(electrical_storage_configuration),
-                    st.Page(thermal_storage_settings),
-                    st.Page(Solar_Installation_Mastr),
-                    st.Page(Wind_Installation_Mastr),
-                    st.Page(Storage_Installation_Mastr),
-                    st.Page(energy_generation_solar),
-                    st.Page(wind_energy_generation),
-                    ])
+pg = st.navigation([
+    st.Page(Forschungsergebnisse, title="Forschungsergebnisse"),
+    st.Page(Netzberechnungen, title="Netzberechnungen"),
+    st.Page(Violinplot, title="Violin Plot"), 
+    st.Page(BEV_settings, title="BEV Settings"),
+    st.Page(hydrogen_electrolyzer_settings, title="Hydrogen Electrolyzer"),
+    st.Page(heatpump_configuaration, title="Heat Pump"),
+    st.Page(PV_configuration, title="PV Configuration"),
+    st.Page(wind_configuration, title="Wind Configuration"),
+    st.Page(electrical_storage_configuration, title="Electrical Storage"),
+    st.Page(thermal_storage_settings, title="Thermal Storage"),
+    st.Page(Solar_Installation_Mastr, title="Solar Installations"),
+    st.Page(Wind_Installation_Mastr, title="Wind Installations"),
+    st.Page(Storage_Installation_Mastr, title="Storage Installations"),
+    st.Page(energy_generation_solar, title="Solar Energy Generation"),
+    st.Page(wind_energy_generation, title="Wind Energy Generation"),
+])
 pg.run()
