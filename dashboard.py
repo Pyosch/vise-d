@@ -79,7 +79,7 @@ def update_violin_plot(df,
     return fig
 
 
-def Violinplot():
+def violin_plot():
     with st.sidebar:
         st.title('VISE-D')
         
@@ -91,9 +91,9 @@ def Violinplot():
         wholesale_tariff = df.tariff_wholesale.unique()
         grid_usage_fees = df.tariff_grid_usage_fee.unique()
         
-        selected_grid_type = st.selectbox('Netz Typ', grid_type)
+        selected_grid_type = st.selectbox('Grid Type', grid_type)
         selected_ev_diffusion = st.selectbox('EV Diffusion', ev_diffusion)
-        selected_hp_diffusion = st.selectbox('WP Diffusion', hp_diffusion)
+        selected_hp_diffusion = st.selectbox('Heat Pump Diffusion', hp_diffusion)
         selected_pv_storage_diffusion = st.selectbox('PV Speicher Diffusion', pv_storage_diffusion)
         selected_curtailment = st.selectbox('Curtailment', curtailment)
         selected_wholesale_tariff = st.selectbox('Wholesale Tariff', wholesale_tariff)
@@ -113,7 +113,7 @@ def Violinplot():
 
 
 
-def Forschungsergebnisse():
+def research_results():
     st.write('## Integration von E-Fahrzeugen in Verteilnetze - Untersuchung der Auswirkungen \
         verschiedener DSO-Eingriffsstrategien auf optimiertes Laden')
     st.write('### Kurzfassung')
@@ -215,7 +215,7 @@ def Forschungsergebnisse():
 
    
     
-def Netzberechnungen():
+def network_calculations():
     pp_networks()
     
 
@@ -236,7 +236,7 @@ if "bev_settings" not in st.session_state:
     }
 
 
-def BEV_settings():
+def bev_settings():
    
     """_summary_
     This function sets up the settings for the Battery Electric Vehicle (BEV) simulation.
@@ -413,7 +413,7 @@ def hydrogen_electrolyzer_settings():
 ))
 
 
-def heatpump_configuaration():
+def heatpump_configuration():
     
     """_summary_
     This function sets up the settings for the Heat Pump simulation.
@@ -522,7 +522,7 @@ def heatpump_configuaration():
 
  
     
-def PV_configuration(): 
+def pv_configuration(): 
     
     pv_settings(form_key_suffix="pv1")
            
@@ -936,7 +936,7 @@ def thermal_storage_settings():
 
 
 
-def Solar_Installation_Mastr():
+def solar_installation_mastr():
     st.title("Solar Installations Dashboard")
 
     # Fetch unique locations for dropdown
@@ -1003,7 +1003,7 @@ def Solar_Installation_Mastr():
             st.warning("Please select a city.")
 
 
-def Wind_Installation_Mastr():
+def wind_installation_mastr():
     st.title("Wind Installations Dashboard")
     
         # Fetch unique locations for dropdown
@@ -1073,7 +1073,7 @@ def Wind_Installation_Mastr():
 
 
 
-def Storage_Installation_Mastr():
+def storage_installation_mastr():
     st.title("Storage Installations Dashboard")
     
         # Fetch unique locations for dropdown
@@ -1301,19 +1301,19 @@ def wind_energy_generation():
 
 
 pg = st.navigation([
-    st.Page(Forschungsergebnisse, title="Research Results"),
-    st.Page(Netzberechnungen, title="Network Calculations"),
-    st.Page(Violinplot, title="Violin Plot"), 
-    st.Page(BEV_settings, title="BEV Settings"),
+    st.Page(research_results, title="Research Results"),
+    st.Page(network_calculations, title="Network Calculations"),
+    st.Page(violin_plot, title="Violin Plot"), 
+    st.Page(bev_settings, title="BEV Settings"),
     st.Page(hydrogen_electrolyzer_settings, title="Hydrogen Electrolyzer"),
-    st.Page(heatpump_configuaration, title="Heat Pump"),
-    st.Page(PV_configuration, title="PV Configuration"),
+    st.Page(heatpump_configuration, title="Heat Pump"),
+    st.Page(pv_configuration, title="PV Configuration"),
     st.Page(wind_configuration, title="Wind Configuration"),
     st.Page(electrical_storage_configuration, title="Electrical Storage"),
     st.Page(thermal_storage_settings, title="Thermal Storage"),
-    st.Page(Solar_Installation_Mastr, title="Solar Installations"),
-    st.Page(Wind_Installation_Mastr, title="Wind Installations"),
-    st.Page(Storage_Installation_Mastr, title="Storage Installations"),
+    st.Page(solar_installation_mastr, title="Solar Installations"),
+    st.Page(wind_installation_mastr, title="Wind Installations"),
+    st.Page(storage_installation_mastr, title="Storage Installations"),
     st.Page(energy_generation_solar, title="Solar Energy Generation"),
     st.Page(wind_energy_generation, title="Wind Energy Generation"),
 ])

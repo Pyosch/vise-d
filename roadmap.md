@@ -135,8 +135,8 @@ The initial assessment was overly pessimistic due to IDE configuration issues th
 #### 2.2 Code Quality Enhancement
 - [ ] Add proper docstrings to all functions
 - [x] Standardize naming conventions (German → English)
-- [ ] Standardize function names (remaining German function names → English)
-- [ ] Standardize internal variable names for consistency
+- [x] Standardize function names (remaining German function names → English)
+- [x] Standardize internal variable names for consistency
 - [ ] Translate remaining German error messages to English
 - [ ] Remove debugging print statements
 - [ ] Add type hints where beneficial

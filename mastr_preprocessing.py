@@ -31,7 +31,7 @@ def fetch_data(table_name, columns, filter_column=None, filter_values=None, mast
     
     return df
 
-def fetch_solar(Ort=None, solar_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+def fetch_solar(location=None, solar_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
     
     #Umrechnungswerte für die Ausrichtung und Neigung
     ausrichtung_mapping = {
@@ -86,7 +86,7 @@ def fetch_solar(Ort=None, solar_columns=None, mastr_db_path=os.path.join(os.path
     df_solar = fetch_data(table_name='solar_extended', 
                           columns=solar_columns, 
                           filter_column='Ort', 
-                          filter_values=Ort, 
+                          filter_values=location, 
                           mastr_db_path=mastr_db_path
                           )
     
@@ -99,7 +99,7 @@ def fetch_solar(Ort=None, solar_columns=None, mastr_db_path=os.path.join(os.path
 def prepare_solar_data(location='Essen', mastr_db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))):
 
     try:
-            df_solar = fetch_solar(Ort=location, mastr_db_path=mastr_db_path)
+            df_solar = fetch_solar(location=location, mastr_db_path=mastr_db_path)
             df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
             df_solar = df_solar.merge(df_grid_connections, 
                                       how='left', 
@@ -130,7 +130,7 @@ def get_unique_solar_locations(mastr_db_path=os.path.abspath(os.path.join(os.pat
     except Exception as e:
         raise Exception(f"Failed to fetch unique locations: {str(e)}")
 
-def fetch_wind(Ort=None, wind_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+def fetch_wind(location=None, wind_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
     
     if wind_columns is None:
         wind_columns = ['EinheitMastrNummer',
@@ -162,14 +162,14 @@ def fetch_wind(Ort=None, wind_columns=None, mastr_db_path=os.path.join(os.path.d
     return fetch_data(table_name='wind_extended', 
                       columns=wind_columns, 
                       filter_column='Ort', 
-                      filter_values=Ort, 
+                      filter_values=location, 
                       mastr_db_path=mastr_db_path
                       )
 
 def prepare_wind_data(location='Essen', mastr_db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))):
 
     try:
-            df_wind = fetch_wind(Ort=location, mastr_db_path=mastr_db_path)
+            df_wind = fetch_wind(location=location, mastr_db_path=mastr_db_path)
             df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
             df_wind = df_wind.merge(df_grid_connections, 
                                     how='left', 
@@ -218,7 +218,7 @@ def read_storage_units(mastr_db_path=os.path.join(os.path.dirname(__file__), 'da
     return storage_units
 
 
-def fetch_storage(Ort=None, storage_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
+def fetch_storage(location=None, storage_columns=None, mastr_db_path=os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db')):
     
     if storage_columns is None:
         storage_columns = ['EinheitMastrNummer',
@@ -246,7 +246,7 @@ def fetch_storage(Ort=None, storage_columns=None, mastr_db_path=os.path.join(os.
     df_storage = fetch_data(table_name='storage_extended', 
                             columns=storage_columns, 
                             filter_column='Ort', 
-                            filter_values=Ort, 
+                            filter_values=location, 
                             mastr_db_path=mastr_db_path
                             )
     
@@ -263,7 +263,7 @@ def fetch_storage(Ort=None, storage_columns=None, mastr_db_path=os.path.join(os.
 def prepare_storage_data(location='Essen', mastr_db_path=os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))):
     
     try:
-            df_storage = fetch_storage(Ort=location, mastr_db_path=mastr_db_path)
+            df_storage = fetch_storage(location=location, mastr_db_path=mastr_db_path)
             df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
             df_storage = df_storage.merge(df_grid_connections, 
                                           how='left', 
@@ -390,7 +390,7 @@ def add_centroids(gdf):
 
 if __name__ == '__main__':
     location = 'Jüchen'
-    # df_solar = fetch_solar(Ort=location)
+    # df_solar = fetch_solar(location=location)
     # gdf_solar = df_to_gdf(df_solar)
     
     gdf_solar, city_district = prepare_solar_data(location=location)
@@ -398,7 +398,7 @@ if __name__ == '__main__':
     # print(gdf_solar.head())
     # gdf_solar.explore()
     
-    # df_storage = fetch_storage(Ort=location)
+    # df_storage = fetch_storage(location=location)
     # df_storage_units = read_storage_units()
     # gdf_storage = df_to_gdf(df_storage)
     # gdf_storage = add_centroids(gdf_storage)
@@ -410,7 +410,7 @@ if __name__ == '__main__':
     #     for col in df_storage.columns:
     #         f.write(f"{col}\n")
 
-    # df_wind = fetch_wind(Ort=location)
+    # df_wind = fetch_wind(location=location)
     # gdf_wind = df_to_gdf(df_wind)
     # gdf_wind = add_centroids(gdf_wind)
     gdf_wind, city_district = prepare_wind_data(location=location)
