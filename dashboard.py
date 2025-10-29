@@ -166,13 +166,13 @@ def get_cached_environment(start: str, end: str, lat: float = None, lon: float =
         return None
 
 @st.cache_data(ttl=CACHE_CONFIG['VISUALIZATION_TTL'])
-def create_cached_scatter_map(gdf_data, lat_col: str, lon_col: str, hover_data: list, 
+def create_cached_scatter_map(_gdf_data, lat_col: str, lon_col: str, hover_data: list, 
                              center_lat: float, center_lon: float, color: str = 'red',
                              title: str = "Installation Map"):
     """Cache expensive map creation operations"""
     try:
         fig = px.scatter_mapbox(
-            gdf_data,
+            _gdf_data,
             lat=lat_col,
             lon=lon_col,
             size_max=45,
