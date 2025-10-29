@@ -1,4 +1,4 @@
-# Installing Relevant libraries
+﻿# Installing Relevant libraries
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -1271,173 +1271,438 @@ def solar_installation_mastr():
 def wind_installation_mastr():
     st.title("Wind Installations Dashboard")
     
-        # Fetch unique locations for dropdown
-    unique_locations = get_unique_wind_locations(mastr_db_path=mastr_db_path)
+    st.markdown("""
+    **Explore wind energy installations from the German MaStR (Market Master Data Register)**
+    
+    This dashboard visualizes real wind turbine installations registered in Germany, 
+    showing their locations, capacity, and technical specifications.
+    """)
 
-    # Dropdown for location selection
-    location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
+    # Enhanced error handling for database operations with caching
+    try:
+        with st.spinner("🔄 Loading available locations from database..."):
+            unique_locations = get_cached_unique_locations("wind", mastr_db_path)
+        
+        if not unique_locations:
+            st.error("❌ No locations available in the database")
+            st.info("💡 Please check if the MaStR database file exists and contains data.")
+            return
+            
+    except Exception as e:
+        st.error("🗄️ **Database Connection Error**")
+        st.error("Unable to load location data from the MaStR database.")
+        
+        with st.expander("🔧 **Troubleshooting Steps**"):
+            st.markdown("""
+            1. **Check database file**: Ensure `data/open-mastr.db` exists
+            2. **Verify file permissions**: Make sure the database file is readable
+            3. **Database integrity**: The database file may be corrupted
+            4. **Restart application**: Try refreshing the page
+            """)
+        
+        with st.expander("🔍 **Technical Details**"):
+            st.code(str(e))
+        return
 
-    # Button to trigger visualization
-    if st.button("Visualize"):
+    # Input validation for location selection
+    st.markdown("### 📍 **Location Selection**")
+    location = st.selectbox(
+        "Select city", 
+        options=unique_locations, 
+        index=unique_locations.index("Essen") if "Essen" in unique_locations else 0,
+        help="Choose a city to visualize its wind installations"
+    )
+    
+    # Validate location selection
+    if not location:
+        st.warning("⚠️ Please select a location from the dropdown")
+        return
+    
+    if location not in unique_locations:
+        st.error(f"❌ Selected location '{location}' is not available in the database")
+        return
+
+    # Enhanced visualization button with progress tracking
+    if st.button("🗺️ Visualize Wind Installations", key="visualize_wind"):
         if location:
-            # try:
-                # Get data 
-            with st.spinner("Loading data..."):
-                gdf_wind, city_district = prepare_wind_data(location=location, mastr_db_path=mastr_db_path)
-
-            # Create scatter map
-            fig = px.scatter_mapbox(
-                gdf_wind,
-                lat='Breitengrad',
-                lon='Laengengrad',
-                size_max=15,
-                color_discrete_sequence=['brown'],
-                zoom=10,
-                center={"lat": city_district.lat.item(),  
-                        "lon": city_district.lon.item()},
-                mapbox_style='open-street-map',
-                hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
-            )
-
-            # Create choropleth map
-            choropleth = px.choropleth_mapbox(
-                city_district,
-                geojson=city_district.geometry,
-                locations=city_district.index,
-                color=None,
-                opacity=0.3,
-                labels={location: 'City District'},
-            )
-
-            # Add choropleth trace to the figure
-            fig.add_trace(choropleth.data[0])
-
-            # Move the choropleth trace to the background
-            fig.data = fig.data[::-1]
-
-            # Update layout
-            fig.update_layout(
-                margin={"r":0, "t":0, "l":0, "b":0},
-            )
-
-            # Display the plot in Streamlit
-            st.plotly_chart(fig, use_container_width=True)
+            # Progress tracking
+            progress_bar = st.progress(0)
+            status_text = st.empty()
             
-            
-                # Display DataFrame below map
-            st.subheader("Plotted Wind Installations")
-            st.dataframe(
-                gdf_wind[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']]
+            try:
+                # Step 1: Load data with caching
+                status_text.text("🔄 Loading wind installation data...")
+                progress_bar.progress(20)
+                
+                gdf_wind, city_district = get_cached_mastr_data(location, "wind", mastr_db_path)
+                
+                # Validate loaded data
+                if gdf_wind is None or len(gdf_wind) == 0:
+                    st.error(f"❌ No wind installations found for {location}")
+                    st.info("💡 Try selecting a different location or check if the database contains data for this city.")
+                    return
+                
+                progress_bar.progress(40)
+                status_text.text("🗺️ Creating interactive map...")
+                
+                # Step 2: Create visualization with caching
+                fig = create_cached_scatter_map(
+                    gdf_wind,
+                    lat_col='Breitengrad',
+                    lon_col='Laengengrad',
+                    hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
+                    center_lat=city_district.lat.item(),
+                    center_lon=city_district.lon.item(),
+                    color='brown',
+                    title=f"Wind Installations in {location}"
                 )
+                
+                progress_bar.progress(60)
+                status_text.text("🏘️ Adding district boundaries...")
 
-            # except Exception as e:
-            #     st.error(f"Failed to visualize data for {location}: {str(e)}")
-        else:
-            st.warning("Please enter a city name.")
-    # Key Features in dashboard.py
+                # Step 3: Create choropleth map with error handling
+                try:
+                    choropleth = px.choropleth_mapbox(
+                        city_district,
+                        geojson=city_district.geometry,
+                        locations=city_district.index,
+                        color=None,
+                        opacity=0.3,
+                        labels={location: 'City District'},
+                    )
+                    
+                    # Add choropleth trace to the figure
+                    fig.add_trace(choropleth.data[0])
+                    
+                except Exception as choropleth_error:
+                    st.warning("⚠️ Could not load district boundaries, showing installations only")
+                    st.write("District boundary error:", str(choropleth_error))
+                
+                progress_bar.progress(80)
+                status_text.text("📊 Generating statistics...")
+                
+                # Step 4: Calculate and display statistics
+                total_installations = len(gdf_wind)
+                total_capacity_brutto = gdf_wind['Bruttoleistung'].sum() / 1000  # Convert to MW
+                total_capacity_netto = gdf_wind['Nettonennleistung'].sum() / 1000  # Convert to MW
+                avg_capacity = gdf_wind['Bruttoleistung'].mean()
+                
+                progress_bar.progress(100)
+                status_text.text("✅ Visualization complete!")
+                
+                # Display results
+                st.success(f"✅ Successfully loaded {total_installations} wind installations for {location}")
+                
+                # Key metrics
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Installations", f"{total_installations:,}")
+                with col2:
+                    st.metric("Total Capacity (Gross)", f"{total_capacity_brutto:.1f} MW")
+                with col3:
+                    st.metric("Total Capacity (Net)", f"{total_capacity_netto:.1f} MW")
+                with col4:
+                    st.metric("Average Capacity", f"{avg_capacity:.1f} kW")
+                
+                # Display the map
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Additional data insights
+                with st.expander("📊 **Detailed Statistics**"):
+                    st.subheader("Capacity Distribution")
+                    capacity_hist = px.histogram(
+                        gdf_wind, 
+                        x='Bruttoleistung',
+                        nbins=20,
+                        title="Distribution of Wind Installation Capacities",
+                        labels={'Bruttoleistung': 'Gross Capacity (kW)', 'count': 'Number of Installations'}
+                    )
+                    st.plotly_chart(capacity_hist, use_container_width=True)
+                    
+                    st.subheader("Installation Details")
+                    st.dataframe(
+                        gdf_wind[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']].head(10),
+                        use_container_width=True
+                    )
+                
+                # Clear progress indicators
+                progress_bar.empty()
+                status_text.empty()
+                
+            except Exception as e:
+                st.error("❌ **Visualization Failed**")
+                st.error(f"An error occurred while creating the visualization: {str(e)}")
+                
+                with st.expander("🔧 **Troubleshooting Steps**"):
+                    st.markdown("""
+                    1. **Check location data**: Verify the selected location has wind installations
+                    2. **Database connectivity**: Ensure the MaStR database is accessible
+                    3. **Data integrity**: The location data may be corrupted
+                    4. **Try another location**: Some cities may have incomplete data
+                    """)
+                
+                with st.expander("🔍 **Technical Details**"):
+                    st.code(str(e))
+                
+                # Clear progress indicators on error
+                progress_bar.empty()
+                status_text.empty()
+    
+    # Information panel
+    with st.expander("ℹ️ **About This Dashboard**"):
+        st.markdown("""
+        **Data Source**: German Market Master Data Register (MaStR)
+        
+        **What you can see**:
+        - 📍 Exact locations of registered wind turbine installations
+        - ⚡ Power capacity (gross and net) for each installation
+        - 🏘️ District boundaries and administrative divisions
+        - 📊 Statistical distribution of installation sizes
+        
+        **Technical Notes**:
+        - Brown dots represent individual wind turbine installations
+        - Hover over installations to see detailed information
+        - District boundaries show administrative divisions
+        - Capacity values are from official registry data
+        """)
+        
+    # Show data source information
+    st.markdown("---")
+    st.markdown("**📊 Data source**: German Market Master Data Register (Marktstammdatenregister - MaStR)")
+    st.markdown("**🗓️ Last updated**: Based on available database content")
 
 
 
 def storage_installation_mastr():
-    st.title("Storage Installations Dashboard")
+    st.title("🔋 Storage Installations Dashboard")
     
-        # Fetch unique locations for dropdown
-    unique_locations = get_unique_storage_locations(mastr_db_path=mastr_db_path)
+    st.markdown("""
+    **Explore energy storage installations from the German MaStR (Market Master Data Register)**
+    
+    This dashboard visualizes real battery and energy storage installations registered in Germany, 
+    showing their locations, capacity, and technical specifications.
+    """)
 
-    # Dropdown for location selection
-    location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
+    # Enhanced error handling for database operations with caching
+    try:
+        with st.spinner("🔄 Loading available locations from database..."):
+            unique_locations = get_cached_unique_locations("storage", mastr_db_path)
+        
+        if not unique_locations:
+            st.error("❌ No locations available in the database")
+            st.info("💡 Please check if the MaStR database file exists and contains data.")
+            return
+            
+    except Exception as e:
+        st.error("🗄️ **Database Connection Error**")
+        st.error("Unable to load location data from the MaStR database.")
+        
+        with st.expander("🔧 **Troubleshooting Steps**"):
+            st.markdown("""
+            1. **Check database file**: Ensure `data/open-mastr.db` exists
+            2. **Verify file permissions**: Make sure the database file is readable
+            3. **Database integrity**: The database file may be corrupted
+            4. **Restart application**: Try refreshing the page
+            """)
+        
+        with st.expander("🔍 **Technical Details**"):
+            st.code(str(e))
+        return
 
-    # Button to trigger visualization
-    if st.button("Visualize"):
+    # Input validation for location selection
+    st.markdown("### 📍 **Location Selection**")
+    location = st.selectbox(
+        "Select city", 
+        options=unique_locations, 
+        index=unique_locations.index("Essen") if "Essen" in unique_locations else 0,
+        help="Choose a city to visualize its storage installations"
+    )
+    
+    # Validate location selection
+    if not location:
+        st.warning("⚠️ Please select a location from the dropdown")
+        return
+    
+    if location not in unique_locations:
+        st.error(f"❌ Selected location '{location}' is not available in the database")
+        return
+
+    # Enhanced visualization button with progress tracking
+    if st.button("🗺️ Visualize Storage Installations", key="visualize_storage"):
         if location:
-            # try:
-            # Get data from matr_main
-            with st.spinner("Loading data..."):
-                gdf_storage, city_district = prepare_storage_data(location=location, mastr_db_path=mastr_db_path)
-
-            # Create scatter map
-            fig = px.scatter_mapbox(
-                gdf_storage,
-                lat='Breitengrad',
-                lon='Laengengrad',
-                size_max=15,
-                color_discrete_sequence=['purple'],
-                zoom=10,
-                center={"lat": city_district.lat.item(),  
-                        "lon": city_district.lon.item()},
-                mapbox_style='open-street-map',
-                hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
-            )
-
-            # Create choropleth map
-            choropleth = px.choropleth_mapbox(
-                city_district,
-                geojson=city_district.geometry,
-                locations=city_district.index,
-                color=None,
-                opacity=0.3,
-                labels={location: 'City District'},
-            )
-
-            # Add choropleth trace to the figure
-            fig.add_trace(choropleth.data[0])
-
-            # Move the choropleth trace to the background
-            fig.data = fig.data[::-1]
-
-            # Update layout
-            fig.update_layout(
-                margin={"r":0, "t":0, "l":0, "b":0},
-            )
-
-            # Display the plot in Streamlit
-            st.plotly_chart(fig, use_container_width=True)
+            # Progress tracking
+            progress_bar = st.progress(0)
+            status_text = st.empty()
             
-            # Display the filtered data as a DataFrame and Pie Chart side by side
-            st.subheader("Plotted Storage Installations")
-            
-            # Display DataFrame
-            st.dataframe(
-                    gdf_storage[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad', 'Ort']]
-                )
-
-            # Create Pie Chart for Operating Status Distribution
-            tech_counts = gdf_storage['EinheitBetriebsstatus'].value_counts()
-            pie_fig = px.pie(
-                    values=tech_counts.values,
-                    names=tech_counts.index,
-                    title="Distribution by Technology",
-                    hole=0.3  # Optional: Make it a donut chart for aesthetics
-                )
-            pie_fig.update_layout(
-                    margin={"r":0, "t":50, "l":0, "b":0},  # Adjust margins for compact display
-                    height=300  # Set height to align with DataFrame
-                )
-            st.plotly_chart(pie_fig, use_container_width=True)
-            
-            st.subheader("Bar Graph for Storage Installations")
-            # Define bins and sort them
-            bins = [0, 50, 200, 1000, gdf_storage['Nettonennleistung'].max()]
-            bins = sorted(bins)  # Ensure increasing order for pd.cut internally
-            labels = ['<50 kW', '50–200 kW', '200–1000 kW', '>1000 kW']
-
-            # Create a temporary column with binned data
-            gdf_storage['Capacity_Range'] = pd.cut(gdf_storage['Nettonennleistung'], bins=bins, labels=labels, ordered=False)
-
-            # Plot bar chart using value counts
-            capacity_fig = px.bar(
-                gdf_storage['Capacity_Range'].value_counts(),
-                labels={'index': 'Capacity Range', 'value': 'Number of Installations'},
-                title="Storage Installations by Net Capacity Range"
-            )
-
-            st.plotly_chart(capacity_fig, use_container_width=True)
+            try:
+                # Step 1: Load data with caching
+                status_text.text("🔄 Loading storage installation data...")
+                progress_bar.progress(20)
                 
-            # except Exception as e:
-            #     st.error(f"Failed to visualize data for {location}: {str(e)}")
+                gdf_storage, city_district = get_cached_mastr_data(location, "storage", mastr_db_path)
+                
+                # Validate loaded data
+                if gdf_storage is None or len(gdf_storage) == 0:
+                    st.error(f"❌ No storage installations found for {location}")
+                    st.info("💡 Try selecting a different location or check if the database contains data for this city.")
+                    return
+                
+                progress_bar.progress(40)
+                status_text.text("🗺️ Creating interactive map...")
+                
+                # Step 2: Create visualization with caching
+                fig = create_cached_scatter_map(
+                    gdf_storage,
+                    lat_col='Breitengrad',
+                    lon_col='Laengengrad',
+                    hover_data=['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung'],
+                    center_lat=city_district.lat.item(),
+                    center_lon=city_district.lon.item(),
+                    color='purple',
+                    title=f"Storage Installations in {location}"
+                )
+                
+                progress_bar.progress(60)
+                status_text.text("🏘️ Adding district boundaries...")
 
-        else:
-            st.warning("Please enter a city name.")
+                # Step 3: Create choropleth map with error handling
+                try:
+                    choropleth = px.choropleth_mapbox(
+                        city_district,
+                        geojson=city_district.geometry,
+                        locations=city_district.index,
+                        color=None,
+                        opacity=0.3,
+                        labels={location: 'City District'},
+                    )
+                    
+                    # Add choropleth trace to the figure
+                    fig.add_trace(choropleth.data[0])
+                    
+                except Exception as choropleth_error:
+                    st.warning("⚠️ Could not load district boundaries, showing installations only")
+                    st.write("District boundary error:", str(choropleth_error))
+                
+                progress_bar.progress(80)
+                status_text.text("📊 Generating statistics...")
+                
+                # Step 4: Calculate and display statistics
+                total_installations = len(gdf_storage)
+                total_capacity_brutto = gdf_storage['Bruttoleistung'].sum() / 1000  # Convert to MW
+                total_capacity_netto = gdf_storage['Nettonennleistung'].sum() / 1000  # Convert to MW
+                avg_capacity = gdf_storage['Bruttoleistung'].mean()
+                
+                progress_bar.progress(100)
+                status_text.text("✅ Visualization complete!")
+                
+                # Display results
+                st.success(f"✅ Successfully loaded {total_installations} storage installations for {location}")
+                
+                # Key metrics
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Installations", f"{total_installations:,}")
+                with col2:
+                    st.metric("Total Capacity (Gross)", f"{total_capacity_brutto:.1f} MW")
+                with col3:
+                    st.metric("Total Capacity (Net)", f"{total_capacity_netto:.1f} MW")
+                with col4:
+                    st.metric("Average Capacity", f"{avg_capacity:.1f} kW")
+                
+                # Display the map
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Additional data insights
+                with st.expander("📊 **Detailed Statistics**"):
+                    st.subheader("Operating Status Distribution")
+                    
+                    # Create Pie Chart for Operating Status Distribution
+                    if 'EinheitBetriebsstatus' in gdf_storage.columns:
+                        tech_counts = gdf_storage['EinheitBetriebsstatus'].value_counts()
+                        pie_fig = px.pie(
+                            values=tech_counts.values,
+                            names=tech_counts.index,
+                            title="Distribution by Operating Status",
+                            hole=0.3
+                        )
+                        pie_fig.update_layout(
+                            margin={"r":0, "t":50, "l":0, "b":0},
+                            height=300
+                        )
+                        st.plotly_chart(pie_fig, use_container_width=True)
+                    
+                    st.subheader("Capacity Distribution by Range")
+                    
+                    # Define bins and create bar chart
+                    bins = [0, 50, 200, 1000, gdf_storage['Nettonennleistung'].max()]
+                    bins = sorted(bins)
+                    labels = ['<50 kW', '50–200 kW', '200–1000 kW', '>1000 kW']
+                    
+                    gdf_storage['Capacity_Range'] = pd.cut(
+                        gdf_storage['Nettonennleistung'], 
+                        bins=bins, 
+                        labels=labels, 
+                        ordered=False
+                    )
+                    
+                    capacity_fig = px.bar(
+                        gdf_storage['Capacity_Range'].value_counts().sort_index(),
+                        labels={'index': 'Capacity Range', 'value': 'Number of Installations'},
+                        title="Storage Installations by Net Capacity Range"
+                    )
+                    st.plotly_chart(capacity_fig, use_container_width=True)
+                    
+                    st.subheader("Installation Details")
+                    st.dataframe(
+                        gdf_storage[['NameStromerzeugungseinheit', 'Bruttoleistung', 'Nettonennleistung', 'Breitengrad', 'Laengengrad']].head(10),
+                        use_container_width=True
+                    )
+                
+                # Clear progress indicators
+                progress_bar.empty()
+                status_text.empty()
+                
+            except Exception as e:
+                st.error("❌ **Visualization Failed**")
+                st.error(f"An error occurred while creating the visualization: {str(e)}")
+                
+                with st.expander("🔧 **Troubleshooting Steps**"):
+                    st.markdown("""
+                    1. **Check location data**: Verify the selected location has storage installations
+                    2. **Database connectivity**: Ensure the MaStR database is accessible
+                    3. **Data integrity**: The location data may be corrupted
+                    4. **Try another location**: Some cities may have incomplete data
+                    """)
+                
+                with st.expander("🔍 **Technical Details**"):
+                    st.code(str(e))
+                
+                # Clear progress indicators on error
+                progress_bar.empty()
+                status_text.empty()
+    
+    # Information panel
+    with st.expander("ℹ️ **About This Dashboard**"):
+        st.markdown("""
+        **Data Source**: German Market Master Data Register (MaStR)
+        
+        **What you can see**:
+        - 📍 Exact locations of registered energy storage installations
+        - ⚡ Power capacity (gross and net) for each installation
+        - 🏘️ District boundaries and administrative divisions
+        - 📊 Statistical distribution of installation sizes and operating status
+        
+        **Technical Notes**:
+        - Purple dots represent individual storage installations
+        - Hover over installations to see detailed information
+        - District boundaries show administrative divisions
+        - Capacity values are from official registry data
+        """)
+        
+    # Show data source information
+    st.markdown("---")
+    st.markdown("**📊 Data source**: German Market Master Data Register (Marktstammdatenregister - MaStR)")
+    st.markdown("**🗓️ Last updated**: Based on available database content")
     
 from mastr_energy_generation import pick_pvsystem_mastr, prepare_pv_time_series_mastr, aggregate_pv_time_series,revise_power_values,wind_turbine_matching
 
@@ -1583,3 +1848,4 @@ pg = st.navigation([
     st.Page(wind_energy_generation, title="Wind Energy Generation"),
 ])
 pg.run()
+
