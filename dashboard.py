@@ -2,7 +2,7 @@
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-
+import numpy as np
 import datetime
 import streamlit as st
 from st_files_connection import FilesConnection
@@ -28,6 +28,8 @@ from technologies.electrical_storage import electrical_storage
 
 from mastr_preprocessing import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
 from mastr_preprocessing import fetch_solar, fetch_wind, fetch_storage
+
+
 
 # Import validation and error handling utilities with fallback
 try:
@@ -56,8 +58,8 @@ except ImportError:
         return func
 from mastr_preprocessing import get_unique_solar_locations, get_unique_wind_locations, get_unique_storage_locations
 
-mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
-# mastr_db_path = 'C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'
+#mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
+mastr_db_path = 'C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'
 
 # =============================================================================
 # PERFORMANCE CONFIGURATION
@@ -134,6 +136,28 @@ def get_cached_mastr_data(location: str, data_type: str, mastr_db_path: str):
         return None, None
 
 @st.cache_data(ttl=CACHE_CONFIG['VISUALIZATION_TTL'])
+def create_wind_simulation_display(results):
+    """Display wind simulation results in a formatted way"""
+    st.subheader("Kreisinformationen")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write(f"Kreiszentrum (Längengrad, Breitengrad): {results['kreiszentrum']}")
+    with col2:
+        st.write(f"Kreisradius: {results['radius']}")
+
+    st.subheader("Simulationsergebnisse")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Anzahl von Windturbinen", results['num_turbines'])
+    with col2:
+        st.metric("Gesamtenergierzeugung pro Jahr", results['annual_energy'])
+    with col3:
+        st.metric("Volllastunden", results['full_load_hours'])
+
+    st.subheader("Stromproduktion der Windturbinen im Jahresverlauf (MW)")
+    st.plotly_chart(results['timeline_fig'], use_container_width=True)
+
+@st.cache_data(ttl=CACHE_CONFIG['VISUALIZATION_TTL'])
 def create_cached_violin_plot(df, ev_penetration, curtailment, selected_grid_type, 
                              selected_hp_diffusion, selected_pv_storage_diffusion,
                              selected_wholesale_tariff, selected_grid_usage_fees):
@@ -166,13 +190,13 @@ def get_cached_environment(start: str, end: str, lat: float = None, lon: float =
         return None
 
 @st.cache_data(ttl=CACHE_CONFIG['VISUALIZATION_TTL'])
-def create_cached_scatter_map(gdf_data, lat_col: str, lon_col: str, hover_data: list, 
+def create_cached_scatter_map(_gdf_data, lat_col: str, lon_col: str, hover_data: list, 
                              center_lat: float, center_lon: float, color: str = 'red',
                              title: str = "Installation Map"):
     """Cache expensive map creation operations"""
     try:
         fig = px.scatter_mapbox(
-            gdf_data,
+            _gdf_data,
             lat=lat_col,
             lon=lon_col,
             size_max=45,
@@ -1563,6 +1587,745 @@ def wind_energy_generation():
 
                 except Exception as e:
                     st.error(f"Simulation failed: {e}")
+                    
+@st.dialog("Anleitung und Hinweise", width="large")
+def show_instructions():
+    st.markdown(
+        """
+        **Anleitung:**  
+        1. Wählen Sie die Art der Anlage, die Sie planen möchten (FFPV, WEA oder Hybrid).  
+        2. Geben Sie einen Ort oder eine Adresse ein, um die Karte zu zentrieren. Alternativ können Sie die Karte manuell verschieben und zoomen.  
+        3. Klicken Sie auf das Kreissymbol oben rechts auf der Karte und ziehen Sie den Kreis auf der Karte auf, indem Sie auf eine Stelle auf der Karte klicken und nach außen ziehen. Lassen Sie die Maus los und das Programm wird automatisch durchgeführt. Der Kreis stellt das zu beplanende Gebiet dar.  
+        4. Scrollen Sie nach unten, um die Ergebnisse der Simulation zu sehen.  
+        5. Um einen neuen Kreis zu zeichnen, klicken Sie zunächst auf das Mülleimersymbol auf der rechten Seite der Karte unter dem Kreissymbol. Klicken Sie dann auf „Alles löschen“, um den aktuellen Kreis zu löschen.  
+        6. Zeichnen Sie einen neuen Kreis, indem Sie erneut auf das Kreissymbol klicken und den Kreis auf der Karte ziehen.  
+
+        **Hinweise:**  
+        *Dieses Programm funktioniert derzeit nur für Regionen innerhalb Deutschlands.*  
+        *Eine Infobox unterhalb der Karte zeigt den Fortschritt der Simulation an. Alternativ bedeutet ein „RUNNING...“-Symbol oben rechts im Browser, dass das Programm gerade läuft.*  
+        *In der Infobox wird „Erfolgreich“ angezeigt, wenn der Vorgang abgeschlossen ist.*  
+        *Sie können im Diagramm verschieben und zoomen. Klicken Sie auf das Symbol oben rechts im Diagramm, um es als Vollbild anzuzeigen. Klicken Sie auf die drei Punkte oben rechts, um das Diagramm zu exportieren.*  
+        *Sie können ebenfalls die Karte verschieben und zoomen. Oben rechts auf der Karte können Sie die Layers ein- oder ausblenden.*  
+        *Klicken Sie auf die Schaltfläche „Karte als HTML herunterladen“, um die Karte als HTML-Datei herunterzuladen.*  
+
+        *Die in diesem Tool erstellten Darstellungen und Simulationen stellen keine vollständige Planung realer Solar- oder Windparks dar*.  
+        *Vielmehr handelt es sich um eine theoretische Abschätzung des Flächenpotenzials und der potenziellen Energieerzeugung in einem definierten Gebiet*.  
+        *Die Positionierung der Solarmodule und Windturbinen basiert ausschließlich auf öffentlich zugänglichen Geodaten (z.B. OpenStreetMap) und standardisierten Ausschlusskriterien,  
+        *ohne Prüfung standortbezogener Genehmigungsbedingungen, Netzanschlussoptionen oder detaillierter Umweltverträglichkeitsprüfungen*.  
+        *Dieses Werkzeug dient daher in erster Linie der automatisierten Potenzialanalyse und nicht der Erstellung genehmigungsfähiger Planungsunterlagen*.
+        """
+    )
+    
+from streamlit_folium import st_folium
+from streamlit.components.v1 import html
+import folium
+import time
+from folium.plugins import Draw, MousePosition
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+from pyproj import CRS, Transformer
+
+# Solar panel specifications (in meters)
+solar_panel_width = 1.96
+solar_panel_height = 3.66 #Für 4 module
+row_spacing = 3.5
+
+# Wind turbines specifications (in meters)
+min_spacing_x = 1270
+min_spacing_y = 762
+hub_height = 135
+
+def get_local_crs(lon, lat):
+    return CRS.from_proj4(
+        f"+proj=tmerc +lat_0={lat} +lon_0={lon} +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs"
+    )
+
+def find_circle_markers(obj):
+    markers = []
+    if isinstance(obj, folium.CircleMarker):
+        markers.append(obj)
+    if hasattr(obj, '_children'):
+        for child in obj._children.values():
+            markers.extend(find_circle_markers(child))
+    return markers
+
+
+
+def FFPV_WEA():
+    
+    st.title("Programm zur Planung von Solar- und Windkraftanlagen")
+    
+    if st.button("Anleitung und Hinweise"):
+        show_instructions()
+    
+    option = st.radio(
+    "Welche Art von Anlage möchten Sie planen?",
+    ("FFPV", "WEA", "Hybrid (FFPV + WEA)")
+    )
+
+    # Search functionality
+    # Search functionality
+    geolocator = Nominatim(user_agent="solar-farm-planner")
+    location_input = st.text_input("Suchen Sie nach einem Ort oder einer Adresse:", "")
+
+    # Step 2: Initialize session state to avoid repeated queries
+    if 'geocoded_results' not in st.session_state:
+        st.session_state['geocoded_results'] = None
+    if 'last_query' not in st.session_state:
+        st.session_state['last_query'] = ""
+
+    # Default center
+    map_center = [51.1657, 10.4515]
+    zoom_level = 6
+    location = None
+
+    # Step 4: Perform geocoding only when query is new
+    if location_input and location_input != st.session_state['last_query']:
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                locations = geolocator.geocode(location_input, exactly_one=False, addressdetails=True, limit=5)
+                if locations:
+                    st.session_state['geocoded_results'] = locations
+                    st.session_state['last_query'] = location_input
+                else:
+                    st.warning("Keine Adresse gefunden")
+                    st.session_state['geocoded_results'] = None
+            except (GeocoderTimedOut, GeocoderServiceError) as e:
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+                else:
+                    st.error(f"Geocoding error: {e}")
+                    st.session_state['geocoded_results'] = None
+
+    # Step 5: Show dropdown and update map if results exist
+    if st.session_state['geocoded_results']:
+        locations = st.session_state['geocoded_results']
+        location_options = [f"{loc.address} ({loc.latitude:.4f}, {loc.longitude:.4f})" for loc in locations]
+        selection = st.selectbox("Ausgewählte Adresse:", location_options)
+
+        selected_index = location_options.index(selection)
+        selected_location = locations[selected_index]
+        st.session_state["selected_location"] = selected_location
+        map_center = [selected_location.latitude, selected_location.longitude]
+        zoom_level = 15
+
+    m = folium.Map(location=map_center, zoom_start=zoom_level)
+    mouse_position = MousePosition(position='bottomright', separator=' | ', prefix="Coordinates:", num_digits=6)
+    m.add_child(mouse_position)
+
+    # drop marker at the searched location
+    if "selected_location" in st.session_state:
+        folium.Marker(
+            location=[st.session_state["selected_location"].latitude, st.session_state["selected_location"].longitude],
+            icon=folium.Icon(color="blue", icon="search")
+        ).add_to(m)
+
+    # Add a draw tool to the map (for drawing circles only)
+    draw = Draw(
+        export=False,  # Enable exporting to GeoJSON
+        draw_options={
+            'polyline': False,    # Disable lines
+            'polygon': True,     # Enable polygons
+            'rectangle': False,   # Disable rectangles
+            'circle': False,       # Disable circles
+            'marker': False,      # Disable markers
+            'circlemarker': False # Disable circle markers
+        },
+        edit_options={
+            'edit': False,        # Disable editing
+            'remove': True        # Enable deleting
+        }
+    )
+    draw.add_to(m)
+
+    # Display the map and get draw data
+    with st.container():
+        output = st_folium(m, width=700, height=500, key="map_draw")
+
+    status_box = st.empty()
+
+    if "last_polygon_coords" not in st.session_state:
+        st.session_state["last_polygon_coords"] = []
+
+    if "num_panels" not in st.session_state:
+        st.session_state["num_panels"] = None
+
+    if "num_turbines" not in st.session_state:
+        st.session_state["num_turbines"] = None
+
+    if "second_map" not in st.session_state:
+        st.session_state["second_map"] = None
+
+    if "results_df" not in st.session_state:
+        st.session_state["results_df"] = None
+
+    if "total_energy" not in st.session_state:
+        st.session_state["total_energy"] = None
+
+    if "results_ac" not in st.session_state:
+        st.session_state["results_ac"] = None
+
+    if "rated_power_solar" not in st.session_state:
+        st.session_state["rated_power_solar"] = None
+
+    if "rated_power_wind" not in st.session_state:
+        st.session_state["rated_power_wind"] = None
+
+    # Initialize variables
+    current_polygon_coords = None
+    radius_meters = 0
+    
+    # Check if the user has drawn a shape
+    # Initialize map
+    m2 = None
+    lat_center = None
+    lon_center = None
+
+    if output and output.get('last_active_drawing'):
+        if output.get('last_circle_polygon'):
+            try:
+                # Circle mode
+                circle_data = output['last_circle_polygon']
+                # Get radius and center from circle properties
+                lat_center = circle_data['properties']['center'][1]
+                lon_center = circle_data['properties']['center'][0]
+                radius_meters = circle_data['properties']['radius']
+                # Store the circle coordinates for reference
+                current_polygon_coords = circle_data['coordinates'][0]
+                status_box.info("🔄 Kreis erkannt...")
+            except (KeyError, TypeError, IndexError) as e:
+                status_box.error(f"❌ Fehler beim Verarbeiten des Kreises: {str(e)}")
+                st.stop()
+                
+        elif output['last_active_drawing']['geometry']['type'] == 'Polygon':
+            try:
+                # Polygon mode
+                current_polygon_coords = output['last_active_drawing']['geometry']['coordinates'][0]
+                # Calculate centroid for map recentering and further processing
+                lat_center = float(np.mean([pt[1] for pt in current_polygon_coords]))
+                lon_center = float(np.mean([pt[0] for pt in current_polygon_coords]))
+                status_box.info("🔄 Polygon erkannt...")
+            except (KeyError, TypeError, IndexError) as e:
+                status_box.error(f"❌ Fehler beim Verarbeiten des Polygons: {str(e)}")
+                st.stop()
+        else:
+            status_box.error("❌ Bitte zeichnen Sie einen Kreis oder ein Polygon")
+            st.stop()
+    else:
+        status_box.error("❌ Bitte zeichnen Sie einen Kreis oder ein Polygon")
+        st.stop()
+
+    # Store values in output and session state
+    output['lat_center'] = lat_center
+    output['lon_center'] = lon_center
+    st.session_state["last_polygon_coords"] = current_polygon_coords
+
+    # Create base map
+    m2 = folium.Map(location=[lat_center, lon_center], zoom_start=20)
+    mouse_position = MousePosition(position='bottomright', separator=' | ', prefix="Coordinates:", num_digits=6)
+    m2.add_child(mouse_position)
+
+    # Begin simulation based on selected option
+    st.session_state["last_polygon_coords"] = current_polygon_coords
+    # Calculate centroid for map recentering and further processing
+    lats = [pt[1] for pt in current_polygon_coords]
+    lons = [pt[0] for pt in current_polygon_coords]
+    lat_center = float(np.mean(lats))
+    lon_center = float(np.mean(lons))
+    # Store in session state for later use
+    st.session_state["lat_center"] = lat_center
+    st.session_state["lon_center"] = lon_center
+    m2 = folium.Map(location=[lat_center, lon_center], zoom_start=20)
+    mouse_position = MousePosition(position='bottomright', separator=' | ', prefix="Coordinates:", num_digits=6)
+    # Pass polygon coordinates to your simulation functions as needed
+    if option == "FFPV":
+        from SolarFunctions import fetch_obstacles_solar, packing_solar, simulate_solarfarm_output
+        # Removed is_circle parameter - polygon only now
+        obstacles = fetch_obstacles_solar(output, current_polygon_coords, status_box)
+        
+        # Polygon mode only - pass dummy radius (0) and polygon coordinates
+        m2_solar, num_panels = packing_solar(lat_center, lon_center, 0,
+                                            solar_panel_width, solar_panel_height, row_spacing,
+                                            obstacles, status_box, m2,
+                                            polygon_coords=current_polygon_coords)
+        
+        st.session_state["num_panels"] = num_panels
+        st.session_state["second_map"] = m2_solar
+        st.session_state["second_map_html"] = m2_solar._repr_html_()
+        status_box.info("🧮 Solaranlagen simulieren...")
+        results_ac, rated_power_solar = simulate_solarfarm_output(lat_center, lon_center, num_panels)
+        st.session_state["results_ac"] = results_ac
+        st.session_state["rated_power_solar"] = rated_power_solar
+    elif option == "WEA":
+        from WindFunctions import fetch_obstacles_wind, packing_wind, simulate_windfarm_output, get_weather_for_windpowerlib
+        # Removed is_circle parameter - polygon only now
+        obstacles = fetch_obstacles_wind(output, current_polygon_coords, status_box, min_spacing_x, min_spacing_y)
+        status_box.info("☁️ Wetterdaten abrufen...")
+        weather_df, main_dir = get_weather_for_windpowerlib(lat_center, lon_center, year=2024)
+        
+        if weather_df is None:
+            st.error("❌ Konnte keine Wetterdaten laden. Bitte stellen Sie sicher, dass der Ordner data/era5_germany_2024_wind existiert und die erforderlichen Dateien enthält.")
+            st.stop()
+            
+        # Polygon mode only - pass dummy radius (0) and polygon coordinates
+        m2_wind, num_turbines, access_roads_gdf, crane_pads_gdf = packing_wind(lat_center, lon_center, 0,
+                                            min_spacing_x, min_spacing_y, obstacles, 
+                                            main_dir, status_box, m2, option,
+                                            polygon_coords=current_polygon_coords)
+            
+        st.session_state["num_turbines"] = num_turbines
+        st.session_state["second_map"] = m2_wind
+        st.session_state["second_map_html"] = m2_wind._repr_html_()
+        status_box.info("🧮 Windturbinen simulieren...")
+        results_df, total_energy, rated_power_wind = simulate_windfarm_output(weather_df, num_turbines, hub_height)
+        st.session_state["results_df"] = results_df
+        st.session_state["total_energy"] = total_energy
+        st.session_state["rated_power_wind"] = rated_power_wind
+        
+        # Store center coordinates for display
+        st.session_state["lat_center"] = lat_center
+        st.session_state["lon_center"] = lon_center
+        st.session_state["radius_meters"] = radius_meters
+        
+    elif option == "Hybrid (FFPV + WEA)":
+                from WindFunctions import fetch_obstacles_wind, packing_wind, simulate_windfarm_output, get_weather_for_windpowerlib
+                from SolarFunctions import fetch_obstacles_solar, packing_solar, simulate_solarfarm_output
+                import geopandas as gpd
+                import pandas as pd
+                from shapely.geometry import Point
+                
+                # Fetch wind obstacles
+                obstacles_wind = fetch_obstacles_wind(output, current_polygon_coords, status_box, min_spacing_x, min_spacing_y)
+                
+                # Get weather data and wind direction
+                status_box.info("☁️ Wetterdaten abrufen...")
+                weather_df, main_dir = get_weather_for_windpowerlib(lat_center, lon_center, year=2024)
+                
+                # Place wind turbines and generate access roads and crane pads
+                m2_wind, num_turbines, access_roads_gdf, crane_pads_gdf = packing_wind(lat_center, lon_center, 0, 
+                                                    min_spacing_x, min_spacing_y, obstacles_wind, 
+                                                    main_dir, status_box, m2, option,
+                                                    polygon_coords=current_polygon_coords)
+                
+                st.session_state["num_turbines"] = num_turbines
+                
+                # Simulate wind farm output
+                status_box.info("🧮 Windturbinen simulieren...")
+                results_df, total_energy, rated_power_wind = simulate_windfarm_output(weather_df, num_turbines, hub_height)
+                st.session_state["results_df"] = results_df
+                st.session_state["total_energy"] = total_energy
+                st.session_state["rated_power_wind"] = rated_power_wind
+                
+                # Initialize combined obstacles with wind obstacles
+                combined_obstacles = obstacles_wind.copy()
+                
+                # Merge access roads with wind obstacles for solar placement
+                if access_roads_gdf is not None and not access_roads_gdf.empty:
+                    combined_obstacles = pd.concat([combined_obstacles, access_roads_gdf], ignore_index=True)
+                
+                if crane_pads_gdf is not None and not crane_pads_gdf.empty:
+                    combined_obstacles = pd.concat([combined_obstacles, crane_pads_gdf], ignore_index=True)
+                
+                # Fetch solar-specific obstacles and merge with combined wind obstacles
+                obstacles_solar = fetch_obstacles_solar(output, current_polygon_coords, status_box)
+                final_obstacles = pd.concat([combined_obstacles, obstacles_solar], ignore_index=True)
+                
+                # Place solar panels with all obstacles (wind + access roads + crane pads + solar)
+                status_box.info("☀️ Solarmodule platzieren...")
+                m2_combined, num_panels = packing_solar(lat_center, lon_center, 0,
+                                                       solar_panel_width, solar_panel_height, row_spacing,
+                                                       final_obstacles, status_box, m2_wind,
+                                                       polygon_coords=current_polygon_coords)
+                
+                st.session_state["num_panels"] = num_panels
+                st.session_state["second_map"] = m2_combined
+                st.session_state["second_map_html"] = m2_combined._repr_html_()
+                
+                # Simulate solar farm output
+                status_box.info("🧮 Solarmodule simulieren...")
+                results_ac, rated_power_solar = simulate_solarfarm_output(
+                    lat_center, lon_center, num_panels
+                )
+                st.session_state["results_ac"] = results_ac
+                st.session_state["rated_power_solar"] = rated_power_solar
+    if st.session_state["second_map"] and "second_map_html" in st.session_state:
+
+        if option == "FFPV":
+            st.subheader("Karte mit Solarmodulen")
+            status_box.info("🗺️ Karte mit Solarmodulen erstellen...")
+            
+            # Display energy generation if available
+            if "results_ac" in st.session_state and "rated_power_solar" in st.session_state:
+                st.subheader("Energieerzeugung")
+                results_ac = st.session_state["results_ac"]
+                rated_power_solar = st.session_state["rated_power_solar"]
+                
+                # Display simulation info
+                st.write("Kreisinformationen")
+                if "lat_center" in st.session_state and "lon_center" in st.session_state:
+                    st.write(f"Zentrum (Längengrad, Breitengrad): [{st.session_state['lat_center']:.6f}, {st.session_state['lon_center']:.6f}]")
+                
+                # Show simulation results
+                st.write("Simulationsergebnisse")
+                if "num_panels" in st.session_state:
+                    st.write(f"Anzahl von Solarmodulen: {st.session_state['num_panels']}")
+                yearly_energy = results_ac.sum() / 1e9  # Convert to GWh
+                st.write(f"Gesamtenergieerzeugung pro Jahr: {yearly_energy:.2f} GWh")
+                specific_yield = (yearly_energy * 1e6) / (rated_power_solar / 1000)  # kWh/kWp
+                st.write(f"kWh/kWp: {specific_yield:.2f} kWh/kWp/a")
+
+                # Create figures for energy generation
+                # Yearly profile
+                fig1 = plt.figure(figsize=(10, 6))
+                plt.plot(results_ac.index, results_ac.values)
+                plt.title(f'Stromproduktion der Solaranlagen im Jahresverlauf (W)')
+                plt.xlabel('2024')
+                plt.ylabel('Leistung (W)')
+                plt.grid(True)
+                st.pyplot(fig1)
+                plt.close(fig1)
+
+                # Daily profile (use July 1st as example)
+                july_1st = results_ac['2024-07-01']
+                fig2 = plt.figure(figsize=(10, 6))
+                plt.plot(july_1st.index.hour, july_1st.values)
+                plt.title(f'Tägliche Energieerzeugung (Nennleistung: {rated_power_solar/1000:.2f} MW)')
+                plt.xlabel('Stunde des Tages')
+                plt.ylabel('Leistung (W)')
+                plt.grid(True)
+                st.pyplot(fig2)
+                plt.close(fig2)
+            
+            with st.container():
+                legend_template = """
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro&display=swap');
+
+                        .legend-container {
+                            position: absolute;
+                            top: 520px;
+                            left: 0px;
+                            width: 700px;
+                            padding: 10px;
+                        }
+                            
+                        .legend-box {
+                            font-family: 'Source Sans Pro', sans-serif;
+                            font-size: 16px;
+                            color: rgb(0, 0, 0);
+                        }
+                        .legend-grid {
+                            display: grid;
+                            grid-template-columns: repeat(3, 1fr);
+                            gap: 8px 15px;
+                            margin-top: 10px;
+                        }
+
+                        .legend-icon {
+                            width: 16px;
+                            height: 16px;
+                            display: inline-block;
+                            border: 1px solid white;
+                            margin-right: 6px;
+                            vertical-align: middle;
+                            border-radius: 2px;
+                        }
+                    </style>
+
+                    <div class="legend-container">
+                        <div class="legend-box">
+                            <strong>Hindernis-Legende</strong>
+                            <div class="legend-grid">
+                                <div><i style="background: gray;" class="legend-icon"></i> Verkehr</div>
+                                <div><i style="background: green;" class="legend-icon"></i> Landnutzung</div>
+                                <div><i style="background: red;" class="legend-icon"></i> Gebäude</div>
+                                <div><i style="background: blue;" class="legend-icon"></i> Gewässer</div>
+                                <div><i style="background: purple;" class="legend-icon"></i> Schutzgebiet</div>
+                                <div><i style="background: orange;" class="legend-icon"></i> Stromleitung</div>
+                            </div>
+                        </div>
+                    </div>
+                """
+                map_with_legend = f"""
+                    <style>
+                        /* Remove all margin/padding from the outer container */
+                        .map-wrapper {{
+                            margin: 0;
+                            padding: 0;
+                            width: 700px;
+                            height: 500px;
+                        }}
+
+                        /* Force the iframe Folium uses to render map */
+                        .map-wrapper iframe {{
+                            width: 700px !important;
+                            height: 500px !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            border: none !important;
+                            display: block;
+                            position: relative;
+                        }}
+                    </style>
+
+                    <div class="map-wrapper">
+                        {st.session_state["second_map_html"]}
+                        {legend_template}
+                    </div>
+                """
+                html(map_with_legend, height=700)
+
+        elif option == "WEA":
+            # Display wind simulation results first
+            if "results_df" in st.session_state and "total_energy" in st.session_state and "rated_power_wind" in st.session_state:
+                st.subheader("Kreisinformationen")
+                if "lat_center" in st.session_state and "lon_center" in st.session_state:
+                    st.write(f"Kreiszentrum (Längengrad, Breitengrad): [{st.session_state['lon_center']:.6f}, {st.session_state['lat_center']:.6f}]")
+                if "radius_meters" in st.session_state:
+                    st.write(f"Kreisradius: {st.session_state['radius_meters']:.2f} meter")
+                
+                st.subheader("Simulationsergebnisse")
+                st.write(f"Anzahl von Windturbinen: {st.session_state['num_turbines']}")
+                
+                total_gwh = st.session_state["total_energy"] / 1000  # Convert MWh to GWh
+                st.write(f"Gesamtenergieerzeugung pro Jahr: {total_gwh:.2f} GWh")
+                
+                # Calculate full load hours
+                if st.session_state["rated_power_wind"] > 0:
+                    full_load_hours = (st.session_state["total_energy"] * 1000) / st.session_state["rated_power_wind"]
+                    st.write(f"Volllaststunden: {full_load_hours:.2f} h")
+                
+                # Create monthly power generation chart
+                st.write("Stromproduktion der Windturbinen im Jahresverlauf (MW)")
+                results_df = st.session_state["results_df"]
+                if not results_df.empty:
+                    # Group by month and calculate monthly averages
+                    monthly_power = results_df["power_output_MW"].groupby(results_df.index.month).mean()
+                    month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                    
+                    # Create the chart
+                    import plotly.graph_objects as go
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=month_names[:len(monthly_power)],
+                        y=monthly_power.values,
+                        mode='lines+markers',
+                        name='Wind Power',
+                        line=dict(color='blue', width=2)
+                    ))
+                    fig.update_layout(
+                        xaxis_title='Month',
+                        yaxis_title='Power (MW)',
+                        showlegend=False,
+                        height=400
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+            
+            st.subheader("Karte mit Windturbinen")
+            status_box.info("🗺️ Karte mit Windturbinen erstellen...")
+            with st.container():
+                legend_template = """
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro&display=swap');
+
+                        .legend-container {
+                            position: absolute;
+                            top: 520px;
+                            color: rgb(0, 0, 0);
+                            left: 0px;
+                            width: 700px;
+                            padding: 10px;
+                        }
+                            
+                        .legend-box {
+                            font-family: 'Source Sans Pro', sans-serif;
+                            font-size: 16px;
+                            color: rgb(0, 0, 0);
+                        }
+                        .legend-grid {
+                            display: grid;
+                            grid-template-columns: repeat(3, 1fr);
+                            gap: 8px 15px;
+                            margin-top: 10px;
+                        }
+
+                        .legend-icon {
+                            width: 16px;
+                            height: 16px;
+                            display: inline-block;
+                            border: 1px solid white;
+                            margin-right: 6px;
+                            vertical-align: middle;
+                            border-radius: 2px;
+                        }
+                    </style>
+
+                    <div class="legend-container">
+                        <div class="legend-box">
+                            <strong>Hindernis-Legende</strong>
+                            <div class="legend-grid">
+                                <div><i style="background: rgb(128, 128, 128);" class="legend-icon"></i> Verkehr</div>
+                                <div><i style="background: rgb(34, 139, 34);" class="legend-icon"></i> Landnutzung</div>
+                                <div><i style="background: rgb(220, 20, 60);" class="legend-icon"></i> Infrastruktur</div>
+                                <div><i style="background: rgb(255, 140, 0);" class="legend-icon"></i> Militär</div>
+                                <div><i style="background: rgb(128, 0, 128);" class="legend-icon"></i> Artenschutz</div>
+                                <div><i style="background: rgb(30, 144, 255);" class="legend-icon"></i> Natur & Landschaft</div>
+                                <div><i style="background: rgb(107, 142, 35);" class="legend-icon"></i> Wald</div>
+                                <div><i style="background: rgb(32, 178, 170);" class="legend-icon"></i> Gewässer</div>
+                                <div><i style="background: rgb(139, 69, 19);" class="legend-icon"></i> Sonstiges</div>
+                            </div>
+                        </div>
+                    </div>
+                """
+                map_with_legend = f"""
+                    <style>
+                        /* Remove all margin/padding from the outer container */
+                        .map-wrapper {{
+                            margin: 0;
+                            padding: 0;
+                            width: 700px;
+                            height: 500px;
+                        }}
+
+                        /* Force the iframe Folium uses to render map */
+                        .map-wrapper iframe {{
+                            width: 700px !important;
+                            height: 500px !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            border: none !important;
+                            display: block;
+                            position: relative;
+                        }}
+                    </style>
+
+                    <div class="map-wrapper">
+                        {st.session_state["second_map_html"]}
+                        {legend_template}
+                    </div>
+                """
+                html(map_with_legend, height=700)
+        
+        elif option == "Hybrid (FFPV + WEA)":
+            st.subheader("Karte mit Solarmodulen und Windturbinen")
+            status_box.info("🗺️ Karte mit Windturbinen erstellen...")
+            with st.container():
+                legend_template = """
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro&display=swap');
+
+                        .legend-container {
+                            position: relative;
+                            margin-top: 100px;
+                            width: 700px;
+                            padding: 10px;
+                            background: none;
+                            color: rgb(0, 0, 0);
+                        }
+                            
+                        .legend-box {
+                            font-family: 'Source Sans Pro', sans-serif;
+                            font-size: 16px;
+                            color: rgb(0, 0, 0);
+                            margin-bottom: 30px;
+                        }
+                        .legend-grid {
+                            display: grid;
+                            grid-template-columns: repeat(3, 1fr);
+                            gap: 8px 15px;
+                            margin-top: 10px;
+                        }
+
+                        .legend-icon {
+                            width: 16px;
+                            height: 16px;
+                            display: inline-block;
+                            border: 1px solid white;
+                            margin-right: 6px;
+                            vertical-align: middle;
+                            border-radius: 2px;
+                        }
+                    </style>
+
+                    <div class="legend-container">
+                        <div class="legend-box">
+                            <div class="legend-title">Hindernisse-Legende für Solar ☀️</div>
+                            <div class="legend-grid">
+                                <div><i style="background: gray;" class="legend-icon"></i> Verkehr</div>
+                                <div><i style="background: green;" class="legend-icon"></i> Landnutzung</div>
+                                <div><i style="background: red;" class="legend-icon"></i> Gebäude</div>
+                                <div><i style="background: blue;" class="legend-icon"></i> Gewässer</div>
+                                <div><i style="background: purple;" class="legend-icon"></i> Schutzgebiet</div>
+                                <div><i style="background: orange;" class="legend-icon"></i> Stromleitung</div>
+                                <div><i style="background: #FF00FF;" class="legend-icon"></i> Zufahrtswege</div>
+                                <div><i style="background: #8B4513;" class="legend-icon"></i> Kranstellplätze</div>
+                            </div>
+                        </div>
+
+                        <div class="legend-box">
+                            <div class="legend-title">Hindernisse-Legende für Wind 💨</div>
+                            <div class="legend-grid">
+                                <div><i style="background: rgb(128, 128, 128);" class="legend-icon"></i> Verkehr</div>
+                                <div><i style="background: rgb(34, 139, 34);" class="legend-icon"></i> Landnutzung</div>
+                                <div><i style="background: rgb(220, 20, 60);" class="legend-icon"></i> Infrastruktur</div>
+                                <div><i style="background: rgb(255, 140, 0);" class="legend-icon"></i> Militär</div>
+                                <div><i style="background: rgb(128, 0, 128);" class="legend-icon"></i> Artenschutz</div>
+                                <div><i style="background: rgb(30, 144, 255);" class="legend-icon"></i> Natur & Landschaft</div>
+                                <div><i style="background: rgb(107, 142, 35);" class="legend-icon"></i> Wald</div>
+                                <div><i style="background: rgb(32, 178, 170);" class="legend-icon"></i> Gewässer</div>
+                                <div><i style="background: rgb(139, 69, 19);" class="legend-icon"></i> Sonstiges</div>
+                            </div>
+                        </div>
+                    </div>
+                """
+                map_with_legend = f"""
+                    <style>
+                        .map-wrapper {{
+                            margin: 0;
+                            padding: 0;
+                            width: 700px;
+                        }}
+
+                        .map-wrapper iframe {{
+                            width: 700px !important;
+                            height: 500px !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            border: none !important;
+                            display: block;
+                            position: relative;
+                        }}
+                    </style>
+
+                    <div class="map-wrapper">
+                        {st.session_state["second_map_html"]}
+                    </div>
+
+                    {legend_template}
+                """
+                html(map_with_legend, height=1000)
+
+        st.download_button(
+            "Karte als HTML herunterladen",
+            data=st.session_state["second_map_html"],
+            file_name="map_fragment.html",
+            mime="text/html",
+        )
+
+        status_box.info("✅ Erfolgreich!")
+
+def OpenSTEF():
+    st.title("Energy Forecasting with OpenSTEF")
+        # Fetch unique locations for dropdown with caching
+    unique_locations = get_cached_unique_locations("solar", mastr_db_path)
+
+    # Dropdown for location selection
+    location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
+    
+    return 0       
+    
 
 
 pg = st.navigation([
@@ -1581,5 +2344,7 @@ pg = st.navigation([
     st.Page(storage_installation_mastr, title="Storage Installations"),
     st.Page(energy_generation_solar, title="Solar Energy Generation"),
     st.Page(wind_energy_generation, title="Wind Energy Generation"),
+    st.Page(FFPV_WEA, title="FFPV & WEA Planning"),
+    st.Page(OpenSTEF, title="Open Short Term Energy Forecasting (OpenSTEF)"),
 ])
 pg.run()

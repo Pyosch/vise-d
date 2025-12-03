@@ -1,0 +1,10 @@
+artifact_location: file:///F:/Streamlit_Project/vise/vise-d/mlruns/697227161209784947/models/m-3b774ceec6f34bb2ad7d50857457ae26/artifacts
+creation_timestamp: 1764704197886
+experiment_id: '697227161209784947'
+last_updated_timestamp: 1764704205236
+model_id: m-3b774ceec6f34bb2ad7d50857457ae26
+model_type: null
+name: model
+source_run_id: 0d7d81f125154c2889863734c03c47d7
+status: 2
+status_message: null

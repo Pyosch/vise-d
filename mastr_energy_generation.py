@@ -518,32 +518,34 @@ def aggregate_wind_time_series(gen_dict):
 
 if __name__ == "__main__":
     
-    mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
+    #mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
     location = 'Aachen'
     start = "2015-07-07 00:00:00"
     end = "2015-07-07 23:45:00"
+    mastr_db_path = r'C:\Users\mashu\.open-MaStR\data\sqlite\open-mastr.db'
 
-    # gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
-    # gdf_solar = revise_power_values(gdf_solar)
+    gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
+    gdf_solar = revise_power_values(gdf_solar)
     ref_env = Environment(start=start, end=end)
-    # ref_env.get_dwd_pv_data(lat=city_district.lat, 
-    #                     lon=city_district.lon)
+    ref_env.get_dwd_pv_data(lat=city_district.lat[0], 
+                        lon=city_district.lon[0])
     
-    # pv_systems_dict = pick_pvsystem_mastr(gdf_solar.head(), ref_env) # Change to choose all PV systems later
-    # prepare_pv_time_series_mastr(pv_systems_dict)
-    # pv_systems_aggregated = aggregate_pv_time_series(pv_systems_dict)
+    pv_systems_dict = pick_pvsystem_mastr(gdf_solar.head(), ref_env) # Change to choose all PV systems later
+    prepare_pv_time_series_mastr(pv_systems_dict)
+    pv_systems_aggregated = aggregate_pv_time_series(pv_systems_dict)
     
-    # fig, ax = plt.subplots()
-    # for name, pv_system in pv_systems_aggregated.items():
-    #     pv_system.plot(ax=ax, label=name)
+    fig, ax = plt.subplots()
+    for name, pv_system in pv_systems_aggregated.items():
+        pv_system.plot(ax=ax, label=name)
 
-    # plt.show()
+    plt.show()
     
 
     
     
     ### Windenergie ###
-    gdf_wind, city_district = prepare_wind_data(location=location)
+    mastr_db_path = r'C:\Users\mashu\.open-MaStR\data\sqlite\open-mastr.db'
+    gdf_wind, city_district = prepare_wind_data(location=location, mastr_db_path=mastr_db_path)
     gdf_wind = wind_turbine_matching(gdf_wind)
     
     # Get wind data for testing
