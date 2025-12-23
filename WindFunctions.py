@@ -1429,26 +1429,26 @@ def get_weather_for_windpowerlib(lat, lon, year=2024, months=None, folder=r"F:\S
         dfs.append(df)
 
     if not dfs:
+        st.error("""
+        ❌ **No Weather Data Available**
+        
+        Could not load any ERA5 weather data files for the specified period.
+        
+        **What you need:**
+        - ERA5 NetCDF files in: `F:\\Streamlit_Project\\vise\\vise-d\\data\\era5_germany_2024_wind\\`
+        - Files named: `germany_era5_2024_01.nc`, `germany_era5_2024_02.nc`, etc.
+        
+        **How to get ERA5 data:**
+        1. Register at [Copernicus Climate Data Store](https://cds.climate.copernicus.eu/)
+        2. Use the ERA5 hourly data on single levels API
+        3. Request variables: u100, v100, u10, v10, t2m, sp (100m/10m wind, temperature, pressure)
+        df.index.name = "datetime"
+        dfs.append(df)
+
+    if not dfs:
         return None, None
 
-    weather_df = pd.concat(dfs).sort_index()
-
-    # Compute main wind direction for entire period
-    theta_rad = np.radians(weather_df["wind_direction"].values)
-    u_mean = np.mean(np.cos(theta_rad))
-    v_mean = np.mean(np.sin(theta_rad))
-    avg_dir_rad = np.arctan2(v_mean, u_mean)
-    main_wind_direction = (270 - np.degrees(avg_dir_rad)) % 360
-
-    return weather_df, main_wind_direction
-
-
-def simulate_windfarm_output(weather_df, num_turbines, hub_height, turbine_type="E-126/4200"):
-    # Convert to MultiIndex DataFrame
-    multi_weather = pd.DataFrame(index=weather_df.index)
-    multi_weather[("wind_speed", 10)] = weather_df["wind_speed_10m"]
-    multi_weather[("wind_speed", 100)] = weather_df["wind_speed_100m"]
-    multi_weather[("temperature", 2)] = weather_df["temperature"]
+    weather_df = pd.concat(dfs).sort_index()her_df["temperature"]
     multi_weather[("pressure", 0)] = weather_df["pressure"]
     multi_weather[("roughness_length", 0)] = 0.1
     multi_weather.columns = pd.MultiIndex.from_tuples(multi_weather.columns)
