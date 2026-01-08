@@ -1,4 +1,4 @@
-# Installing Relevant libraries
+﻿# Installing Relevant libraries
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -9,8 +9,8 @@ from st_files_connection import FilesConnection
 import os
 import osmnx as ox
 
-from paper_figures import fig_5, fig_7, fig_8, fig_9, fig_5_plotly
-from pp_networks import pp_networks
+from src.visualization import fig_5, fig_7, fig_8, fig_9, fig_5_plotly
+from src.network import pp_networks
 import matplotlib.pyplot as plt
 from vpplib.battery_electric_vehicle import BatteryElectricVehicle
 from vpplib.environment import Environment
@@ -26,15 +26,15 @@ from technologies.photovoltaics import pv_settings
 from technologies.wind_energy import wind
 from technologies.electrical_storage import electrical_storage
 
-from mastr_preprocessing import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
-from mastr_preprocessing import fetch_solar, fetch_wind, fetch_storage
+from src.mastr import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
+from src.mastr import fetch_solar, fetch_wind, fetch_storage
 
 
 
 # Import validation and error handling utilities with fallback
 try:
-    from utils.validation import InputValidator, validate_energy_system_inputs, display_validation_results, validate_location_selection
-    from utils.error_handling import (
+    from src.utils.validation import InputValidator, validate_energy_system_inputs, display_validation_results, validate_location_selection
+    from src.utils.error_handling import (
         handle_database_errors, handle_api_errors, handle_data_processing_errors, 
         safe_file_operation, log_user_action, show_loading_with_progress
     )
@@ -56,10 +56,16 @@ except ImportError:
     
     def handle_data_processing_errors(func):
         return func
-from mastr_preprocessing import get_unique_solar_locations, get_unique_wind_locations, get_unique_storage_locations
 
-#mastr_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'open-mastr.db'))
-mastr_db_path = 'C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'
+from src.mastr import get_unique_solar_locations, get_unique_wind_locations, get_unique_storage_locations
+from src.config import MASTR_DB_PATH
+
+# Use centralized config path (can be overridden if needed)
+# IMPORTANT: Update this path to match your open-MaStR database location
+# Default open-MaStR location: 'C:/Users/<username>/.open-MaStR/data/sqlite/open-mastr.db'
+mastr_db_path = str(MASTR_DB_PATH)
+# Alternative: Uncomment and update the line below with your actual database path
+# mastr_db_path = 'C:/Users/mashu/.open-MaStR/data/sqlite/open-mastr.db'
 
 # =============================================================================
 # PERFORMANCE CONFIGURATION
@@ -82,10 +88,10 @@ st.set_page_config(page_title='VISE-D Dashboard',
 with st.sidebar:
     st.markdown("---")
     st.markdown("**⚡ Performance**")
-    if st.button("🗑️ Clear Cache", help="Clear all cached data to free memory"):
+    if st.button("🗑️ Cache leeren", help="Alle zwischengespeicherten Daten l\u00f6schen"):
         st.cache_data.clear()
         st.cache_resource.clear()
-        st.success("✅ Cache cleared!")
+        st.success("✅ Cache geleert!")
         st.rerun()
 
 st.write('Willkommen beim VISE-D Dashboard! Die Seite befindet sich noch in der Entwicklung.')
@@ -230,40 +236,6 @@ def update_violin_plot(df,
         selected_hp_diffusion, selected_pv_storage_diffusion,
         selected_wholesale_tariff, selected_grid_usage_fees
     )
-
-
-def violin_plot():
-    with st.sidebar:
-        st.title('VISE-D')
-        
-        grid_type = df.grid_type.unique()
-        ev_diffusion = sorted(df.diffusion_evs.unique())
-        hp_diffusion = df.diffusion_hps.unique()
-        pv_storage_diffusion = df.diffusion_pv_storage.unique()
-        curtailment = df.curtailment.unique()
-        wholesale_tariff = df.tariff_wholesale.unique()
-        grid_usage_fees = df.tariff_grid_usage_fee.unique()
-        
-        selected_grid_type = st.selectbox('Grid Type', grid_type)
-        selected_ev_diffusion = st.selectbox('EV Diffusion', ev_diffusion)
-        selected_hp_diffusion = st.selectbox('Heat Pump Diffusion', hp_diffusion)
-        selected_pv_storage_diffusion = st.selectbox('PV Speicher Diffusion', pv_storage_diffusion)
-        selected_curtailment = st.selectbox('Curtailment', curtailment)
-        selected_wholesale_tariff = st.selectbox('Wholesale Tariff', wholesale_tariff)
-        selected_grid_usage_fees = st.selectbox('Netznutzungsgebühren', grid_usage_fees)
-
-    st.write('## Violin Plot')
-
-    st.plotly_chart(update_violin_plot(df,
-                                    selected_ev_diffusion, 
-                                    selected_curtailment,
-                                    selected_grid_type, 
-                                    selected_hp_diffusion, 
-                                    selected_pv_storage_diffusion,
-                                    selected_wholesale_tariff, 
-                                    selected_grid_usage_fees)
-                    )
-
 
 
 def research_results():
@@ -1463,7 +1435,7 @@ def storage_installation_mastr():
         else:
             st.warning("Please enter a city name.")
     
-from mastr_energy_generation import pick_pvsystem_mastr, prepare_pv_time_series_mastr, aggregate_pv_time_series,revise_power_values,wind_turbine_matching
+from src.mastr.simulation import pick_pvsystem_mastr, prepare_pv_time_series_mastr, aggregate_pv_time_series, revise_power_values, wind_turbine_matching
 
 
 def energy_generation_solar():
@@ -1513,7 +1485,8 @@ def energy_generation_solar():
                     st.error(f"Simulation failed: {e}")
 
 import pvlib
-from mastr_energy_generation import init_windturbines_mastr, prepare_wind_time_series_mastr, aggregate_wind_time_series
+from src.mastr.simulation import init_windturbines_mastr, prepare_wind_time_series_mastr, aggregate_wind_time_series
+
 def wind_energy_generation():
     st.title("Energy Generation from Wind Installations")
     
@@ -1840,7 +1813,7 @@ def FFPV_WEA():
     mouse_position = MousePosition(position='bottomright', separator=' | ', prefix="Coordinates:", num_digits=6)
     # Pass polygon coordinates to your simulation functions as needed
     if option == "FFPV":
-        from SolarFunctions import fetch_obstacles_solar, packing_solar, simulate_solarfarm_output
+        from src.planning import fetch_obstacles_solar, packing_solar, simulate_solarfarm_output
         # Removed is_circle parameter - polygon only now
         obstacles = fetch_obstacles_solar(output, current_polygon_coords, status_box)
         
@@ -1858,7 +1831,8 @@ def FFPV_WEA():
         st.session_state["results_ac"] = results_ac
         st.session_state["rated_power_solar"] = rated_power_solar
     elif option == "WEA":
-        from WindFunctions import fetch_obstacles_wind, packing_wind, simulate_windfarm_output, get_weather_for_windpowerlib
+        from src.planning import fetch_obstacles_wind, packing_wind, get_weather_for_windpowerlib
+        # TODO: simulate_windfarm_output function not yet implemented
         # Removed is_circle parameter - polygon only now
         obstacles = fetch_obstacles_wind(output, current_polygon_coords, status_box, min_spacing_x, min_spacing_y)
         status_box.info("☁️ Wetterdaten abrufen...")
@@ -1877,11 +1851,12 @@ def FFPV_WEA():
         st.session_state["num_turbines"] = num_turbines
         st.session_state["second_map"] = m2_wind
         st.session_state["second_map_html"] = m2_wind._repr_html_()
-        status_box.info("🧮 Windturbinen simulieren...")
-        results_df, total_energy, rated_power_wind = simulate_windfarm_output(weather_df, num_turbines, hub_height)
-        st.session_state["results_df"] = results_df
-        st.session_state["total_energy"] = total_energy
-        st.session_state["rated_power_wind"] = rated_power_wind
+        # TODO: Wind simulation function not yet implemented
+        # status_box.info("🧮 Windturbinen simulieren...")
+        # results_df, total_energy, rated_power_wind = simulate_windfarm_output(weather_df, num_turbines, hub_height)
+        # st.session_state["results_df"] = results_df
+        # st.session_state["total_energy"] = total_energy
+        # st.session_state["rated_power_wind"] = rated_power_wind
         
         # Store center coordinates for display
         st.session_state["lat_center"] = lat_center
@@ -1889,8 +1864,9 @@ def FFPV_WEA():
         st.session_state["radius_meters"] = radius_meters
         
     elif option == "Hybrid (FFPV + WEA)":
-                from WindFunctions import fetch_obstacles_wind, packing_wind, simulate_windfarm_output, get_weather_for_windpowerlib
-                from SolarFunctions import fetch_obstacles_solar, packing_solar, simulate_solarfarm_output
+                from src.planning import fetch_obstacles_wind, packing_wind, get_weather_for_windpowerlib
+                from src.planning import fetch_obstacles_solar, packing_solar, simulate_solarfarm_output
+                # TODO: simulate_windfarm_output not yet implemented
                 import geopandas as gpd
                 import pandas as pd
                 from shapely.geometry import Point
@@ -1910,12 +1886,13 @@ def FFPV_WEA():
                 
                 st.session_state["num_turbines"] = num_turbines
                 
+                # TODO: Wind simulation function not yet implemented
                 # Simulate wind farm output
-                status_box.info("🧮 Windturbinen simulieren...")
-                results_df, total_energy, rated_power_wind = simulate_windfarm_output(weather_df, num_turbines, hub_height)
-                st.session_state["results_df"] = results_df
-                st.session_state["total_energy"] = total_energy
-                st.session_state["rated_power_wind"] = rated_power_wind
+                # status_box.info("🧮 Windturbinen simulieren...")
+                # results_df, total_energy, rated_power_wind = simulate_windfarm_output(weather_df, num_turbines, hub_height)
+                # st.session_state["results_df"] = results_df
+                # st.session_state["total_energy"] = total_energy
+                # st.session_state["rated_power_wind"] = rated_power_wind
                 
                 # Initialize combined obstacles with wind obstacles
                 combined_obstacles = obstacles_wind.copy()
@@ -2329,22 +2306,21 @@ def OpenSTEF():
 
 
 pg = st.navigation([
-    st.Page(research_results, title="Research Results"),
-    st.Page(network_calculations, title="Network Calculations"),
-    st.Page(violin_plot, title="Violin Plot"), 
-    st.Page(bev_settings, title="BEV Settings"),
-    st.Page(hydrogen_electrolyzer_settings, title="Hydrogen Electrolyzer"),
-    st.Page(heatpump_configuration, title="Heat Pump"),
-    st.Page(pv_configuration, title="PV Configuration"),
-    st.Page(wind_configuration, title="Wind Configuration"),
-    st.Page(electrical_storage_configuration, title="Electrical Storage"),
-    st.Page(thermal_storage_settings, title="Thermal Storage"),
-    st.Page(solar_installation_mastr, title="Solar Installations"),
-    st.Page(wind_installation_mastr, title="Wind Installations"),
-    st.Page(storage_installation_mastr, title="Storage Installations"),
-    st.Page(energy_generation_solar, title="Solar Energy Generation"),
-    st.Page(wind_energy_generation, title="Wind Energy Generation"),
-    st.Page(FFPV_WEA, title="FFPV & WEA Planning"),
-    st.Page(OpenSTEF, title="Open Short Term Energy Forecasting (OpenSTEF)"),
+    st.Page(research_results, title="Forschungsergebnisse"),
+    st.Page(network_calculations, title="Netzberechnungen"),
+    st.Page(bev_settings, title="BEV Einstellungen"),
+    st.Page(hydrogen_electrolyzer_settings, title="Wasserstoff-Elektrolyseur"),
+    st.Page(heatpump_configuration, title="Wärmepumpe"),
+    st.Page(pv_configuration, title="PV Konfiguration"),
+    st.Page(wind_configuration, title="Windkonfiguration"),
+    st.Page(electrical_storage_configuration, title="Elektrischer Speicher"),
+    st.Page(thermal_storage_settings, title="Thermischer Speicher"),
+    st.Page(solar_installation_mastr, title="Solaranlagen"),
+    st.Page(wind_installation_mastr, title="Windanlagen"),
+    st.Page(storage_installation_mastr, title="Speicheranlagen"),
+    st.Page(energy_generation_solar, title="Solare Energieerzeugung"),
+    st.Page(wind_energy_generation, title="Windenergieerzeugung"),
+    st.Page(FFPV_WEA, title="FFPV & WEA Planung"),
+    st.Page(OpenSTEF, title="Kurzfristige Energieprognose (OpenSTEF)"),
 ])
 pg.run()

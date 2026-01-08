@@ -1,0 +1,121 @@
+"""Application constants and configuration settings for VISE-D.
+
+Contains cache TTLs, API settings, and other application-wide constants.
+
+Author: Pyosch
+AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+Created: January 2026
+"""
+
+__author__ = "Pyosch"
+__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+
+from dataclasses import dataclass
+from typing import Final
+
+
+# Cache time-to-live settings (in seconds)
+@dataclass(frozen=True)
+class CacheConfig:
+    """Cache configuration with TTL values for different data types."""
+    
+    ENVIRONMENT_TTL: int = 3600  # 1 hour for vpplib Environment objects
+    MASTR_DATA_TTL: int = 1800  # 30 minutes for MaStR database queries
+    WEATHER_DATA_TTL: int = 3600  # 1 hour for weather data
+    NETWORK_ANALYSIS_TTL: int = 900  # 15 minutes for network calculations
+    FORECAST_TTL: int = 1800  # 30 minutes for forecast results
+
+
+# Default cache configuration instance
+CACHE: Final[CacheConfig] = CacheConfig()
+
+
+# DWD (Deutscher Wetterdienst) weather service settings
+@dataclass(frozen=True)
+class DWDConfig:
+    """Configuration for DWD weather data integration."""
+    
+    DEFAULT_STATION: str = "10513"  # Default weather station ID
+    REQUEST_TIMEOUT: int = 30  # Timeout for DWD API requests (seconds)
+    MAX_RETRIES: int = 3  # Maximum number of retry attempts
+
+
+DWD: Final[DWDConfig] = DWDConfig()
+
+
+# OpenSTEF forecasting settings
+@dataclass(frozen=True)
+class OpenSTEFConfig:
+    """Configuration for OpenSTEF forecasting integration."""
+    
+    MLFLOW_TRACKING_URI: str = "mlruns"  # MLflow tracking directory
+    DEFAULT_MODEL_TYPE: str = "xgboost"  # Default model type
+    FORECAST_HORIZON_HOURS: int = 48  # Default forecast horizon
+
+
+OPENSTEF: Final[OpenSTEFConfig] = OpenSTEFConfig()
+
+
+# Network analysis settings
+@dataclass(frozen=True)
+class NetworkConfig:
+    """Configuration for pandapower network analysis."""
+    
+    MAX_ITERATION: int = 10  # Maximum power flow iterations
+    TOLERANCE: float = 1e-6  # Convergence tolerance for power flow
+    VOLTAGE_LIMITS_PU: tuple[float, float] = (0.9, 1.1)  # Min/max voltage (per unit)
+
+
+NETWORK: Final[NetworkConfig] = NetworkConfig()
+
+
+# UI settings
+@dataclass(frozen=True)
+class UIConfig:
+    """Configuration for Streamlit user interface."""
+    
+    PAGE_ICON: str = "⚡"  # Browser tab icon
+    LAYOUT: str = "wide"  # Streamlit layout mode
+    INITIAL_SIDEBAR_STATE: str = "expanded"  # Sidebar initial state
+
+
+UI: Final[UIConfig] = UIConfig()
+
+
+# Validation limits for technology parameters
+@dataclass(frozen=True)
+class ValidationLimits:
+    """Validation limits for technology parameter inputs."""
+    
+    # Photovoltaic limits
+    PV_POWER_MIN_KW: float = 0.1
+    PV_POWER_MAX_KW: float = 10000.0
+    PV_EFFICIENCY_MIN: float = 0.05
+    PV_EFFICIENCY_MAX: float = 0.30
+    
+    # Wind turbine limits
+    WIND_POWER_MIN_KW: float = 1.0
+    WIND_POWER_MAX_KW: float = 10000.0
+    WIND_HUB_HEIGHT_MIN_M: float = 10.0
+    WIND_HUB_HEIGHT_MAX_M: float = 200.0
+    
+    # Battery storage limits
+    STORAGE_CAPACITY_MIN_KWH: float = 1.0
+    STORAGE_CAPACITY_MAX_KWH: float = 100000.0
+    STORAGE_POWER_MIN_KW: float = 1.0
+    STORAGE_POWER_MAX_KW: float = 50000.0
+    
+    # Heat pump limits
+    HP_THERMAL_POWER_MIN_KW: float = 1.0
+    HP_THERMAL_POWER_MAX_KW: float = 100.0
+    HP_COP_MIN: float = 2.0
+    HP_COP_MAX: float = 6.0
+    
+    # BEV limits
+    BEV_BATTERY_MIN_KWH: float = 10.0
+    BEV_BATTERY_MAX_KWH: float = 200.0
+    BEV_CHARGE_POWER_MIN_KW: float = 3.7
+    BEV_CHARGE_POWER_MAX_KW: float = 350.0
+
+
+LIMITS: Final[ValidationLimits] = ValidationLimits()

@@ -1,3 +1,16 @@
+"""Pandapower network examples and visualization.
+
+This module provides example distribution networks using Pandapower's built-in
+network templates, with interactive visualization and power flow calculation.
+
+Author: Pyosch
+AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+Created: January 2026
+"""
+
+__author__ = "Pyosch"
+__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+
 import pandapower as pp
 import pandapower.networks as pn
 

@@ -1,12 +1,51 @@
-.gitignore
+# Python bytecode and compiled files
 *.cpython
 *.pyc
+*.py[cod]
+*$py.class
+*.so
+__pycache__/
+
+# Project data and cache
 data/*
+cache/
+mlruns/*
+
+# Streamlit secrets
 .streamlit/secrets.toml
-__pycache__/*
+
+# Compressed and binary files
 *.zip
 *.json
 *.log
 *.db
+*.sqlite
 *.html
-mlruns/*
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+vise/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

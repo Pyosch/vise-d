@@ -8,8 +8,8 @@ import streamlit as st
 from st_files_connection import FilesConnection
 import os
 
-from paper_figures import fig_5, fig_7, fig_8, fig_9, fig_5_plotly
-from pp_networks import pp_networks
+from src.visualization import fig_5, fig_7, fig_8, fig_9, fig_5_plotly
+from src.network import pp_networks
 import matplotlib.pyplot as plt
 
 

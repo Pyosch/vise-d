@@ -307,6 +307,12 @@ vise-d/
 2. **No testing framework** (Effort: High, Impact: High) - Missing automated testing
 3. **Hardcoded configurations** (Effort: Medium, Impact: Medium) - Need configuration management
 4. **Remaining naming inconsistencies** (Effort: Low, Impact: Low) - Function names and internal variables still mixed German/English
+5. **Missing wind simulation function** (Effort: High, Impact: Medium) - `simulate_windfarm_output()` referenced but not implemented
+   - Currently commented out in dashboard.py (lines 1835, 1856, 1869, 1891)
+   - Needed for wind energy generation calculations in FFPV & WEA Planning page
+   - Should provide similar functionality to `simulate_solarfarm_output()` in src/planning/solar.py
+   - Function signature: `simulate_windfarm_output(weather_df, num_turbines, hub_height) -> (results_df, total_energy, rated_power_wind)`
+   - See TODOs in: dashboard.py, src/planning/__init__.py
 
 ### **✅ RESOLVED - Performance Technical Debt**
 1. **Slow database operations** (FIXED: 90%+ improvement with intelligent caching)
