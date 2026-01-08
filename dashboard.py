@@ -19,12 +19,16 @@ from vpplib.user_profile import UserProfile
 from vpplib.photovoltaic import Photovoltaic
 from vpplib.wind_power import WindPower
 from vpplib import ElectricalEnergyStorage
+from vpplib import ThermalEnergyStorage
+from vpplib import HeatingRod
 
-from technologies.bev import battery_electric_vehicle_settings
-from technologies.heat_pump_settings import heatpump_settings
-from technologies.photovoltaics import pv_settings
-from technologies.wind_energy import wind
-from technologies.electrical_storage import electrical_storage
+from src.ui.components import (
+    battery_electric_vehicle_settings,
+    heatpump_settings,
+    pv_settings,
+    wind,
+    electrical_storage,
+)
 
 from src.mastr import prepare_solar_data, prepare_wind_data, prepare_storage_data, prepare_grid_connections_data
 from src.mastr import fetch_solar, fetch_wind, fetch_storage
@@ -347,16 +351,16 @@ def network_calculations():
 # Initialize session state for BEV settings if not already present
 if "bev_settings" not in st.session_state:
         st.session_state.bev_settings = {
-        "max_battery_capacity": 0.0,
-        "min_battery_capacity": 0.0,
-        "battery_usage": 0.0,
-        "charging_power": 0.0,
-        "charging_efficiency": 0.0,
-        "load_degradation_begin": 0.0,
+        "max_battery_capacity": 75.0,  # kWh - typical EV battery
+        "min_battery_capacity": 15.0,  # kWh - 20% reserve
+        "battery_usage": 50.0,  # kWh - daily usage
+        "charging_power": 11.0,  # kW - typical AC wallbox
+        "charging_efficiency": 0.95,  # 95% efficiency
+        "load_degradation_begin": 0.8,  # 80% SoC
         "user_profile": "None",
         "selected_environment": "None",
-        "start_time": datetime.time(0, 0,0),
-        "end_time": datetime.time(0, 0,0),
+        "start_time": datetime.time(18, 0, 0),  # 6 PM - typical plug-in time
+        "end_time": datetime.time(7, 0, 0),  # 7 AM - departure time
         "timebase": 15
     }
 
@@ -391,10 +395,10 @@ def bev_settings():
                     bev_simulation_button = st.form_submit_button("Simulate BEV")
                     
                     if bev_simulation_button:
-                        start = "2015-06-01 00:00:00"
-                        end = "2015-06-01 23:45:00"
+                        start = "2024-06-01 00:00:00"
+                        end = "2024-06-01 23:45:00"
                         timestamp_int = 48
-                        timestamp_str = "2015-06-01 12:00:00"
+                        timestamp_str = "2024-06-01 12:00:00"
                         timebase = 15
                         env = Environment(start=start, end=end, timebase=timebase)
                         
@@ -787,12 +791,12 @@ def electrical_storage_configuration():
         electrical_storage_simulation_button = st.form_submit_button("Simulate Electrical Storage")
            
         if electrical_storage_simulation_button:
-            start = "2015-06-01 00:00:00"
-            end = "2015-06-07 23:45:00"
-            year = "2015"
+            start = "2024-06-01 00:00:00"
+            end = "2024-06-07 23:45:00"
+            year = "2024"
             timebase = 15
             timestamp_int = 48
-            timestamp_str = "2015-06-01 12:00:00"
+            timestamp_str = "2024-06-01 12:00:00"
             name = "bus"
             max_c = 1
             env = Environment(timebase=timebase, start=start, end=end, year=year)
@@ -854,24 +858,31 @@ def electrical_storage_configuration():
 
 def thermal_storage_settings():
     if "thermal_storage_settings" not in st.session_state:
+        # Calculate initial state of charge based on current temperature
+        # Energy = mass * cp * temperature (convert from kJ to kWh: divide by 3600)
+        initial_current_temp = 50  # 50°C starting temperature
+        initial_mass = 300  # 300 kg
+        initial_cp = 4.18  # 4.18 kJ/kg°C
+        initial_soc = (initial_mass * initial_cp * (initial_current_temp + 273.15)) / 3600  # kWh
+        
         st.session_state.thermal_storage_settings={
-            "target temperature": 0,
-            "minimum temperature" : 0,
-            "Current Temperature": 0,
-            "hysteresis": 0,
-            "mass":0,
-            "cp":0,
-            "thermal energy loss per day":0,
-            "State of Charge":0,
-            "start_time": 0,
-            "end_time": 0,
-            "frequency": 0,
-            "timebase_minutes":0
+            "target temperature": 60,  # 60°C for domestic hot water
+            "minimum temperature": 40,  # 40°C minimum usable temperature
+            "Current Temperature": initial_current_temp,  # 50°C starting temperature
+            "hysteresis": 5,  # 5°C control band
+            "mass": initial_mass,  # 300 kg (typical 300L water tank)
+            "cp": initial_cp,  # 4.18 kJ/kg°C (specific heat of water)
+            "thermal energy loss per day": 2.5,  # 2.5 kWh/day (well-insulated tank)
+            "State of Charge": initial_soc,  # Calculated based on current temperature
+            "start_time": 6,  # 6:00 - morning heating start
+            "end_time": 22,  # 22:00 - evening heating end
+            "frequency": 50,  # 50 Hz (Germany)
+            "timebase_minutes": 15  # 15 minutes (consistent with other components)
     
         }
     st.title("Thermal Storage Configuarations")
     
-    with st.sidebar:
+    with st.container():
         st.header("Thermal Storage Settings")
         
         st.markdown("**Target Temperature**")
@@ -997,12 +1008,9 @@ def thermal_storage_settings():
                 "timebase_minutes": timebase_minutes
             }
             st.success("Thermal Storage settings updated successfully!")
-            
-    # Display stored settings
+    
+    # Display stored settings table
     if "thermal_storage_settings" in st.session_state:
-        st.header("Current Thermal Storage Settings")
-        st.json(st.session_state.thermal_storage_settings)
-
         # Create DataFrame for table
         data = {
             "Metric": [
@@ -1057,6 +1065,143 @@ def thermal_storage_settings():
             {'selector': 'td', 'props': [('border', '1px solid #ddd')]}
         ])
         st.dataframe(styled_df, use_container_width=True, hide_index=True)
+    
+    # Simulation section (placed after settings table)
+    with st.form(key="thermal_storage_simulation_form"):
+        thermal_simulation_button = st.form_submit_button("Simulate Thermal Storage")
+        
+        if thermal_simulation_button:
+            start = "2024-06-01 00:00:00"
+            end = "2024-06-07 23:45:00"
+            timebase = int(st.session_state.thermal_storage_settings["timebase_minutes"])
+            env = Environment(start=start, end=end, timebase=timebase)
+            
+            # Create synthetic thermal demand profile for hot water usage
+            # Higher demand in morning (6-9) and evening (18-22), lower at night
+            import numpy as np
+            time_index = pd.date_range(start=start, end=end, freq=f"{timebase}min")
+            thermal_demand = []
+            
+            for timestamp in time_index:
+                hour = timestamp.hour
+                # Peak demand: 6-9 AM (morning shower) and 18-22 PM (evening usage)
+                if 6 <= hour < 9:
+                    base_demand = 2.5  # kW during morning peak
+                elif 18 <= hour < 22:
+                    base_demand = 2.0  # kW during evening peak
+                elif 22 <= hour < 24 or 0 <= hour < 6:
+                    base_demand = 0.3  # kW overnight (minimal demand)
+                else:
+                    base_demand = 0.8  # kW during day (moderate demand)
+                
+                # Add some random variation (±20%)
+                demand = base_demand * (1 + 0.2 * (np.random.random() - 0.5))
+                thermal_demand.append(max(0, demand))  # Ensure non-negative
+            
+            thermal_demand_series = pd.Series(thermal_demand, index=time_index, name="thermal_demand")
+            
+            # Initialize HeatingRod with thermal demand profile and ramp parameters
+            heating_rod = HeatingRod(
+                thermal_energy_demand=thermal_demand_series,
+                unit="kW",
+                identifier="heating_rod_1",
+                environment=env,
+                el_power=5.0,  # 5 kW electric heating element
+                rampUpTime=1/15,  # 1 timestep to ramp up
+                rampDownTime=1/15,  # 1 timestep to ramp down
+                min_runtime=1,  # Minimum 1 timestep runtime
+                min_stop_time=2,  # Minimum 2 timesteps stop time
+                efficiency=0.95
+            )
+            
+            # Initialize ThermalEnergyStorage with form inputs
+            st.session_state.thermal_storage = ThermalEnergyStorage(
+                unit="kW",
+                identifier="thermal_storage_1",
+                environment=env,
+                target_temperature=st.session_state.thermal_storage_settings["target temperature"],
+                min_temperature=st.session_state.thermal_storage_settings["minimum temperature"],
+                hysteresis=st.session_state.thermal_storage_settings["hysteresis"],
+                mass=st.session_state.thermal_storage_settings["mass"],
+                cp=st.session_state.thermal_storage_settings["cp"],
+                thermal_energy_loss_per_day=st.session_state.thermal_storage_settings["thermal energy loss per day"]
+            )
+            
+            # Set initial temperature
+            st.session_state.thermal_storage.current_temperature = st.session_state.thermal_storage_settings["Current Temperature"]
+            
+            # Add snake_case method aliases to HeatingRod for compatibility with ThermalEnergyStorage
+            if not hasattr(heating_rod, 'ramp_up'):
+                heating_rod.ramp_up = heating_rod.rampUp
+            if not hasattr(heating_rod, 'ramp_down'):
+                heating_rod.ramp_down = heating_rod.rampDown
+            
+            # Connect heating rod to thermal storage
+            heating_rod.thermal_energy_storage = st.session_state.thermal_storage
+            
+            # Prepare time series for both components
+            heating_rod.prepare_time_series()
+            st.session_state.thermal_storage.prepare_time_series()
+            
+            # Simulate timestep-by-timestep (following vpplib example pattern)
+            st.info("⏳ Simulating thermal storage operation over 1 week...")
+            progress_bar = st.progress(0)
+            
+            # Get time index from thermal storage (which should be a DataFrame)
+            if hasattr(st.session_state.thermal_storage.timeseries, 'index'):
+                time_index = st.session_state.thermal_storage.timeseries.index
+            else:
+                # Fallback to environment time index
+                time_index = time_index  # Use the time_index we created earlier
+            
+            total_steps = len(time_index)
+            
+            for idx, timestamp in enumerate(time_index):
+                st.session_state.thermal_storage.operate_storage(timestamp, heating_rod)
+                # Update progress every 50 timesteps to avoid slowdown
+                if idx % 50 == 0:
+                    progress_bar.progress(idx / total_steps)
+            
+            progress_bar.progress(1.0)
+            st.success("✅ Simulation completed!")
+            
+            # Display results
+            st.write("**Thermal Storage Temperature (First 10 timesteps):**")
+            st.dataframe(st.session_state.thermal_storage.timeseries.head(10))
+            
+            st.write("**Heating Rod Electrical Demand (First 10 timesteps):**")
+            if hasattr(heating_rod.timeseries, 'el_demand'):
+                st.dataframe(heating_rod.timeseries[['el_demand']].head(10))
+            else:
+                st.dataframe(heating_rod.timeseries.head(10))
+            
+            # Plot thermal storage temperature
+            fig_temp, ax_temp = plt.subplots(figsize=(16, 6))
+            st.session_state.thermal_storage.timeseries.plot(ax=ax_temp, color='red')
+            ax_temp.axhline(y=st.session_state.thermal_storage_settings["target temperature"], 
+                           color='green', linestyle='--', label='Target Temperature')
+            ax_temp.axhline(y=st.session_state.thermal_storage_settings["minimum temperature"], 
+                           color='blue', linestyle='--', label='Minimum Temperature')
+            ax_temp.set_title("Thermal Storage Temperature Over Time")
+            ax_temp.set_xlabel("Time")
+            ax_temp.set_ylabel("Temperature (°C)")
+            ax_temp.legend()
+            ax_temp.grid(True, alpha=0.3)
+            plt.tight_layout()
+            st.pyplot(fig_temp)
+            
+            # Plot heating rod electrical demand
+            fig_demand, ax_demand = plt.subplots(figsize=(16, 6))
+            if hasattr(heating_rod.timeseries, 'el_demand'):
+                heating_rod.timeseries['el_demand'].plot(ax=ax_demand, color='orange')
+            else:
+                heating_rod.timeseries.plot(ax=ax_demand, color='orange')
+            ax_demand.set_title("Heating Rod Electrical Demand")
+            ax_demand.set_xlabel("Time")
+            ax_demand.set_ylabel("Electrical Power (kW)")
+            ax_demand.grid(True, alpha=0.3)
+            plt.tight_layout()
+            st.pyplot(fig_demand)
         
 
 
