@@ -26,7 +26,7 @@ import mlflow
 # Set to True to retrain the model (e.g. if you have new data or changed parameters)
 TRAIN_MODEL = False 
       
-mastr_db_path = r'C:\Users\mashu\.open-MaStR\data\sqlite\open-mastr.db'
+mastr_db_path = r'data\open-mastr.db'
 
 # Define time period - use most recent full year of data available
 location = "Köln"

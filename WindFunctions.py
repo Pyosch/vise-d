@@ -1468,3 +1468,5 @@ def get_weather_for_windpowerlib(lat, lon, year=2024, months=None, folder=r"F:\S
     rated_power_kwatts = 4200 * num_turbines
 
     return results_df, total_energy, rated_power_kwatts
+    """)
+        return None, None
