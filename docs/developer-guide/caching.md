@@ -1,4 +1,6 @@
-# VISE-D Dashboard Performance Optimization - Caching Implementation
+# Caching Implementation Guide
+
+**Last Updated:** January 2026
 
 ## Overview
 

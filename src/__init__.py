@@ -1,4 +1,4 @@
-"""VISE-D (Virtual Integrated Smart Energy - Deutschland) package.
+"""VISE-D (Virtuelles Institut Smart Energy - Smart Data) package.
 
 Energy system analysis tool for distribution grids with German interface.
 

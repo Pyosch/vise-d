@@ -1,6 +1,6 @@
 ﻿"""VISE-D Dashboard - Main Application Entry Point.
 
-Virtual Integrated Smart Energy - Deutschland
+Virtuelles Institut Smart Energy - Smart Data
 Interactive energy system analysis dashboard for German distribution grids.
 
 Author: Pyosch

@@ -1,6 +1,10 @@
-# Phase 1 Testing Checklist
+# Testing Guide
 
-## ✅ Changes Applied:
+**Last Updated:** January 2026
+
+## Phase 1 Testing Checklist
+
+### ✅ Changes Applied:
 - Updated all `mastr_preprocessing` imports → `src.mastr`
 - Updated all `mastr_energy_generation` imports → `src.mastr.simulation`
 - Updated `utils` imports → `src.utils`
