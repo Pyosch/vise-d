@@ -26,6 +26,12 @@ from src.planning.wind import (
     get_weather_for_windpowerlib,
 )
 
+# Geographic utilities
+from src.planning.geo_utils import (
+    get_local_crs,
+    find_circle_markers,
+)
+
 __all__ = [
     # Solar
     "fetch_obstacles_solar",
@@ -36,4 +42,7 @@ __all__ = [
     "packing_wind",
     # "simulate_windfarm_output",  # TODO: Not yet implemented
     "get_weather_for_windpowerlib",
+    # Geographic utilities
+    "get_local_crs",
+    "find_circle_markers",
 ]
