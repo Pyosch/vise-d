@@ -117,7 +117,6 @@ def fetch_weather_for_pv(
     
     try:
         # Fetch 10-minute data from DWD (highest resolution available)
-        # Use single station to avoid column overlap issues
         data, metadata = fetcher.get_observations(
             latitude=latitude,
             longitude=longitude,
@@ -126,17 +125,21 @@ def fetch_weather_for_pv(
             end_date=end_date,
             resolution='10_minutes',
             max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
-            n_stations=1,  # Use single best station to avoid merge conflicts
+            n_stations=1,
             for_pvlib=True,  # Auto-format for pvlib compatibility
-            allow_multi_station=False  # Disable multi-station merging
+            allow_multi_station=False
         )
+        
+        # Ensure DatetimeIndex for resampling
+        if not isinstance(data.index, pd.DatetimeIndex):
+            raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
         
         # Resample to target resolution if needed
         if resolution != "10min":
             if resolution == "15min":
-                data = data.resample('15T').interpolate(method='linear')
+                data = data.resample('15min').interpolate(method='linear')
             elif resolution == "hourly":
-                data = data.resample('H').interpolate(method='linear')
+                data = data.resample('h').interpolate(method='linear')
         
         return data, metadata
         
@@ -234,7 +237,6 @@ def fetch_weather_for_wind(
     
     try:
         # Fetch 10-minute data from DWD with windpowerlib formatting
-        # Use single station to avoid column overlap issues
         data, metadata = fetcher.get_observations(
             latitude=latitude,
             longitude=longitude,
@@ -248,12 +250,16 @@ def fetch_weather_for_wind(
             allow_multi_station=False
         )
         
+        # Ensure DatetimeIndex for resampling
+        if not isinstance(data.index, pd.DatetimeIndex):
+            raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
+        
         # Resample to target resolution if needed
         if resolution != "10min":
             if resolution == "15min":
-                data = data.resample('15T').interpolate(method='linear')
+                data = data.resample('15min').interpolate(method='linear')
             elif resolution == "hourly":
-                data = data.resample('H').interpolate(method='linear')
+                data = data.resample('h').interpolate(method='linear')
         
         # Add roughness length if not present (typical value for open terrain)
         if ('roughness_length', '0') not in data.columns:
@@ -351,9 +357,13 @@ def fetch_weather_for_heatpump(
             allow_multi_station=False
         )
         
+        # Ensure DatetimeIndex for resampling
+        if not isinstance(data.index, pd.DatetimeIndex):
+            raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
+        
         # Resample if needed
         if resolution == "15min" and dwd_resolution == "hourly":
-            data = data.resample('15T').interpolate(method='linear')
+            data = data.resample('15min').interpolate(method='linear')
         
         return data, metadata
         
