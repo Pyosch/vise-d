@@ -215,7 +215,25 @@ class DWDFetcher:
             if combined_df.empty:
                 combined_df = df
             else:
-                combined_df = combined_df.join(df, how='outer')
+                # Handle overlapping columns intelligently:
+                # Keep existing columns with valid data, only add new columns
+                overlapping_cols = combined_df.columns.intersection(df.columns)
+                
+                if len(overlapping_cols) > 0:
+                    # For overlapping columns, keep existing valid data, only fill missing/zero values
+                    for col in overlapping_cols:
+                        # Create mask: True where we want to update (NaN or zero in existing data)
+                        mask = combined_df[col].isna() | (combined_df[col] == 0)
+                        # Update only those positions with new data
+                        combined_df.loc[mask, col] = df.loc[mask, col]
+                    
+                    # Add only non-overlapping columns from new dataframe
+                    new_cols = df.columns.difference(combined_df.columns)
+                    if len(new_cols) > 0:
+                        combined_df = combined_df.join(df[new_cols], how='outer')
+                else:
+                    # No overlap, simple join
+                    combined_df = combined_df.join(df, how='outer')
         
         # Apply transformations
         if for_pvlib:

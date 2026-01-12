@@ -41,11 +41,24 @@ class DataTransformer:
         # Default parameter mapping
         if parameter_mapping is None:
             parameter_mapping = {
-                # Common observation column names to pvlib names
-                'ATMO_STRAHL': 'ghi',  # Global Horizontal Irradiance
-                'FG_LBERG': 'ghi',     # Alternative GHI name
-                'TT_TU': 'temp_air',    # Air temperature
+                # Solar radiation (10-minute data)
+                'GS_10': 'ghi',         # Global radiation (10-minute) in J/cm²
+                'DS_10': 'dhi',         # Diffuse radiation (10-minute) in J/cm²
+                'SD_10': 'sunshine_duration',  # Sunshine duration
+                'LS_10': 'longwave_downward',  # Longwave radiation
+                # Solar radiation (hourly/daily)
+                'ATMO_STRAHL': 'ghi',   # Global Horizontal Irradiance
+                'FG_LBERG': 'ghi',      # Alternative GHI name
+                # Temperature
+                'TT_10': 'temp_air',    # Air temperature (10-minute)
+                'TT_TU': 'temp_air',    # Air temperature (hourly)
+                'TM5_10': 'temp_air_5cm',  # Temperature at 5cm
+                'RF_10': 'relative_humidity',  # Relative humidity
+                'TD_10': 'dew_point',   # Dew point
+                # Wind
                 'FF_10': 'wind_speed',  # Wind speed at 10m
+                'DD_10': 'wind_direction',  # Wind direction
+                # Pressure
                 'P0': 'pressure',       # Pressure (hourly/daily)
                 'PP_10': 'pressure',    # Pressure (10-minute)
                 'P': 'pressure',        # Alternative pressure name
@@ -70,17 +83,31 @@ class DataTransformer:
         # Convert temperature from Kelvin to Celsius if needed
         if 'temp_air' in result.columns:
             # Check if values are in Kelvin range (> 200)
-            if result['temp_air'].dropna().median() > 200:
+            median_temp = result['temp_air'].dropna().median()
+            if median_temp > 200:
                 result['temp_air'] = result['temp_air'] - 273.15
         
-        # Convert radiation from kJ/m² to W/m² if needed
-        # MOSMIX Rad1h is in kJ/m² for last hour
-        # To convert to W/m²: kJ/m²/h * 1000 / 3600 = W/m²
-        if 'ghi' in result.columns:
-            # Check if values are in kJ/m² range (typically < 5000)
-            median_val = result['ghi'].dropna().median()
-            if median_val > 0 and median_val < 5000:
-                result['ghi'] = result['ghi'] * 1000 / 3600
+        # Convert radiation from J/cm² to W/m² for 10-minute data
+        # DWD 10-minute solar data is in J/cm² (for 10-minute interval)
+        # To convert: J/cm² / 600s * 10000 cm²/m² = W/m²
+        # Simplified: J/cm² * 16.667 = W/m²
+        for rad_col in ['ghi', 'dhi']:
+            if rad_col in result.columns:
+                median_val = result[rad_col].dropna().median()
+                # If values are small (< 1000), assume J/cm² and convert
+                if median_val > 0 and median_val < 1000:
+                    result[rad_col] = result[rad_col] * 10000 / 600  # J/cm² to W/m²
+                # If values are in kJ/m² range (for hourly data, typically < 5000)
+                elif median_val >= 1000 and median_val < 5000:
+                    result[rad_col] = result[rad_col] * 1000 / 3600  # kJ/m²/h to W/m²
+        
+        # Calculate DNI from GHI and DHI if both available
+        # DNI = (GHI - DHI) / cos(zenith_angle)
+        # For simplicity, if DHI is available, we can estimate:
+        if 'ghi' in result.columns and 'dhi' in result.columns and 'dni' not in result.columns:
+            # Simple approximation: DNI ≈ GHI - DHI (assumes zenith angle ≈ 0)
+            # This is rough but pvlib can refine it
+            result['dni'] = (result['ghi'] - result['dhi']).clip(lower=0)
         
         # Convert pressure from Pa to hPa if needed
         if 'pressure' in result.columns:
