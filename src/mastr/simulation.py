@@ -26,7 +26,7 @@ from windpowerlib import WindTurbine, ModelChain
 
 from vpplib import Photovoltaic, WindPower, UserProfile, Environment
 from src.mastr.preprocessing import prepare_solar_data, prepare_wind_data
-from src.config import PROJECT_ROOT
+from src.config import PROJECT_ROOT, DATA_DIR
 
 # Path to median wind power curve
 path_to_power_curve = PROJECT_ROOT / "median_windpower_curve.csv"
@@ -328,7 +328,7 @@ def aggregate_pv_time_series(pv_systems_dict):
     return pv_systems_aggregated
 
 ### WINDENERGY ###
-df_efficiency_curve = pd.read_csv('median_windpower_curve.csv')
+df_efficiency_curve = pd.read_csv(DATA_DIR / 'median_windpower_curve.csv')
 def wind_turbine_matching(gdf):
     """
     Matches wind turbine types from a GeoDataFrame to the closest entries in a turbine database using fuzzy string matching.

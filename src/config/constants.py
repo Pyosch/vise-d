@@ -35,9 +35,16 @@ CACHE: Final[CacheConfig] = CacheConfig()
 class DWDConfig:
     """Configuration for DWD weather data integration."""
     
-    DEFAULT_STATION: str = "10513"  # Default weather station ID
+    DEFAULT_STATION: str = "10513"  # Default weather station ID (Düsseldorf)
     REQUEST_TIMEOUT: int = 30  # Timeout for DWD API requests (seconds)
     MAX_RETRIES: int = 3  # Maximum number of retry attempts
+    CACHE_DIR: str = "cache/dwd_cache"  # Cache directory for DWD data
+    CACHE_EXPIRY_HOURS: int = 24  # Cache expiry time in hours
+    DEFAULT_RESOLUTION: str = "10_minutes"  # Default data resolution
+    TIMEZONE: str = "Europe/Berlin"  # Timezone for weather data
+    RANKING_STRATEGY: str = "quality_weighted"  # Station ranking strategy
+    MAX_STATION_DISTANCE_KM: float = 50.0  # Maximum distance for station search
+    N_STATIONS: int = 5  # Number of stations to search for
 
 
 DWD: Final[DWDConfig] = DWDConfig()
