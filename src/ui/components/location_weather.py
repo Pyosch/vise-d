@@ -246,6 +246,17 @@ def location_weather_selector(
     # Option 2: Manual Coordinate Input
     # =========================================================================
     else:
+        # Clear station search data when switching to coordinate input
+        # This prevents Arrow serialization warnings from leftover session state
+        if f"stations_{form_key_suffix}" in st.session_state:
+            del st.session_state[f"stations_{form_key_suffix}"]
+        if f"search_lat_{form_key_suffix}" in st.session_state:
+            del st.session_state[f"search_lat_{form_key_suffix}"]
+        if f"search_lon_{form_key_suffix}" in st.session_state:
+            del st.session_state[f"search_lon_{form_key_suffix}"]
+        if f"search_address_{form_key_suffix}" in st.session_state:
+            del st.session_state[f"search_address_{form_key_suffix}"]
+        
         st.markdown("#### 🗺️ Koordinateneingabe")
         col1, col2 = st.columns(2)
         
@@ -254,7 +265,7 @@ def location_weather_selector(
                 "Breitengrad:",
                 min_value=-90.0,
                 max_value=90.0,
-                value=default_lat,
+                value=float(default_lat),  # Ensure float type
                 format="%.6f",
                 key=f"lat_{form_key_suffix}",
                 help="Breitengrad in Dezimalgrad (-90 bis 90)"
@@ -265,15 +276,16 @@ def location_weather_selector(
                 "Längengrad:",
                 min_value=-180.0,
                 max_value=180.0,
-                value=default_lon,
+                value=float(default_lon),  # Ensure float type
                 format="%.6f",
                 key=f"lon_{form_key_suffix}",
                 help="Längengrad in Dezimalgrad (-180 bis 180)"
             )
         
+        # Ensure returned values are standard Python floats
         result["method"] = "coordinates"
-        result["latitude"] = lat
-        result["longitude"] = lon
+        result["latitude"] = float(lat)
+        result["longitude"] = float(lon)
     
     # =========================================================================
     # Date Range Selection (Optional)
@@ -282,11 +294,18 @@ def location_weather_selector(
         st.markdown("### 📅 Zeitraum wählen")
         
         # Calculate defaults (past 7 days if not provided)
+        # Ensure all date objects are standard Python date type for Arrow compatibility
         today = date.today()
         if default_start is None:
             default_start = today - timedelta(days=8)
         if default_end is None:
             default_end = today - timedelta(days=1)
+        
+        # Ensure defaults are date objects, not datetime
+        if isinstance(default_start, datetime):
+            default_start = default_start.date()
+        if isinstance(default_end, datetime):
+            default_end = default_end.date()
         
         col1, col2 = st.columns(2)
         
@@ -300,6 +319,10 @@ def location_weather_selector(
         
         with col2:
             # Auto-adjust end date if start date is after current end date
+            # Ensure start is a date object
+            if isinstance(start, datetime):
+                start = start.date()
+            
             end_value = default_end
             if start > default_end:
                 end_value = start + timedelta(days=1)
@@ -312,6 +335,12 @@ def location_weather_selector(
             )
         
         # Validate and auto-adjust date range
+        # Ensure both start and end are date objects
+        if isinstance(start, datetime):
+            start = start.date()
+        if isinstance(end, datetime):
+            end = end.date()
+        
         if start > end:
             st.warning("⚠️ Startdatum liegt nach Enddatum. Enddatum wird automatisch angepasst.")
             end = start + timedelta(days=1)

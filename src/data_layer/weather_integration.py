@@ -130,9 +130,25 @@ def fetch_weather_for_pv(
             allow_multi_station=False
         )
         
+        # Check if data is empty
+        if data.empty:
+            # Provide helpful error message with details
+            error_msg = f"Keine PV-Wetterdaten verfügbar.\n"
+            error_msg += f"Standort: {latitude:.4f}°N, {longitude:.4f}°E\n"
+            error_msg += f"Zeitraum: {start_date.date()} bis {end_date.date()}\n"
+            if metadata.get('warnings'):
+                error_msg += "Hinweise:\n" + "\n".join(f"  • {w}" for w in metadata['warnings'])
+            raise ValueError(error_msg)
+        
         # Ensure DatetimeIndex for resampling
         if not isinstance(data.index, pd.DatetimeIndex):
             raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
+        
+        # Clean up quality flag columns to fix Arrow serialization issues
+        # These columns are metadata and not needed for vpplib
+        qn_cols = [col for col in data.columns if col.startswith('QN_')]
+        if qn_cols:
+            data = data.drop(columns=qn_cols)
         
         # Resample to target resolution if needed
         if resolution != "10min":
@@ -250,9 +266,30 @@ def fetch_weather_for_wind(
             allow_multi_station=False
         )
         
+        # Check if data is empty
+        if data.empty:
+            # Provide helpful error message with details
+            error_msg = f"Keine Wind-Wetterdaten verfügbar.\n"
+            error_msg += f"Standort: {latitude:.4f}°N, {longitude:.4f}°E\n"
+            error_msg += f"Zeitraum: {start_date.date()} bis {end_date.date()}\n"
+            if metadata.get('warnings'):
+                error_msg += "Hinweise:\n" + "\n".join(f"  • {w}" for w in metadata['warnings'])
+            raise ValueError(error_msg)
+        
         # Ensure DatetimeIndex for resampling
         if not isinstance(data.index, pd.DatetimeIndex):
             raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
+        
+        # Clean up quality flag columns to fix Arrow serialization issues
+        qn_cols = [col for col in data.columns if col.startswith('QN_')]
+        if qn_cols:
+            # For windpowerlib MultiIndex, need to check all column levels
+            cols_to_drop = [col for col in data.columns if isinstance(col, tuple) and any(str(level).startswith('QN_') for level in col)]
+            if cols_to_drop:
+                data = data.drop(columns=cols_to_drop)
+            else:
+                # Fallback for simple index
+                data = data.drop(columns=qn_cols)
         
         # Resample to target resolution if needed
         if resolution != "10min":
@@ -357,9 +394,29 @@ def fetch_weather_for_heatpump(
             allow_multi_station=False
         )
         
+        # Check if data is empty
+        if data.empty:
+            # Provide helpful error message with details
+            error_msg = f"Keine Temperaturdaten verfügbar.\n"
+            error_msg += f"Standort: {latitude:.4f}°N, {longitude:.4f}°E\n"
+            error_msg += f"Zeitraum: {start_date.date()} bis {end_date.date()}\n"
+            if metadata.get('stations_used'):
+                if 'temperature' in metadata['stations_used'] and metadata['stations_used']['temperature']:
+                    station = metadata['stations_used']['temperature'][0]
+                    error_msg += f"Nächste Station: {station.get('station_id')} - {station.get('name')}\n"
+                    error_msg += f"Entfernung: {station.get('distance_km', 0):.1f} km\n"
+            if metadata.get('warnings'):
+                error_msg += "Hinweise:\n" + "\n".join(f"  • {w}" for w in metadata['warnings'])
+            raise ValueError(error_msg)
+        
         # Ensure DatetimeIndex for resampling
         if not isinstance(data.index, pd.DatetimeIndex):
             raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
+        
+        # Clean up quality flag columns to fix Arrow serialization issues
+        qn_cols = [col for col in data.columns if col.startswith('QN_')]
+        if qn_cols:
+            data = data.drop(columns=qn_cols)
         
         # Resample if needed
         if resolution == "15min" and dwd_resolution == "hourly":
@@ -430,4 +487,23 @@ def find_nearest_stations(
         active_only=False  # Don't filter by metadata end_date (often outdated)
     )
     
-    return stations
+    # Clean up station data to ensure Streamlit/Arrow compatibility
+    # Convert any pandas Timestamps or complex types to simple Python types
+    cleaned_stations = {}
+    for param, station_list in stations.items():
+        cleaned_list = []
+        for station in station_list:
+            cleaned_station = {}
+            for key, value in station.items():
+                # Convert pandas Timestamps to strings for Arrow compatibility
+                if isinstance(value, pd.Timestamp):
+                    cleaned_station[key] = value.isoformat()
+                elif isinstance(value, (pd.DataFrame, pd.Series)):
+                    # Convert DataFrames/Series to dict/list
+                    cleaned_station[key] = value.to_dict() if hasattr(value, 'to_dict') else str(value)
+                else:
+                    cleaned_station[key] = value
+            cleaned_list.append(cleaned_station)
+        cleaned_stations[param] = cleaned_list
+    
+    return cleaned_stations
