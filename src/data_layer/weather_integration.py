@@ -14,8 +14,15 @@ __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 from datetime import datetime
 from typing import Optional, Tuple, Dict, List
 import pandas as pd
+import numpy as np
 from dwd_fetcher import DWDFetcher
 from src.config import DWD, DATA_DIR
+
+try:
+    from pvlib import location, clearsky, irradiance
+    PVLIB_AVAILABLE = True
+except ImportError:
+    PVLIB_AVAILABLE = False
 
 
 def get_dwd_fetcher() -> DWDFetcher:
@@ -41,7 +48,9 @@ def fetch_weather_for_pv(
     longitude: float,
     start_date: datetime,
     end_date: datetime,
-    resolution: str = "15min"
+    resolution: str = "15min",
+    n_stations: int = 3,
+    allow_multi_station: bool = True
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Fetch and format weather data for photovoltaic simulations.
@@ -56,6 +65,8 @@ def fetch_weather_for_pv(
         start_date: Start of data period
         end_date: End of data period
         resolution: Target resolution ("15min", "hourly", or "10min")
+        n_stations: Number of stations to check (default 3)
+        allow_multi_station: Whether to combine data from multiple stations (default True)
     
     Returns:
         Tuple containing:
@@ -117,6 +128,8 @@ def fetch_weather_for_pv(
     
     try:
         # Fetch 10-minute data from DWD (highest resolution available)
+        # Use allow_multi_station to combine data from multiple stations if needed
+        # This ensures we get solar data even if nearest station lacks it
         data, metadata = fetcher.get_observations(
             latitude=latitude,
             longitude=longitude,
@@ -125,9 +138,9 @@ def fetch_weather_for_pv(
             end_date=end_date,
             resolution='10_minutes',
             max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
-            n_stations=1,
+            n_stations=n_stations,
             for_pvlib=True,  # Auto-format for pvlib compatibility
-            allow_multi_station=False
+            allow_multi_station=allow_multi_station
         )
         
         # Check if data is empty
@@ -150,6 +163,53 @@ def fetch_weather_for_pv(
         if qn_cols:
             data = data.drop(columns=qn_cols)
         
+        # Validate that required solar radiation columns are present
+        required_cols = ['ghi', 'dni', 'dhi']
+        missing_cols = [col for col in required_cols if col not in data.columns]
+        if missing_cols:
+            # Try to generate synthetic clearsky solar data as fallback
+            if PVLIB_AVAILABLE and 'temp_air' in data.columns:
+                warning_msg = (
+                    f"⚠️ Station hat keine Solarstrahlungsdaten. "
+                    f"Verwende synthetische Clearsky-Daten als Ersatz.\n"
+                    f"Fehlende Spalten: {missing_cols}\n"
+                )
+                if metadata.get('station_name'):
+                    warning_msg = f"Station: {metadata['station_name']}\n" + warning_msg
+                
+                # Add warning to metadata
+                if 'warnings' not in metadata:
+                    metadata['warnings'] = []
+                metadata['warnings'].append(warning_msg)
+                
+                # Generate clearsky solar data
+                data = _generate_clearsky_solar(
+                    data=data,
+                    latitude=latitude,
+                    longitude=longitude,
+                    timezone='Europe/Berlin'
+                )
+            else:
+                # No fallback available - raise error
+                available_cols = list(data.columns)
+                error_msg = (
+                    f"Keine Solardaten verfügbar für den gewählten Standort.\n"
+                    f"Fehlende Spalten: {missing_cols}\n"
+                    f"Verfügbare Spalten: {available_cols}\n\n"
+                    f"Die gewählte DWD-Station hat keine Solarstrahlungsdaten für den Zeitraum.\n"
+                )
+                if not PVLIB_AVAILABLE:
+                    error_msg += "\nPvlib ist nicht installiert - kann keine synthetischen Daten generieren.\n"
+                    error_msg += "Installieren Sie pvlib mit: pip install pvlib\n\n"
+                error_msg += (
+                    f"Bitte wählen Sie:\n"
+                    f"  • Eine andere DWD-Station mit Solar-Messungen, oder\n"
+                    f"  • Nutzen Sie die Koordinaten-Methode für eine andere Station"
+                )
+                if metadata.get('station_name'):
+                    error_msg = f"Station: {metadata['station_name']}\n" + error_msg
+                raise ValueError(error_msg)
+        
         # Resample to target resolution if needed
         if resolution != "10min":
             if resolution == "15min":
@@ -169,7 +229,9 @@ def fetch_weather_for_wind(
     start_date: datetime,
     end_date: datetime,
     resolution: str = "15min",
-    wind_height: float = 10.0
+    wind_height: float = 10.0,
+    n_stations: int = 1,
+    allow_multi_station: bool = False
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Fetch and format weather data for wind turbine simulations.
@@ -185,6 +247,8 @@ def fetch_weather_for_wind(
         end_date: End of data period
         resolution: Target resolution ("15min", "hourly", or "10min")
         wind_height: Wind measurement height in meters (default 10m)
+        n_stations: Number of stations to check (default 1)
+        allow_multi_station: Whether to combine data from multiple stations (default False)
     
     Returns:
         Tuple containing:
@@ -261,9 +325,9 @@ def fetch_weather_for_wind(
             end_date=end_date,
             resolution='10_minutes',
             max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
-            n_stations=1,
+            n_stations=n_stations,
             for_windpowerlib=True,  # Auto-format for windpowerlib
-            allow_multi_station=False
+            allow_multi_station=allow_multi_station
         )
         
         # Check if data is empty
@@ -313,7 +377,9 @@ def fetch_weather_for_heatpump(
     longitude: float,
     start_date: datetime,
     end_date: datetime,
-    resolution: str = "hourly"
+    resolution: str = "hourly",
+    n_stations: int = 1,
+    allow_multi_station: bool = False
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Fetch and format weather data for heat pump simulations.
@@ -327,6 +393,8 @@ def fetch_weather_for_heatpump(
         start_date: Start of data period
         end_date: End of data period
         resolution: Target resolution ("hourly" or "daily")
+        n_stations: Number of stations to check (default 1)
+        allow_multi_station: Whether to combine data from multiple stations (default False)
     
     Returns:
         Tuple containing:
@@ -380,7 +448,6 @@ def fetch_weather_for_heatpump(
         dwd_resolution = 'hourly' if resolution in ['hourly', '15min'] else 'daily'
         
         # Fetch temperature data from DWD
-        # Use single station to avoid column overlap issues
         data, metadata = fetcher.get_observations(
             latitude=latitude,
             longitude=longitude,
@@ -389,9 +456,9 @@ def fetch_weather_for_heatpump(
             end_date=end_date,
             resolution=dwd_resolution,
             max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
-            n_stations=1,
+            n_stations=n_stations,
             for_pvlib=True,  # Uses pvlib format for consistent column naming
-            allow_multi_station=False
+            allow_multi_station=allow_multi_station
         )
         
         # Check if data is empty
@@ -426,6 +493,64 @@ def fetch_weather_for_heatpump(
         
     except Exception as e:
         raise RuntimeError(f"Failed to fetch heat pump weather data: {e}") from e
+
+
+def _generate_clearsky_solar(
+    data: pd.DataFrame,
+    latitude: float,
+    longitude: float,
+    timezone: str = 'Europe/Berlin'
+) -> pd.DataFrame:
+    """
+    Generate clearsky solar irradiance data using pvlib.
+    
+    This is a fallback when DWD station doesn't have measured solar data.
+    Uses the simplified Ineichen clearsky model to estimate GHI, DNI, DHI.
+    
+    Args:
+        data: Existing weather DataFrame with DatetimeIndex
+        latitude: Location latitude in decimal degrees
+        longitude: Location longitude in decimal degrees
+        timezone: Timezone string (default: 'Europe/Berlin')
+    
+    Returns:
+        DataFrame: Original data with added solar columns (ghi, dni, dhi)
+    
+    Note:
+        Clearsky models provide theoretical solar radiation under ideal
+        (cloudless) conditions. Real measurements would show reduced values
+        due to clouds, pollution, etc. Use for planning/estimation only.
+    """
+    if not PVLIB_AVAILABLE:
+        raise ImportError("pvlib required for clearsky solar generation")
+    
+    result = data.copy()
+    
+    # Create pvlib Location object
+    loc = location.Location(
+        latitude=latitude,
+        longitude=longitude,
+        tz=timezone,
+        altitude=0  # Use sea level if elevation unknown
+    )
+    
+    # Get solar position for all timestamps
+    times = result.index
+    solpos = loc.get_solarposition(times)
+    
+    # Generate clearsky irradiance using simplified Ineichen model
+    clearsky_data = loc.get_clearsky(times, model='simplified_solis')
+    
+    # Add solar columns to result
+    result['ghi'] = clearsky_data['ghi']
+    result['dni'] = clearsky_data['dni']
+    result['dhi'] = clearsky_data['dhi']
+    
+    # Set negative or NaN values to zero (happens at night)
+    for col in ['ghi', 'dni', 'dhi']:
+        result[col] = result[col].fillna(0).clip(lower=0)
+    
+    return result
 
 
 def find_nearest_stations(
