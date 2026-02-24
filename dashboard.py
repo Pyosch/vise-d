@@ -29,8 +29,9 @@ from src.pages import (
     wind_installation_mastr,
     storage_installation_mastr,
     energy_generation_solar,
-    wind_energy_generation,
+    wind_energy_generation
 )
+from src.pages.networks_excel import Netzberechnung_mit_excel_daten
 from src.pages.planning_ffpv_wea import planning_ffpv_wea
 
 # Import configuration
@@ -84,6 +85,7 @@ pg = st.navigation([
     st.Page(wind_energy_generation, title="Windenergieerzeugung"),
     st.Page(planning_ffpv_wea, title="FFPV & WEA Planung"),
     st.Page(openstef_forecasting, title="Kurzfristige Energieprognose (OpenSTEF)"),
+    st.Page(Netzberechnung_mit_excel_daten, title="Netzberechnung mit Excel"),
 ])
 
 pg.run()

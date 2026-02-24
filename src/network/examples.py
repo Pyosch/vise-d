@@ -20,7 +20,7 @@ def pp_networks():
     
     st.title('Beispielhafte Netzberechnung')
     
-    networks = ['Keine Auswahl', 'Einfaches Beispiel', 'Multispannungs-Beispielnetz', '4-Knoten-Stickleitung', 'CIGRE Niederspannungsnetz']
+    networks = ['Keine Auswahl', 'Einfaches Beispiel', 'Multispannungs-Beispielnetz', '4-Knoten-Stickleitung', 'CIGRE Niederspannungsnetz','Kerber freileitung_1','Dickert LV Networks','3-Phase Grid Data']
     selected_network = st.selectbox('Netzwerk wählen', networks)
     
     if selected_network == 'Keine Auswahl':
@@ -34,6 +34,12 @@ def pp_networks():
         net = pn.panda_four_load_branch()
     elif selected_network == 'CIGRE Niederspannungsnetz':
         net = pn.create_cigre_network_mv()
+    elif selected_network == 'Kerber freileitung_1':
+        net = pn.create_kerber_landnetz_freileitung_1()
+    elif selected_network == 'Dickert LV Networks':
+        net = pn.create_dickert_lv_network()
+    elif selected_network == '3-Phase Grid Data':
+        net = pn.ieee_european_lv_asymmetric()
     
     # st.write(net)
     
