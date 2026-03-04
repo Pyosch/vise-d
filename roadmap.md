@@ -7,11 +7,11 @@ VISE-D (Virtuelles Institut Smart Energy - Smart Data) is a comprehensive energy
 - **Multi-technology simulation**: PV, wind, battery storage, heat pumps, electric vehicles
 - **Distribution grid analysis**: Pandapower-based network modeling and power flow analysis
 - **Real data integration**: MaStR (Marktstammdatenregister) database with 26,000+ installations
-- **Energy forecasting**: OpenSTEF integration for renewable energy predictions
+- ~~**Energy forecasting**: OpenSTEF integration for renewable energy predictions~~ *(OpenSTEF evaluated and discarded – see note below)*
 - **Interactive planning**: Geographic tools for solar farm and wind turbine site planning
 - **Research platform**: Visualization and analysis tools for energy system research
 
-## Current Status (January 2026)
+## Current Status (March 2026)
 
 ### 🎉 Phase 0-5: Refactoring Complete
 
@@ -26,7 +26,7 @@ src/
 ├── data_layer/          ✅ Data loading and caching (1-hour TTL)
 ├── utils/               ✅ Validation and error handling
 ├── mastr/               ✅ MaStR database integration
-├── forecasting/         ✅ OpenSTEF forecasting models
+├── forecasting/         ⚠️  OpenSTEF integration (archived – see note)
 ├── planning/            ✅ Solar/wind planning algorithms
 ├── ui/components/       ✅ Technology parameter forms (German UI)
 ├── visualization/       ✅ Plotting and interactive maps
@@ -45,6 +45,21 @@ src/
 - [Phase 3: UI Components](docs/project/phase-reports/phase-3-ui-components.md)
 - [Phase 4: Data Layer](docs/project/phase-reports/phase-4-data-layer.md)
 - [Phase 5: Page Extraction](docs/project/phase-reports/phase-5-page-extraction.md)
+
+### ❌ OpenSTEF Forecasting – Discarded (March 2026)
+
+**Status:** Fully integrated, tested, and subsequently **discarded**.
+
+OpenSTEF was integrated into the dashboard (`src/forecasting/`) and tested as a forecasting backend for renewable energy generation. After evaluation, the approach was found to **not meet the project's quality and usability requirements**. The integration code has been moved to `archive/` for reference and is no longer part of the active codebase.
+
+**Reason for discarding:** Results did not meet quality expectations for the intended use case within VISE-D.
+
+**Affected files (archived):**
+- `archive/openstef_forecasting.py`
+- `archive/fetching_data_openstef.py`
+- `archive/forecasting_utils.py`
+
+**Alternative:** No direct replacement has been selected yet. Energy forecasting requirements should be re-evaluated in the context of Phase 7 (Tariff Design Studio).
 
 ## Future Development
 
@@ -204,7 +219,7 @@ src/
 - [x] Dashboard server running and accessible
 - [x] All 17 pages functional
 - [x] MaStR database integration working
-- [x] OpenSTEF forecasting operational
+- [x] OpenSTEF forecasting evaluated (discarded – not suitable for project requirements)
 
 ### Quality Metrics (Targets)
 - [ ] 70%+ code coverage (currently 30%)
@@ -239,7 +254,7 @@ src/
 - **Pandapower**: Grid network analysis
 - **vpplib 0.0.5**: Virtual power plant component models
 - **windpowerlib**: Wind turbine power curves
-- **OpenSTEF**: Energy forecasting models
+- ~~**OpenSTEF**: Energy forecasting models~~ *(evaluated and discarded, March 2026)*
 
 ### External Data Sources
 - **MaStR**: German Marktstammdatenregister (energy installation registry)
@@ -263,7 +278,6 @@ VISE-D has successfully transitioned from prototype to production-ready energy a
 
 ---
 
-**Last Updated:** January 2026  
+**Last Updated:** March 2026  
 **Project Lead:** Pyosch  
 **AI Assistance:** GitHub Copilot (Claude Sonnet 4.5)
-
