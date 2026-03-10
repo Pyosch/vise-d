@@ -7,10 +7,16 @@ import tempfile
 import os
 import plotly.graph_objects as go
 import plotly.express as px
+import plotly.io as pio
+import webbrowser
 
-def Netzberechnung_mit_excel_daten():
+# Disable auto-opening of plots in browser
+pio.renderers.default = "json"
+os.environ["BROWSER"] = "none"  # Prevent browser from opening
+
+def Netzberechnung():
     
-    st.title('Netzberechnung mit Excel-Daten')
+    st.title('Netzberechnung')
 
     # Network Source Selection
     st.markdown("### 🔌 Network Source")
@@ -34,7 +40,7 @@ def Netzberechnung_mit_excel_daten():
             try:
                 # 1. Load network (only once, then persist in session_state)
                 if 'network' not in st.session_state or st.button("🔄 Reload Network from File"):
-                    net = pn.from_excel(tmp_path)
+                    net = ppn.from_excel(tmp_path)
                     st.session_state.network = net
                     st.success("✅ Network loaded from Excel!")
                 else:
@@ -55,7 +61,8 @@ def Netzberechnung_mit_excel_daten():
             'CIGRE Niederspannungsnetz',
             'Kerber freileitung_1',
             'Dickert LV Networks',
-            '3-Phase Grid Data'
+            '3-Phase Grid Data',
+            "MV-Oberrhein"
         ]
         
         selected_network = st.selectbox('Netzwerk wählen:', networks)
@@ -77,38 +84,72 @@ def Netzberechnung_mit_excel_daten():
                     net = ppn.create_dickert_lv_network()
                 elif selected_network == '3-Phase Grid Data':
                     net = ppn.ieee_european_lv_asymmetric()
-                
+                elif selected_network == "MV-Oberrhein":
+                    net = ppn.mv_oberrhein()
                 st.session_state.network = net
                 st.session_state.last_selected_network = selected_network
                 st.success(f"✅ Network '{selected_network}' loaded!")
             else:
                 net = st.session_state.network
                 st.info("Using network from session (with any added PV/Storage)")
+            
+            # Display network graph (moved outside if-else to always show)
+            pn.runpp(net)
+
+            # Temporarily disable browser opening
+            original_open = webbrowser.open
+            webbrowser.open = lambda *args, **kwargs: None
+            
+            try:
+                fig = pn.plotting.plotly.simple_plotly(net)
+            finally:
+                webbrowser.open = original_open
+            
+            # Remove legend completely and save figure to session state for Tab 1
+            for trace in fig.data:
+                trace.showlegend = False
+            fig.update_layout(
+                showlegend=False,
+                annotations=[],
+                margin=dict(l=0, r=0, t=0, b=0)
+            )
+            st.session_state.network_fig_json = fig.to_json()
+            st.plotly_chart(fig, use_container_width=True, height=800)
         else:
             st.info("👆 Please select a network from the dropdown above")
             net = None
-    
+                
     # Continue with network operations if network is loaded
-    if net is not None:
-        # 2. Display network info
-        st.write("buses", net.bus.head())
-        st.write("lines", net.line.head())
-        st.write("loads", net.load.head())
-        
+    if net is not None:        
+        choose_entity = st.selectbox("Select entity to display:", ["None", "Buses", "Lines", "Loads","Transformers","Generators","Storage"])
+        if choose_entity != "None":
+            if choose_entity == "Buses":
+                st.subheader("Bus Data!")
+                st.dataframe(net.bus, use_container_width=True)
+            elif choose_entity == "Lines":
+                st.subheader("Line Data!")
+                st.dataframe(net.line,use_container_width=True)
+            elif choose_entity == "Loads":
+                st.subheader("Load Data!")
+                st.dataframe(net.load,use_container_width=True)
+            elif choose_entity == "Transformers" and 'trafo' in net:
+                st.subheader("Transformer Data!")
+                st.dataframe(net.trafo,use_container_width=True)
+            elif choose_entity == "Generators" and 'sgen' in net:
+                st.subheader("Generator Data!")
+                st.dataframe(net.sgen,use_container_width=True)
+            elif choose_entity == "Storage" and 'storage' in net:
+                st.subheader("Storage Data!")
+                st.dataframe(net.storage,use_container_width=True)
+        else:
+            st.info("Select an entity from the dropdown to view its data")
+            
         # Check geodata status
         has_geodata = hasattr(net, 'bus_geodata') and len(net.bus_geodata) > 0
         if has_geodata:
             st.success(f"✅ Network has {len(net.bus_geodata)} buses with geographic coordinates")
         else:
             st.info("📍 Bus coordinates will be auto-generated for visualization (grid layout)")
-        
-        # Show what's currently in the network
-        if 'trafo' in net and len(net.trafo) > 0:
-            st.success(f"⚡ Network contains {len(net.trafo)} transformer(s)")
-        if 'sgen' in net and len(net.sgen) > 0:
-            st.success(f"🔆 Network contains {len(net.sgen)} PV system(s)")
-        if 'storage' in net and len(net.storage) > 0:
-            st.success(f"🔋 Network contains {len(net.storage)} storage system(s)")
 
         st.markdown("---")
 
@@ -196,168 +237,20 @@ def Netzberechnung_mit_excel_daten():
                 with tab1:
                     st.subheader("Interactive Network Diagram")
                     try:
-                        # Create custom color-coded topology plot
-                        fig = go.Figure()
-                        
-                        # Get or generate bus geodata using simple grid coordinates
-                        if not hasattr(net, 'bus_geodata') or len(net.bus_geodata) == 0:
-                            st.info("📍 Generating automatic grid layout for network visualization...")
-                            num_buses = len(net.bus)
-                            
-                            # Create simple coordinate system
-                            net.bus_geodata = pd.DataFrame(index=net.bus.index)
-                            import math
-                            
-                            # Distribute buses in a grid pattern
-                            grid_size = math.ceil(math.sqrt(num_buses))
-                            spacing = 100  # Units between buses
-                            
-                            for i, bus_idx in enumerate(net.bus.index):
-                                row = i // grid_size
-                                col = i % grid_size
-                                
-                                # Simple coordinate system starting from (0, 0)
-                                net.bus_geodata.at[bus_idx, 'x'] = col * spacing
-                                net.bus_geodata.at[bus_idx, 'y'] = row * spacing
-                        
-                        bus_geo = net.bus_geodata
-                        
-                        # Plot lines first (behind buses)
-                        if len(net.line) > 0 and len(net.res_line) > 0:
-                            for idx in net.line.index:
-                                try:
-                                    from_bus = net.line.at[idx, 'from_bus']
-                                    to_bus = net.line.at[idx, 'to_bus']
-                                    
-                                    if from_bus in bus_geo.index and to_bus in bus_geo.index:
-                                        x0 = bus_geo.at[from_bus, 'x']
-                                        y0 = bus_geo.at[from_bus, 'y']
-                                        x1 = bus_geo.at[to_bus, 'x']
-                                        y1 = bus_geo.at[to_bus, 'y']
-                                        
-                                        # Color based on loading
-                                        loading = net.res_line.at[idx, 'loading_percent']
-                                        if loading > 100:
-                                            color, width = 'red', 4
-                                        elif loading > 80:
-                                            color, width = 'orange', 3
-                                        else:
-                                            color, width = 'green', 2
-                                        
-                                        fig.add_trace(go.Scatter(
-                                            x=[x0, x1, None],
-                                            y=[y0, y1, None],
-                                            mode='lines',
-                                            line=dict(color=color, width=width),
-                                            hovertext=f"Line {idx}<br>Loading: {loading:.1f}%",
-                                            hoverinfo='text',
-                                            showlegend=False
-                                        ))
-                                except (KeyError, IndexError):
-                                    continue
-                        
-                        # Plot transformers (2-winding)
-                        if 'trafo' in net and len(net.trafo) > 0 and 'res_trafo' in net and len(net.res_trafo) > 0:
-                            for idx in net.trafo.index:
-                                try:
-                                    hv_bus = net.trafo.at[idx, 'hv_bus']
-                                    lv_bus = net.trafo.at[idx, 'lv_bus']
-                                    
-                                    if hv_bus in bus_geo.index and lv_bus in bus_geo.index:
-                                        x0 = bus_geo.at[hv_bus, 'x']
-                                        y0 = bus_geo.at[hv_bus, 'y']
-                                        x1 = bus_geo.at[lv_bus, 'x']
-                                        y1 = bus_geo.at[lv_bus, 'y']
-                                        
-                                        # Color based on loading
-                                        loading = net.res_trafo.at[idx, 'loading_percent']
-                                        if loading > 100:
-                                            color = 'red'
-                                        elif loading > 80:
-                                            color = 'orange'
-                                        else:
-                                            color = 'blue'  # Blue for transformers
-                                        
-                                        fig.add_trace(go.Scatter(
-                                            x=[x0, x1, None],
-                                            y=[y0, y1, None],
-                                            mode='lines',
-                                            line=dict(color=color, width=3, dash='dash'),  # Dashed line for transformers
-                                            hovertext=f"Trafo {idx}<br>Loading: {loading:.1f}%<br>HV Bus: {hv_bus}<br>LV Bus: {lv_bus}",
-                                            hoverinfo='text',
-                                            showlegend=False
-                                        ))
-                                except (KeyError, IndexError):
-                                    continue
-                        
-                        # Plot buses on top
-                        for idx in net.bus.index:
-                            try:
-                                if idx in bus_geo.index:
-                                    x = bus_geo.at[idx, 'x']
-                                    y = bus_geo.at[idx, 'y']
-                                    vm = net.res_bus.at[idx, 'vm_pu']
-                                    
-                                    # Color based on voltage
-                                    if vm < 0.95:
-                                        color, symbol = 'red', 'square'
-                                    elif vm > 1.05:
-                                        color, symbol = 'orange', 'diamond'
-                                    else:
-                                        color, symbol = 'green', 'circle'
-                                    
-                                    # Build hover text with equipment info
-                                    hover_parts = [f"Bus {idx}", f"Voltage: {vm:.4f} p.u."]
-                                    
-                                    # Check for equipment at this bus
-                                    has_pv = 'sgen' in net and idx in net.sgen['bus'].values
-                                    has_storage = 'storage' in net and idx in net.storage['bus'].values
-                                    has_load = 'load' in net and idx in net.load['bus'].values
-                                    
-                                    if has_pv:
-                                        hover_parts.append("☀️ PV System")
-                                    if has_storage:
-                                        hover_parts.append("🔋 Storage")
-                                    if has_load:
-                                        hover_parts.append("⚡ Load")
-                                    
-                                    hover_text = "<br>".join(hover_parts)
-                                    
-                                    fig.add_trace(go.Scatter(
-                                        x=[x], y=[y],
-                                        mode='markers+text',
-                                        marker=dict(size=12, color=color, symbol=symbol,
-                                                  line=dict(width=2, color='white')),
-                                        text=str(idx),
-                                        textposition='top center',
-                                        textfont=dict(size=9),
-                                        hovertext=hover_text,
-                                        hoverinfo='text',
-                                        showlegend=False
-                                    ))
-                            except (KeyError, IndexError):
-                                continue
-                        
-                        fig.update_layout(
-                            xaxis=dict(showgrid=False, zeroline=False, visible=False),
-                            yaxis=dict(showgrid=False, zeroline=False, visible=False),
-                            plot_bgcolor='white',
-                            height=600,
-                            hovermode='closest',
-                            margin=dict(l=0, r=0, t=0, b=0)
-                        )
-                        
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # Color legend
-                        st.markdown("""
-                        **🎨 Color Legend:**
-                        - **Buses:** 🟢 Normal (0.95-1.05 p.u.) | 🟠 Overvoltage (>1.05 p.u.) | 🔴 Undervoltage (<0.95 p.u.)
-                        - **Lines (solid):** 🟢 Normal (<80%) | 🟠 High loading (80-100%) | 🔴 Overloaded (>100%)
-                        - **Transformers (dashed):** 🔵 Normal (<80%) | 🟠 High loading (80-100%) | 🔴 Overloaded (>100%)
-                        
-                        💡 **Tip:** Hover over buses to see equipment (☀️ PV, 🔋 Storage, ⚡ Load)
-                        """)
+                        if 'network_fig_json' in st.session_state:
+                            import plotly.io as pio
+                            tab_fig = pio.from_json(st.session_state.network_fig_json)
+                            tab_fig.update_layout(height=600, margin=dict(l=0, r=0, t=0, b=0))
+                            st.plotly_chart(tab_fig, use_container_width=True)
+                        else:
+                            st.info("Network diagram not available. Please re-select the network.")
+
+                        # st.markdown("""
+                        # **🎨 Color Legend:**
+                        # - **Buses:** 🔵 Normal (0.95–1.05 p.u.) | 🟠 Overvoltage (>1.05 p.u.) | 🔴 Undervoltage (<0.95 p.u.)
+                        # - **Lines:** 🟢 Normal (<80%) | 🟠 High (80–100%) | 🔴 Overloaded (>100%)
+                        # - **Transformers (dashed):** 🔵 Normal | 🟠 High | 🔴 Overloaded
+                        # """)
                         
                         # Network Status Overview
                         st.markdown("### 📊 Network Status Overview")
@@ -587,9 +480,10 @@ def Netzberechnung_mit_excel_daten():
                     if 'sgen' in net and len(net.sgen) > 0:
                         st.markdown("#### ☀️ PV Generation")
                         pv_results = net.res_sgen.copy()
+                        pv_results.insert(0, 'bus_no', net.sgen['bus'].values)
                         pv_results['p_kw'] = (pv_results['p_mw'] * 1000).round(2)
                         pv_results['q_kvar'] = (pv_results['q_mvar'] * 1000).round(2)
-                        st.dataframe(pv_results[['p_mw', 'q_mvar', 'p_kw', 'q_kvar']], use_container_width=True)
+                        st.dataframe(pv_results[['bus_no', 'p_mw', 'q_mvar', 'p_kw', 'q_kvar']].reset_index(drop=True), use_container_width=True)
                         
                         total_pv_gen = pv_results['p_mw'].sum() * 1000
                         st.metric("Total PV Generation", f"{total_pv_gen:.2f} kW")
@@ -602,8 +496,9 @@ def Netzberechnung_mit_excel_daten():
                     if 'storage' in net and len(net.storage) > 0:
                         st.markdown("#### 🔋 Battery Storage")
                         storage_results = net.res_storage.copy()
+                        storage_results.insert(0, 'bus_no', net.storage['bus'].values)
                         storage_results['p_kw'] = (storage_results['p_mw'] * 1000).round(2)
-                        st.dataframe(storage_results, use_container_width=True)
+                        st.dataframe(storage_results[['bus_no', 'p_mw', 'q_mvar', 'p_kw']].reset_index(drop=True), use_container_width=True)
                         
                         total_storage_power = storage_results['p_mw'].sum() * 1000
                         if total_storage_power > 0:

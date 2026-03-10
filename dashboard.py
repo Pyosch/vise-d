@@ -15,7 +15,7 @@ import streamlit as st
 # Import page functions
 from src.pages import (
     research_results,
-    network_calculations,
+#   network_calculations,
     bev_settings,
     pv_configuration,
     wind_configuration,
@@ -31,7 +31,7 @@ from src.pages import (
     energy_generation_solar,
     wind_energy_generation
 )
-from src.pages.networks_excel import Netzberechnung_mit_excel_daten
+from src.pages.networks import Netzberechnung
 from src.pages.planning_ffpv_wea import planning_ffpv_wea
 
 # Import configuration
@@ -69,7 +69,6 @@ st.write('Willkommen beim VISE-D Dashboard! Die Seite befindet sich noch in der 
 
 pg = st.navigation([
     st.Page(research_results, title="Forschungsergebnisse"),
-    st.Page(network_calculations, title="Netzberechnungen"),
     st.Page(bev_settings, title="BEV Einstellungen"),
     st.Page(hydrogen_research, title="Forschung: E-Fahrzeuge Integration"),
     st.Page(hydrogen_electrolyzer_settings, title="Wasserstoff-Elektrolyseur"),
@@ -85,7 +84,8 @@ pg = st.navigation([
     st.Page(wind_energy_generation, title="Windenergieerzeugung"),
     st.Page(planning_ffpv_wea, title="FFPV & WEA Planung"),
     st.Page(openstef_forecasting, title="Kurzfristige Energieprognose (OpenSTEF)"),
-    st.Page(Netzberechnung_mit_excel_daten, title="Netzberechnung mit Excel"),
+    st.Page(Netzberechnung, title="Netzberechnung")
+    
 ])
 
 pg.run()
