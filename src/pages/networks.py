@@ -57,9 +57,9 @@ def Netzberechnung():
             'Keine Auswahl', 
             'Einfaches Beispiel', 
             'Multispannungs-Beispielnetz', 
-            '4-Knoten-Stickleitung', 
+            '4-Knoten-Stichleitung', 
             'CIGRE Niederspannungsnetz',
-            'Kerber freileitung_1',
+            'Kerber Freileitung 1',
             'Dickert LV Networks',
             '3-Phase Grid Data',
             "MV-Oberrhein"
@@ -74,11 +74,11 @@ def Netzberechnung():
                     net = ppn.example_simple()
                 elif selected_network == 'Multispannungs-Beispielnetz':
                     net = ppn.example_multivoltage()
-                elif selected_network == '4-Knoten-Stickleitung':
+                elif selected_network == '4-Knoten-Stichleitung':
                     net = ppn.panda_four_load_branch()
                 elif selected_network == 'CIGRE Niederspannungsnetz':
                     net = ppn.create_cigre_network_mv()
-                elif selected_network == 'Kerber freileitung_1':
+                elif selected_network == 'Kerber Freileitung 1':
                     net = ppn.create_kerber_landnetz_freileitung_1()
                 elif selected_network == 'Dickert LV Networks':
                     net = ppn.create_dickert_lv_network()
