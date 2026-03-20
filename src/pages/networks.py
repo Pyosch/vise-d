@@ -120,29 +120,173 @@ def Netzberechnung():
             net = None
                 
     # Continue with network operations if network is loaded
-    if net is not None:        
-        choose_entity = st.selectbox("Select entity to display:", ["None", "Buses", "Lines", "Loads","Transformers","Generators","Storage"])
-        if choose_entity != "None":
-            if choose_entity == "Buses":
-                st.subheader("Bus Data!")
+    if net is not None:
+        st.markdown("### DER Input (Direct Power Entry)")
+        st.caption("PV and storage are currently added directly by total power in this tab.")
+
+        with st.expander("Add PV Generator"):
+            selected_bus_pv = st.selectbox("Select bus for PV", net.bus.index.tolist(), key="pv_bus_select")
+            total_pv_power_kw = st.number_input(
+                "Total PV generator power (kW)",
+                min_value=0.0,
+                value=10.0,
+                step=1.0,
+                key="pv_total_power_kw"
+            )
+            if st.button("Add PV Generator"):
+                if total_pv_power_kw <= 0:
+                    st.warning("Please enter a PV power greater than 0 kW.")
+                else:
+                    pn.create_sgen(
+                        net,
+                        bus=selected_bus_pv,
+                        p_mw=total_pv_power_kw / 1000,
+                        q_mvar=0,
+                        name="PV_from_dashboard"
+                    )
+                    st.session_state.network = net
+                    st.success(f"PV generator ({total_pv_power_kw:.2f} kW) added to bus {selected_bus_pv}.")
+
+        with st.expander("Add Storage"):
+            selected_bus_storage = st.selectbox("Select bus for storage", net.bus.index.tolist(), key="storage_bus_select")
+            storage_power_kw = st.number_input(
+                "Total storage power (kW)",
+                min_value=0.0,
+                value=10.0,
+                step=1.0,
+                key="storage_total_power_kw"
+            )
+            storage_mode = st.radio("Operating mode", ["Charging", "Discharging", "Off"])
+
+            if st.button("Add Storage"):
+                if storage_power_kw <= 0:
+                    st.warning("Please enter a storage power greater than 0 kW.")
+                else:
+                    if storage_mode == "Charging":
+                        p_mw = -storage_power_kw / 1000
+                    elif storage_mode == "Discharging":
+                        p_mw = storage_power_kw / 1000
+                    else:
+                        p_mw = 0
+
+                    pn.create_storage(
+                        net,
+                        bus=selected_bus_storage,
+                        p_mw=p_mw,
+                        max_e_mwh=storage_power_kw / 1000 * 24,
+                        q_mvar=0,
+                        soc_percent=50,
+                        name="Storage_from_dashboard"
+                    )
+                    st.session_state.network = net
+                    st.success(f"Storage ({storage_power_kw:.2f} kW, {storage_mode}) added to bus {selected_bus_storage}.")
+
+        st.markdown("---")
+
+        st.markdown("### Additional Demand Inputs")
+
+        with st.expander("Add Electric Vehicle"):
+            selected_bus_ev = st.selectbox("Select bus for EV", net.bus.index.tolist(), key="ev_bus_select")
+            total_ev_power_kw = st.number_input(
+                "Total EV load power (kW)",
+                min_value=0.0,
+                value=11.0,
+                step=1.0,
+                key="ev_total_power_kw"
+            )
+
+            if st.button("Add Electric Vehicle"):
+                if total_ev_power_kw <= 0:
+                    st.warning("Please enter an EV load power greater than 0 kW.")
+                else:
+                    pn.create_load(
+                        net,
+                        bus=selected_bus_ev,
+                        p_mw=total_ev_power_kw / 1000,
+                        q_mvar=0,
+                        name="EV_from_dashboard"
+                    )
+                    st.session_state.network = net
+                    st.success(f"EV load ({total_ev_power_kw:.2f} kW) added to bus {selected_bus_ev}.")
+
+        with st.expander("Add Single Port Chart"):
+            selected_bus_single_port = st.selectbox("Select bus for Single Port Chart", net.bus.index.tolist(), key="single_port_bus_select")
+            single_port_power_kw = st.number_input(
+                "Total Single Port Chart power (kW)",
+                min_value=0.0,
+                value=7.0,
+                step=1.0,
+                key="single_port_power_kw"
+            )
+            single_port_mode = st.radio("Operating mode", ["Charging", "Discharging", "Off"], key="single_port_mode")
+
+            if st.button("Add Single Port Chart"):
+                if single_port_power_kw <= 0:
+                    st.warning("Please enter a Single Port Chart power greater than 0 kW.")
+                else:
+                    if single_port_mode == "Charging":
+                        p_mw = single_port_power_kw / 1000
+                    elif single_port_mode == "Discharging":
+                        p_mw = -single_port_power_kw / 1000
+                    else:
+                        p_mw = 0
+
+                    pn.create_load(
+                        net,
+                        bus=selected_bus_single_port,
+                        p_mw=p_mw,
+                        q_mvar=0,
+                        name="SinglePortChart_from_dashboard"
+                    )
+                    st.session_state.network = net
+                    st.success(f"Single Port Chart ({single_port_power_kw:.2f} kW, {single_port_mode}) added to bus {selected_bus_single_port}.")
+
+        st.markdown("---")
+
+        st.markdown("### 📋 Network Components")
+        st.markdown("Click on any component below to view its details:")
+        
+        # Buses
+        with st.expander("🔵 **Buses**"):
+            if len(net.bus) > 0:
                 st.dataframe(net.bus, use_container_width=True)
-            elif choose_entity == "Lines":
-                st.subheader("Line Data!")
-                st.dataframe(net.line,use_container_width=True)
-            elif choose_entity == "Loads":
-                st.subheader("Load Data!")
-                st.dataframe(net.load,use_container_width=True)
-            elif choose_entity == "Transformers" and 'trafo' in net:
-                st.subheader("Transformer Data!")
-                st.dataframe(net.trafo,use_container_width=True)
-            elif choose_entity == "Generators" and 'sgen' in net:
-                st.subheader("Generator Data!")
-                st.dataframe(net.sgen,use_container_width=True)
-            elif choose_entity == "Storage" and 'storage' in net:
-                st.subheader("Storage Data!")
-                st.dataframe(net.storage,use_container_width=True)
-        else:
-            st.info("Select an entity from the dropdown to view its data")
+            else:
+                st.info("No buses in the network")
+        
+        # Lines
+        with st.expander("⚡ **Lines**"):
+            if len(net.line) > 0:
+                st.dataframe(net.line, use_container_width=True)
+            else:
+                st.info("No lines in the network")
+        
+        # Loads
+        with st.expander("🔌 **Loads**"):
+            if len(net.load) > 0:
+                st.dataframe(net.load, use_container_width=True)
+            else:
+                st.info("No loads in the network")
+        
+        # Transformers
+        with st.expander("🔄 **Transformers**"):
+            if 'trafo' in net and len(net.trafo) > 0:
+                st.dataframe(net.trafo, use_container_width=True)
+            else:
+                st.info("No transformers in the network")
+        
+        # Generators
+        with st.expander("⚙️ **Generators**"):
+            if 'sgen' in net and len(net.sgen) > 0:
+                st.dataframe(net.sgen, use_container_width=True)
+            else:
+                st.info("No generators in the network")
+        
+        # Storage
+        with st.expander("🔋 **Storage**"):
+            if 'storage' in net and len(net.storage) > 0:
+                st.dataframe(net.storage, use_container_width=True)
+            else:
+                st.info("No storage devices in the network")
             
         # Check geodata status
         has_geodata = hasattr(net, 'bus_geodata') and len(net.bus_geodata) > 0
@@ -150,78 +294,6 @@ def Netzberechnung():
             st.success(f"✅ Network has {len(net.bus_geodata)} buses with geographic coordinates")
         else:
             st.info("📍 Bus coordinates will be auto-generated for visualization (grid layout)")
-
-        st.markdown("---")
-
-        # 3. Check if PV config exists
-        if "pv_settings" in st.session_state:
-            pv_config = st.session_state.pv_settings
-            st.success("✅ PV Configuration found")
-            
-            # Extract values INSIDE the if block
-            modules_per_string = pv_config["PV Modules per String"]
-            strings_per_inverter = pv_config["PV Strings per Inverter"]
-            
-            # Calculate power
-            total_panels = modules_per_string * strings_per_inverter
-            total_pv_power_kw = total_panels * 0.22
-            
-            st.info(f"Configured PV System: {total_panels} panels = {total_pv_power_kw:.2f} kW")
-            
-            # UI to add PV
-            with st.expander("Add PV to Network"):
-                selected_bus_pv = st.selectbox("Select bus for PV", net.bus.index.tolist(), key="pv_bus_select")
-                if st.button("Add PV to Network"):
-                    pn.create_sgen(
-                        net, 
-                        bus=selected_bus_pv, 
-                        p_mw=total_pv_power_kw/1000,
-                        q_mvar=0,
-                        name="PV_from_dashboard"
-                    )
-                    st.session_state.network = net  # Save updated network
-                    st.success(f"✅ PV added to bus {selected_bus_pv}! (Persisted in session)")
-        else:
-            st.warning("⚠️ No PV configured. Please configure PV in 'PV Konfiguration' page first.")
-
-        # 4. Check if storage config exists
-        if "electrical_storage" in st.session_state:
-            storage_config = st.session_state.electrical_storage
-            st.success("✅ Storage Configuration found")
-            
-            # Extract values INSIDE the if block
-            storage_power = storage_config["Max Power"]
-            storage_capacity = storage_config["Max Capacity"]
-            
-            st.info(f"Configured Storage: {storage_power:.2f} kW / {storage_capacity:.2f} kWh")
-            
-            # UI to add storage
-            with st.expander("Add Storage to Network"):
-                selected_bus_storage = st.selectbox("Select bus for storage", net.bus.index.tolist(), key="storage_bus_select")
-                storage_mode = st.radio("Operating mode", ["Charging", "Discharging", "Off"])
-                
-                if st.button("Add Storage to Network"):
-                    # Determine power based on mode
-                    if storage_mode == "Charging":
-                        p_mw = -storage_power / 1000  # Negative for charging
-                    elif storage_mode == "Discharging":
-                        p_mw = storage_power / 1000  # Positive for discharging
-                    else:
-                        p_mw = 0
-                    
-                    pn.create_storage(
-                        net, 
-                        bus=selected_bus_storage, 
-                        p_mw=p_mw,
-                        max_e_mwh=storage_capacity/1000,
-                        q_mvar=0,
-                        soc_percent=50,
-                        name="Storage_from_dashboard"
-                    )
-                    st.session_state.network = net  # Save updated network
-                    st.success(f"✅ Storage added to bus {selected_bus_storage} in {storage_mode} mode! (Persisted in session)")
-        else:
-            st.warning("⚠️ No Storage configured. Please configure storage in 'Elektrischer Speicher' page first.")
 
         st.markdown("---")
 

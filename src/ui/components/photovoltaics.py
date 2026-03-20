@@ -15,6 +15,8 @@ import datetime
 import streamlit as st
 from st_files_connection import FilesConnection
 import os
+import pvlib
+from pvlib import iam
 
 from src.visualization import fig_5, fig_7, fig_8, fig_9, fig_5_plotly
 from src.network import pp_networks
@@ -22,11 +24,40 @@ import matplotlib.pyplot as plt
 from vpplib.environment import Environment
 import pandas as pd
 
+
+SAM_MODULE_LIBRARY_NAMES = {
+    "cecmod": "CECMod",
+    "sandiamod": "SandiaMod",
+}
+
+
+def _supports_any_aoi_model(module_parameters: pd.Series) -> bool:
+    """Return True if module parameters can support at least one pvlib AOI model."""
+    param_keys = set(module_parameters.index)
+    for model_name in ("physical", "sapm", "ashrae", "martin_ruiz", "interp"):
+        required_params = iam._IAM_MODEL_PARAMS.get(model_name, set())
+        if required_params and set(required_params).issubset(param_keys):
+            return True
+    return False
+
+
+@st.cache_data(show_spinner=False)
+def _get_aoi_compatible_modules(module_library_key: str) -> list[str]:
+    """Load module names from SAM library that contain valid AOI model parameters."""
+    sam_name = SAM_MODULE_LIBRARY_NAMES.get(module_library_key.lower(), "SandiaMod")
+    module_db = pvlib.pvsystem.retrieve_sam(sam_name)
+    compatible = [
+        module_name
+        for module_name in module_db.columns
+        if _supports_any_aoi_model(module_db[module_name])
+    ]
+    return sorted(compatible)
+
 def pv_settings(form_key_suffix=""):
     # Initialize session state for PV settings if not already set
     if "pv_settings" not in st.session_state:
         st.session_state.pv_settings = {
-            "PV Module Library": "SandiaMod",
+            "PV Module Library": "sandiamod",
             "PV Module": "Canadian_Solar_CS5P_220M___2009_",
             "PV Inverter Library": "cecinverter",
             "PV Inverter": "ABB__MICRO_0_25_I_OUTD_US_208__208V_",
@@ -43,24 +74,50 @@ def pv_settings(form_key_suffix=""):
     with st.container():
         st.header("Enter PV Settings")
 
+        module_library_options = ["cecmod", "sandiamod"]
+        module_library_default = str(st.session_state.pv_settings.get("PV Module Library", "sandiamod")).lower()
+        module_library_index = (
+            module_library_options.index(module_library_default)
+            if module_library_default in module_library_options
+            else 1
+        )
         module_library = st.selectbox(
             "Module Library",
-            options=["SandiaMod", "CECMod"],
-            index=0 if st.session_state.pv_settings["PV Module Library"] == "SandiaMod" else 1,
+            options=module_library_options,
+            index=module_library_index,
             key="pv_module_library"
         )
 
+        module_options = _get_aoi_compatible_modules(module_library)
+
+        if not module_options:
+            st.error(
+                "No AOI-compatible PV modules were found for this module library. "
+                "Please select a different module library."
+            )
+            return
+
+        module_default = str(st.session_state.pv_settings.get("PV Module", module_options[0]))
+        module_index = module_options.index(module_default) if module_default in module_options else 0
+
         module = st.selectbox(
             "Module",
-            options=["Canadian_Solar_CS5P_220M___2009_"],
-            index=0,
+            options=module_options,
+            index=module_index,
             key="pv_module"
         )
 
+        inverter_library_options = ["adrinverter", "cecinverter", "sandiainverter"]
+        inverter_library_default = str(st.session_state.pv_settings.get("PV Inverter Library", "cecinverter")).lower().replace("_", "")
+        inverter_library_index = (
+            inverter_library_options.index(inverter_library_default)
+            if inverter_library_default in inverter_library_options
+            else 0
+        )
         inverter_library = st.selectbox(
             "Inverter Library",
-            options=["cecinverter"],
-            index=0,
+            options=inverter_library_options,
+            index=inverter_library_index,
             key="pv_inverter_library"
         )
 
