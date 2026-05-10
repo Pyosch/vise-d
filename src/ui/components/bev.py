@@ -30,7 +30,33 @@ from vpplib.battery_electric_vehicle import BatteryElectricVehicle
 from vpplib.environment import Environment
 
 
+DEFAULT_BEV_SETTINGS = {
+    "max_battery_capacity": 75.0,
+    "min_battery_capacity": 15.0,
+    "battery_usage": 50.0,
+    "charging_power": 11.0,
+    "charging_efficiency": 0.95,
+    "load_degradation_begin": 0.8,
+    "user_profile": "None",
+    "selected_environment": "None",
+    "start_time": datetime.time(18, 0, 0),
+    "end_time": datetime.time(7, 0, 0),
+    "timebase": 15,
+}
+
+
+def _ensure_bev_settings():
+    """Guarantee required BEV settings exist in Streamlit session state."""
+    if "bev_settings" not in st.session_state or not isinstance(st.session_state["bev_settings"], dict):
+        st.session_state["bev_settings"] = DEFAULT_BEV_SETTINGS.copy()
+        return
+
+    for key, value in DEFAULT_BEV_SETTINGS.items():
+        st.session_state["bev_settings"].setdefault(key, value)
+
+
 def battery_electric_vehicle_settings(form_key_suffix=""):
+    _ensure_bev_settings()
     st.title("Battery Electric Vehicle (BEV) Settings")
     # Form layout
     # Technology parameters in main content area
@@ -41,7 +67,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
             max_battery_capacity = st.number_input(
                 "Enter max battery capacity (kWh)",
                 min_value=0.0,
-                value=float(st.session_state.bev_settings["max_battery_capacity"]),
+                value=float(st.session_state["bev_settings"]["max_battery_capacity"]),
                 placeholder="e.g. 100 kWh",
                 key="max_battery_capacity"
             )
@@ -51,7 +77,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
             min_battery_capacity = st.number_input(
                 "Enter min battery capacity (kWh)",
                 min_value=0.0,
-                value=float(st.session_state.bev_settings["min_battery_capacity"]),
+                value=float(st.session_state["bev_settings"]["min_battery_capacity"]),
                 placeholder="e.g. 15 kWh",
                 key="min_battery_capacity"
             )
@@ -61,7 +87,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
             battery_usage = st.number_input(
                 "Enter battery usage",
                 min_value=0.0,
-                value=float(st.session_state.bev_settings["battery_usage"]),
+                value=float(st.session_state["bev_settings"]["battery_usage"]),
                 placeholder="e.g. ???",
                 key="battery_usage"
             )
@@ -72,7 +98,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
             charging_power = st.number_input(
                 "Enter charging power (kW)",
                 min_value=0.0,
-                value=float(st.session_state.bev_settings["charging_power"]),
+                value=float(st.session_state["bev_settings"]["charging_power"]),
                 placeholder="e.g. 11 kW",
                 key="charging_power"
             )
@@ -83,7 +109,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
                 "Enter charging efficiency (%)",
                 min_value=0.0,
                 max_value=100.0,
-                value=float(st.session_state.bev_settings["charging_efficiency"] * 100),
+                value=float(st.session_state["bev_settings"]["charging_efficiency"] * 100),
                 placeholder="e.g. 90%",
                 key="charging_efficiency"
             )
@@ -92,7 +118,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
             load_degradation_begin = st.number_input(
             "Enter load degradation begin",
                 min_value=0.0,
-                value=float(st.session_state.bev_settings["load_degradation_begin"]),
+                value=float(st.session_state["bev_settings"]["load_degradation_begin"]),
                 placeholder="e.g. ???",
                 key="load_degradation_begin"
             )
@@ -101,7 +127,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
             user_profile = st.selectbox(
                 "Select user profile",
                 options=["None", "Profile 1", "Profile 2"],
-                index=0 if st.session_state.bev_settings["user_profile"] == "None" else 1 if st.session_state.bev_settings["user_profile"] == "Profile 1" else 2,
+                index=0 if st.session_state["bev_settings"]["user_profile"] == "None" else 1 if st.session_state["bev_settings"]["user_profile"] == "Profile 1" else 2,
                 key="user_profile"
             )
             
@@ -116,7 +142,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
             st.markdown("**Start Time**")
             start_time = st.time_input(
                 "Enter Start Time HH:MM:SS",
-                value=st.session_state.bev_settings["start_time"],
+                value=st.session_state["bev_settings"]["start_time"],
                 help="When the vehicle is plugged in and charging can begin (e.g., arriving home)"
                 
             )
@@ -124,7 +150,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
             st.markdown("**End Time**")
             end_time = st.time_input(
                 "Enter End Time HH:MM:SS",
-                value=st.session_state.bev_settings["end_time"],
+                value=st.session_state["bev_settings"]["end_time"],
                 help="When the vehicle must be fully charged (e.g., leaving for work)"
                 
             )
@@ -148,7 +174,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
         if submit_button:
             
         # Update session state with new settings
-            st.session_state.bev_settings = {
+            st.session_state["bev_settings"] = {
                 "max_battery_capacity": max_battery_capacity,
                 "min_battery_capacity": min_battery_capacity,
                 "battery_usage": battery_usage,
@@ -156,6 +182,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
                 "charging_efficiency": charging_efficiency / 100,
                 "load_degradation_begin":load_degradation_begin,
                 "user_profile": user_profile,
+                "selected_environment": st.session_state["bev_settings"].get("selected_environment", "None"),
                 #   "environment": selected_environment,
                 "start_time": start_time,
                 "end_time": end_time,

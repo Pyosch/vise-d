@@ -46,6 +46,16 @@ def pv_configuration():
     if not location_data:
         st.warning("⚠️ Bitte wählen Sie einen Standort und Zeitraum aus.")
         return
+
+    # Persist the currently selected location/date from Auswahl-Zusammenfassung
+    # so other tabs (e.g. network timeseries) can use the exact same coordinates.
+    st.session_state["pv_location_data"] = {
+        "latitude": float(location_data["latitude"]),
+        "longitude": float(location_data["longitude"]),
+        "start_date": location_data.get("start_date"),
+        "end_date": location_data.get("end_date"),
+        "method": location_data.get("method"),
+    }
     
     st.markdown("---")
     
