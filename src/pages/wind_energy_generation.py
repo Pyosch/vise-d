@@ -11,12 +11,13 @@ __author__ = "Pyosch"
 __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 
 import logging
+from datetime import date, datetime, timedelta
 import pandas as pd
-import pvlib
 import streamlit as st
 import plotly.express as px
 from vpplib.environment import Environment
 from src.data_layer.cache import get_cached_unique_locations, get_cached_mastr_data
+from src.data_layer.weather_integration import fetch_weather_for_wind
 from src.mastr.simulation import (
     wind_turbine_matching,
     init_windturbines_mastr,
@@ -56,8 +57,9 @@ def wind_energy_generation() -> None:
         root_logger.addHandler(log_handler)
 
         try:
-            start = "2015-07-07 00:00:00"
-            end = "2015-07-07 23:45:00"
+            yesterday = date.today() - timedelta(days=1)
+            start = f"{yesterday} 00:00:00"
+            end = f"{yesterday} 23:45:00"
 
             with st.status("Running simulation…", expanded=True) as sim_status:
                 st.write("Loading MaStR wind data…")
@@ -68,45 +70,28 @@ def wind_energy_generation() -> None:
                 gdf_wind = wind_turbine_matching(gdf_wind)
                 progress_bar.progress(30)
 
-                st.write("Fetching PVGIS weather data…")
+                st.write("Fetching DWD weather data…")
                 ref_env = Environment(start=start, end=end)
-                test_data, _meta, _inputs = pvlib.iotools.get_pvgis_hourly(
-                    city_district.centroid.y,
-                    city_district.centroid.x,
-                    start=pd.to_datetime(start),
-                    end=pd.to_datetime(end),
-                    raddatabase="PVGIS-SARAH2",
-                    components=True,
-                    surface_tilt=0,
-                    surface_azimuth=0,
-                    outputformat="json",
-                    usehorizon=True,
-                    userhorizon=None,
-                    pvcalculation=False,
-                    peakpower=None,
-                    pvtechchoice="crystSi",
-                    mountingplace="free",
-                    loss=0,
-                    trackingtype=0,
-                    optimal_surface_tilt=False,
-                    optimalangles=False,
-                    url="https://re.jrc.ec.europa.eu/api/v5_2/",
-                    map_variables=True,
-                    timeout=30,
+                start_dt = datetime.combine(yesterday, datetime.min.time())
+                end_dt = start_dt + timedelta(days=1)
+                dwd_data, _meta = fetch_weather_for_wind(
+                    latitude=city_district.centroid.y,
+                    longitude=city_district.centroid.x,
+                    start_date=start_dt,
+                    end_date=end_dt,
+                    resolution="15min",
                 )
                 progress_bar.progress(50)
 
-                st.write("Transforming weather data to 15-min resolution…")
-                filtered = test_data[["wind_speed", "temp_air"]].copy()
-                filtered["temp_air"] = filtered["temp_air"] + 273.15
-                filtered["roughness_length"] = 0.15
-                filtered["pressure"] = 101325
-                filtered = filtered[["wind_speed", "pressure", "temp_air", "roughness_length"]]
-                filtered = filtered.rename(columns={"temp_air": "temperature"})
-                filtered.columns = pd.MultiIndex.from_arrays(
-                    [filtered.columns, ["10", "0", "2", "0"]]
-                )
-                ref_env.wind_data = filtered.resample("15T").mean().interpolate(limit_direction="both")
+                st.write("Transforming DWD data to windpowerlib format…")
+                temp_col = "temperature" if "temperature" in dwd_data.columns else "TT_10"
+                ref_env.wind_data = pd.DataFrame({
+                    ("wind_speed",      "10"): dwd_data["wind_speed"],
+                    ("temperature",      "2"): dwd_data[temp_col] + 273.15,  # °C → K
+                    ("pressure",         "0"): dwd_data["pressure"] * 100,   # hPa → Pa
+                    ("roughness_length", "0"): 0.15,
+                }, index=dwd_data.index)
+                ref_env.wind_data.columns = pd.MultiIndex.from_tuples(ref_env.wind_data.columns)
                 progress_bar.progress(65)
 
                 st.write(f"Initialising {len(gdf_wind)} wind turbine models…")
@@ -138,7 +123,7 @@ def wind_energy_generation() -> None:
                 x=total_kw.index,
                 y=total_kw.values,
                 labels={"x": "Time", "y": "Power (kW)"},
-                title=f"Aggregated Wind Generation – {location} ({start[:10]})",
+                title=f"Aggregated Wind Generation – {location} ({yesterday})",
             )
             fig_ts.update_layout(xaxis_title="Time", yaxis_title="Power (kW)")
             st.plotly_chart(fig_ts, use_container_width=True)
