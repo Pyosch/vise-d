@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Optional, Tuple, Dict, List
 import pandas as pd
 import numpy as np
-from dwd_fetcher import DWDFetcher
+from vpplib.dwd_client import DWDClient
 from src.config import DWD, DATA_DIR
 
 try:
@@ -25,21 +25,20 @@ except ImportError:
     PVLIB_AVAILABLE = False
 
 
-def get_dwd_fetcher() -> DWDFetcher:
+def get_dwd_fetcher() -> DWDClient:
     """
-    Create configured DWD fetcher instance.
-    
+    Create configured DWD client instance.
+
     Returns:
-        Configured DWDFetcher instance with VISE-D settings
+        Configured DWDClient instance with VISE-D settings
     """
     cache_dir = DATA_DIR / ".." / DWD.CACHE_DIR
     cache_dir.mkdir(parents=True, exist_ok=True)
-    
-    return DWDFetcher(
+
+    return DWDClient(
         cache_dir=str(cache_dir),
         cache_expiry_hours=DWD.CACHE_EXPIRY_HOURS,
         timezone=DWD.TIMEZONE,
-        ranking_strategy=DWD.RANKING_STRATEGY
     )
 
 
@@ -316,7 +315,7 @@ def fetch_weather_for_wind(
     fetcher = get_dwd_fetcher()
     
     try:
-        # Fetch 10-minute data from DWD with windpowerlib formatting
+        # Fetch 10-minute data from DWD (raw columns: wind_speed, temperature, pressure)
         data, metadata = fetcher.get_observations(
             latitude=latitude,
             longitude=longitude,
@@ -326,7 +325,6 @@ def fetch_weather_for_wind(
             resolution='10_minutes',
             max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
             n_stations=n_stations,
-            for_windpowerlib=True,  # Auto-format for windpowerlib
             allow_multi_station=allow_multi_station
         )
         
@@ -362,11 +360,16 @@ def fetch_weather_for_wind(
             elif resolution == "hourly":
                 data = data.resample('h').interpolate(method='linear')
         
-        # Add roughness length if not present (typical value for open terrain)
-        if ('roughness_length', '0') not in data.columns:
-            data[('roughness_length', '0')] = 0.15  # meters, open terrain
-        
-        return data, metadata
+        # Convert flat columns to windpowerlib MultiIndex format
+        # DWDClient returns: wind_speed (m/s), temperature (°C), pressure (hPa)
+        wind_data = pd.DataFrame(index=data.index)
+        wind_data[('wind_speed', '10')] = data.get('wind_speed', 0.0)
+        wind_data[('temperature', '2')] = data.get('temperature', 10.0) + 273.15  # °C → K
+        wind_data[('pressure', '0')] = data.get('pressure', 1013.25) * 100.0     # hPa → Pa
+        wind_data[('roughness_length', '0')] = 0.15  # m, open terrain
+        wind_data.columns = pd.MultiIndex.from_tuples(wind_data.columns)
+
+        return wind_data, metadata
         
     except Exception as e:
         raise RuntimeError(f"Failed to fetch wind weather data: {e}") from e
@@ -601,34 +604,31 @@ def find_nearest_stations(
         ```
     """
     fetcher = get_dwd_fetcher()
-    
-    stations = fetcher.find_stations(
-        latitude=latitude,
-        longitude=longitude,
-        parameters=parameters,
-        n=n_stations,
-        max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
-        resolution='hourly',  # Use hourly for broadest station availability
-        active_only=False  # Don't filter by metadata end_date (often outdated)
-    )
-    
-    # Clean up station data to ensure Streamlit/Arrow compatibility
-    # Convert any pandas Timestamps or complex types to simple Python types
+
     cleaned_stations = {}
-    for param, station_list in stations.items():
+    for param in parameters:
+        station_objs = fetcher.station_manager.find_nearest_stations(
+            latitude=latitude,
+            longitude=longitude,
+            parameter=param,
+            n=n_stations,
+            max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
+            resolution='hourly',
+            active_only=False,
+        )
         cleaned_list = []
-        for station in station_list:
-            cleaned_station = {}
-            for key, value in station.items():
-                # Convert pandas Timestamps to strings for Arrow compatibility
-                if isinstance(value, pd.Timestamp):
-                    cleaned_station[key] = value.isoformat()
-                elif isinstance(value, (pd.DataFrame, pd.Series)):
-                    # Convert DataFrames/Series to dict/list
-                    cleaned_station[key] = value.to_dict() if hasattr(value, 'to_dict') else str(value)
-                else:
-                    cleaned_station[key] = value
-            cleaned_list.append(cleaned_station)
+        for s in station_objs:
+            end = s.end_date
+            cleaned_list.append({
+                'station_id': s.station_id,
+                'name': s.name,
+                'latitude': s.latitude,
+                'longitude': s.longitude,
+                'elevation': s.elevation,
+                'distance_km': round(s.distance_km, 2),
+                'is_active': end.isoformat() if end is not None else None,
+                'quality_score': s.quality_score,
+            })
         cleaned_stations[param] = cleaned_list
-    
+
     return cleaned_stations
