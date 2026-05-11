@@ -25,7 +25,6 @@ import osmnx as ox
 import geopandas as gpd
 import random
 import os
-import xarray as xr
 from windpowerlib import WindTurbine, ModelChain
 import math
 import plotly.graph_objects as go
@@ -1386,101 +1385,65 @@ def packing_wind(lat_center, lon_center, radius_meters, min_spacing_x, min_spaci
     return m2, len(turbine_points), access_roads_gdf, crane_pads_gdf
 
 @st.cache_data(show_spinner=False)
-def get_weather_for_windpowerlib(lat, lon, year=2024, months=None, folder=r"F:\Streamlit_Project\vise\vise-d\data\era5_germany_2024_wind"):
+def get_weather_for_windpowerlib(lat, lon, year=2024, months=None):
+    """Fetch wind weather data from DWD for windpowerlib simulations.
+
+    Returns (weather_df, main_dir) where weather_df is a MultiIndex DataFrame
+    formatted for windpowerlib and main_dir is the prevailing wind direction (°).
+    """
+    import calendar
+    from datetime import datetime
+    from src.data_layer.weather_integration import fetch_weather_for_wind
+
     if months is None:
         months = list(range(1, 13))
 
-    dfs = []
+    start_date = datetime(year, min(months), 1)
+    last_month = max(months)
+    last_day = calendar.monthrange(year, last_month)[1]
+    end_date = datetime(year, last_month, last_day, 23, 59, 59)
 
-    for month in months:
-        filename = os.path.join(folder, f"germany_era5_{year}_{month:02d}.nc")
-        if not os.path.exists(filename):
-            st.write(f"⚠️ File not found: {filename}")
-            continue
-
-        try:
-            # Try netcdf4 engine first (for NetCDF4 files)
-            ds = xr.open_dataset(filename, engine='netcdf4')
-            point_data = ds.sel(latitude=lat, longitude=lon, method="nearest")
-        except:
-            try:
-                # Fallback to h5netcdf engine
-                ds = xr.open_dataset(filename, engine='h5netcdf')
-                point_data = ds.sel(latitude=lat, longitude=lon, method="nearest")
-            except:
-                try:
-                    # Last fallback to default (no engine specified)
-                    ds = xr.open_dataset(filename)
-                    point_data = ds.sel(latitude=lat, longitude=lon, method="nearest")
-                except Exception as e:
-                    st.error(f"Error reading file {filename}: {str(e)}")
-                    continue
-
-        u100 = point_data["u100"]
-        v100 = point_data["v100"]
-        u10 = point_data["u10"]
-        v10 = point_data["v10"]
-
-        temp_K = point_data["t2m"]
-        pressure = point_data["sp"]
-
-        wind_speed_100m = np.sqrt(u100**2 + v100**2)
-        wind_speed_10m = np.sqrt(u10**2 + v10**2)
-
-        wind_dir = (270 - np.degrees(np.arctan2(v100, u100))) % 360
-        temperature_C = temp_K - 273.15
-        air_density = pressure / (287.05 * temp_K)
-
-        df = wind_speed_100m.to_dataframe(name="wind_speed")
-        df["wind_speed_100m"] = wind_speed_100m.values
-        df["wind_speed_10m"] = wind_speed_10m.values
-        df["temperature"] = temperature_C.values
-        df["pressure"] = pressure.values
-        df["air_density"] = air_density.values
-        df["wind_direction"] = wind_dir.values
-
-        df.index.name = "datetime"
-        dfs.append(df)
-
-    if not dfs:
-        st.error("""
-        ❌ **No Weather Data Available**
-        
-        Could not load any ERA5 weather data files for the specified period.
-        
-        **What you need:**
-        - ERA5 NetCDF files in: `F:\\Streamlit_Project\\vise\\vise-d\\data\\era5_germany_2024_wind\\`
-        - Files named: `germany_era5_2024_01.nc`, `germany_era5_2024_02.nc`, etc.
-        
-        **How to get ERA5 data:**
-        1. Register at [Copernicus Climate Data Store](https://cds.climate.copernicus.eu/)
-        2. Use the ERA5 hourly data on single levels API
-        3. Request variables: u100, v100, u10, v10, t2m, sp (100m/10m wind, temperature, pressure)
-        df.index.name = "datetime"
-        dfs.append(df)
-
-    if not dfs:
+    try:
+        weather_data, _meta = fetch_weather_for_wind(
+            latitude=lat,
+            longitude=lon,
+            start_date=start_date,
+            end_date=end_date,
+            resolution="hourly",
+        )
+    except Exception as e:
+        st.error(f"❌ Konnte keine DWD Wetterdaten laden: {e}")
         return None, None
 
-    weather_df = pd.concat(dfs).sort_index()her_df["temperature"]
-    multi_weather[("pressure", 0)] = weather_df["pressure"]
-    multi_weather[("roughness_length", 0)] = 0.1
-    multi_weather.columns = pd.MultiIndex.from_tuples(multi_weather.columns)
+    main_dir = _get_prevailing_wind_direction(lat, lon, start_date, end_date)
+    return weather_data, main_dir
 
-    # Initialize known turbine
-    turbine = WindTurbine(turbine_type=turbine_type, hub_height=hub_height)
 
-    # Simulate
-    mc = ModelChain(turbine)
-    mc.run_model(multi_weather)
-    power_output = mc.power_output
+def _get_prevailing_wind_direction(lat, lon, start_date, end_date, default=225.0):
+    """Return prevailing wind direction (°) from DWD observations, or SW default."""
+    try:
+        from src.data_layer.weather_integration import get_dwd_fetcher
+        from src.config import DWD
 
-    results_df = weather_df.copy()
-    results_df["power_output_MW"] = (power_output * num_turbines) / 1_000_000
-    total_energy = results_df["power_output_MW"].sum()
-
-    rated_power_kwatts = 4200 * num_turbines
-
-    return results_df, total_energy, rated_power_kwatts
-    """)
-        return None, None
+        fetcher = get_dwd_fetcher()
+        raw_data, _ = fetcher.get_observations(
+            latitude=lat,
+            longitude=lon,
+            parameters=['wind'],
+            start_date=start_date,
+            end_date=end_date,
+            resolution='10_minutes',
+            max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
+            n_stations=1,
+        )
+        dir_col = next((c for c in raw_data.columns if 'DD' in str(c).upper()), None)
+        if dir_col is None:
+            return default
+        directions = raw_data[dir_col].dropna()
+        directions = directions[directions > 0]
+        if directions.empty:
+            return default
+        rad = np.deg2rad(directions)
+        return float(np.degrees(np.arctan2(np.sin(rad).mean(), np.cos(rad).mean())) % 360)
+    except Exception:
+        return default

@@ -277,7 +277,7 @@ def _execute_simulation(option: str, output: dict, current_polygon_coords: list,
         weather_df, main_dir = get_weather_for_windpowerlib(lat_center, lon_center, year=2024)
         
         if weather_df is None:
-            st.error("❌ Konnte keine Wetterdaten laden. Bitte stellen Sie sicher, dass der Ordner data/era5_germany_2024_wind existiert und die erforderlichen Dateien enthält.")
+            st.error("❌ Konnte keine DWD Wetterdaten laden. Bitte überprüfen Sie die Netzwerkverbindung und den gewählten Standort.")
             st.stop()
             
         m2_wind, num_turbines, access_roads_gdf, crane_pads_gdf = packing_wind(
