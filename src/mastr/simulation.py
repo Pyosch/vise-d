@@ -29,7 +29,7 @@ from src.mastr.preprocessing import prepare_solar_data, prepare_wind_data
 from src.config import PROJECT_ROOT, DATA_DIR, PV_PARAMS_DIR
 
 # Path to median wind power curve
-path_to_power_curve = PROJECT_ROOT / "median_windpower_curve.csv"
+path_to_power_curve = DATA_DIR / "median_windpower_curve.csv"
 
 def revise_power_values(gdf):
     """
