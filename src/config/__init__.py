@@ -35,6 +35,7 @@ from src.config.paths import (
     MASTR_DB_PATH,
     MLRUNS_DIR,
     PROJECT_ROOT,
+    PV_PARAMS_DIR,
     ensure_directories,
     get_relative_path,
 )
@@ -61,6 +62,7 @@ __all__ = [
     "FIGURES_DIR",
     "CACHE_DIR",
     "MASTR_DB_PATH",
+    "PV_PARAMS_DIR",
     "MLRUNS_DIR",
     "DOCS_DIR",
     "EXAMPLES_DIR",

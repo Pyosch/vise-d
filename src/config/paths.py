@@ -28,6 +28,9 @@ CACHE_DIR: Final[Path] = PROJECT_ROOT / "cache"
 # Note: The open-MaStR database is located in the root data directory
 MASTR_DB_PATH: Final[Path] = DATA_DIR / "open-mastr.db"
 
+# PV parametrization cache directory (one CSV per location)
+PV_PARAMS_DIR: Final[Path] = DATA_DIR / "pv_parametrization"
+
 # MLflow tracking directory
 MLRUNS_DIR: Final[Path] = PROJECT_ROOT / "mlruns"
 

@@ -26,7 +26,7 @@ from windpowerlib import WindTurbine, ModelChain
 
 from vpplib import Photovoltaic, WindPower, UserProfile, Environment
 from src.mastr.preprocessing import prepare_solar_data, prepare_wind_data
-from src.config import PROJECT_ROOT, DATA_DIR
+from src.config import PROJECT_ROOT, DATA_DIR, PV_PARAMS_DIR
 
 # Path to median wind power curve
 path_to_power_curve = PROJECT_ROOT / "median_windpower_curve.csv"
@@ -132,6 +132,164 @@ def revise_power_values(gdf):
                 
 
     return gdf
+
+class SimplePVSystem:
+    """Thin pvlib-based PV system with the same interface as vpplib's Photovoltaic.
+
+    Uses the PVWatts model so that only power ratings from MaStR are needed —
+    no SAM component library look-up required.
+    """
+
+    def __init__(self, identifier, row, environment):
+        self.identifier = identifier
+        self.environment = environment
+        self.timeseries = None
+
+        module_parameters = {
+            'pdc0': row['pdc0_module_W'],
+            'gamma_pdc': row['gamma_pdc'],
+        }
+        inverter_parameters = {
+            'pdc0': row['pdc0_inverter_W'],
+            'eta_inv_nom': row['eta_inv_nom'],
+        }
+        system = pvlib.pvsystem.PVSystem(
+            surface_tilt=row['surface_tilt'],
+            surface_azimuth=row['surface_azimuth'],
+            module_parameters=module_parameters,
+            inverter_parameters=inverter_parameters,
+        )
+        location = pvlib.location.Location(
+            latitude=row['latitude'],
+            longitude=row['longitude'],
+        )
+        self.modelchain = pvlib.modelchain.ModelChain(
+            system,
+            location,
+            dc_model='pvwatts',
+            ac_model='pvwatts',
+            aoi_model='no_loss',
+            spectral_model='no_loss',
+            name=identifier,
+        )
+
+    def prepare_time_series(self):
+        if len(self.environment.pv_data) == 0:
+            raise ValueError("self.environment.pv_data is empty.")
+
+        weather = self.environment.pv_data.loc[
+            self.environment.start: self.environment.end
+        ]
+        if 'poa_global' in weather.columns:
+            self.modelchain.run_model_from_poa(data=weather)
+        else:
+            self.modelchain.run_model(weather=weather)
+
+        timeseries = pd.DataFrame(self.modelchain.results.ac / 1000)
+        timeseries.rename(columns={0: self.identifier}, inplace=True)
+        timeseries.index = pd.to_datetime(timeseries.index)
+        self.timeseries = timeseries.fillna(0)
+        return self.timeseries
+
+
+def build_pvsystem_params_from_mastr(gdf):
+    """Derive PVWatts-compatible parameters directly from MaStR GeoDataFrame.
+
+    Parameters
+    ----------
+    gdf : GeoDataFrame
+        Solar installations with MaStR fields (after revise_power_values).
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per system with columns:
+        EinheitMastrNummer, pdc0_module_W, gamma_pdc,
+        pdc0_inverter_W, eta_inv_nom,
+        surface_tilt, surface_azimuth, latitude, longitude
+    """
+    records = []
+    for i in gdf.index:
+        inv_pwr = (
+            gdf.loc[i, 'Nettonennleistung']
+            if np.isnan(gdf.loc[i, 'ZugeordneteWirkleistungWechselrichter'])
+            else gdf.loc[i, 'ZugeordneteWirkleistungWechselrichter']
+        )
+        records.append({
+            'EinheitMastrNummer': gdf.loc[i, 'EinheitMastrNummer'],
+            'pdc0_module_W': gdf.loc[i, 'Bruttoleistung'] * 1000,
+            'gamma_pdc': -0.004,
+            'pdc0_inverter_W': inv_pwr * 1000,
+            'eta_inv_nom': 0.96,
+            'surface_tilt': gdf.loc[i, 'HauptausrichtungNeigungswinkel'],
+            'surface_azimuth': gdf.loc[i, 'Hauptausrichtung'],
+            'latitude': gdf.loc[i, 'Breitengrad'],
+            'longitude': gdf.loc[i, 'Laengengrad'],
+        })
+    return pd.DataFrame(records).set_index('EinheitMastrNummer')
+
+
+def load_or_build_pv_params(gdf, cache_path):
+    """Load PV parameters from CSV cache or build them from MaStR data.
+
+    New systems found in *gdf* that are not yet in the cache are appended
+    so that subsequent runs for the same location skip re-derivation.
+
+    Parameters
+    ----------
+    gdf : GeoDataFrame
+        Solar installations (after revise_power_values).
+    cache_path : Path or str
+        Path to the CSV cache file for this location.
+
+    Returns
+    -------
+    pd.DataFrame
+        Parameters for all systems in gdf (index: EinheitMastrNummer).
+    """
+    cache_path = Path(cache_path)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if cache_path.exists():
+        cached = pd.read_csv(cache_path, index_col='EinheitMastrNummer')
+        known_ids = set(cached.index)
+        new_ids = [i for i in gdf.index if gdf.loc[i, 'EinheitMastrNummer'] not in known_ids]
+        if new_ids:
+            new_gdf = gdf.loc[new_ids]
+            new_params = build_pvsystem_params_from_mastr(new_gdf)
+            cached = pd.concat([cached, new_params])
+            cached.to_csv(cache_path)
+        current_ids = gdf['EinheitMastrNummer'].tolist()
+        return cached.loc[cached.index.isin(current_ids)]
+    else:
+        params = build_pvsystem_params_from_mastr(gdf)
+        params.to_csv(cache_path)
+        return params
+
+
+def build_pvsystems_from_params(params_df, ref_env):
+    """Build SimplePVSystem objects from a parameters DataFrame.
+
+    Replaces pick_pvsystem_mastr — no SAM library search, no iteration.
+
+    Parameters
+    ----------
+    params_df : pd.DataFrame
+        Output of load_or_build_pv_params (index: EinheitMastrNummer).
+    ref_env : Environment
+        vpplib Environment with loaded weather data.
+
+    Returns
+    -------
+    dict
+        {EinheitMastrNummer: [SimplePVSystem]} — same format as pick_pvsystem_mastr.
+    """
+    pv_systems_dict = {}
+    for mastr_nr, row in tqdm(params_df.iterrows()):
+        pv = SimplePVSystem(identifier=mastr_nr, row=row, environment=ref_env)
+        pv_systems_dict[mastr_nr] = [pv]
+    return pv_systems_dict
+
 
 def pick_pvsystem_mastr(gdf, ref_env, av_module_pwr=300, module_lib_name='SandiaMod', inverter_lib_name='cecinverter'):
     """

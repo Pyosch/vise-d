@@ -15,12 +15,13 @@ import matplotlib.pyplot as plt
 from vpplib.environment import Environment
 from src.data_layer.cache import get_cached_unique_locations, get_cached_mastr_data
 from src.mastr.simulation import (
-    pick_pvsystem_mastr,
+    load_or_build_pv_params,
+    build_pvsystems_from_params,
     prepare_pv_time_series_mastr,
     aggregate_pv_time_series,
     revise_power_values
 )
-from src.config import MASTR_DB_PATH
+from src.config import MASTR_DB_PATH, PV_PARAMS_DIR
 
 
 def energy_generation_solar() -> None:
@@ -43,7 +44,9 @@ def energy_generation_solar() -> None:
                     ref_env = Environment(start=start, end=end)
                     ref_env.get_dwd_pv_data(lat=city_district.lat, 
                         lon=city_district.lon)
-                    pv_system_mastr = pick_pvsystem_mastr(gdf_solar.head(10), ref_env)
+                    cache_path = PV_PARAMS_DIR / f"{location}.csv"
+                    params_df = load_or_build_pv_params(gdf_solar, cache_path)
+                    pv_system_mastr = build_pvsystems_from_params(params_df, ref_env)
                     prepare_pv_time_series_mastr(pv_system_mastr)
                     pv_systems_aggregated = aggregate_pv_time_series(pv_system_mastr)
                     # Plotting code

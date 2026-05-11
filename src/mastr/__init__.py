@@ -33,11 +33,15 @@ from src.mastr.preprocessing import (
 from src.mastr.simulation import (
     aggregate_pv_time_series,
     aggregate_wind_time_series,
+    build_pvsystem_params_from_mastr,
+    build_pvsystems_from_params,
     init_windturbines_mastr,
+    load_or_build_pv_params,
     pick_pvsystem_mastr,
     prepare_pv_time_series_mastr,
     prepare_wind_time_series_mastr,
     revise_power_values,
+    SimplePVSystem,
     wind_turbine_matching,
 )
 
@@ -63,10 +67,14 @@ __all__ = [
     # Simulation functions
     "aggregate_pv_time_series",
     "aggregate_wind_time_series",
+    "build_pvsystem_params_from_mastr",
+    "build_pvsystems_from_params",
     "init_windturbines_mastr",
+    "load_or_build_pv_params",
     "pick_pvsystem_mastr",
     "prepare_pv_time_series_mastr",
     "prepare_wind_time_series_mastr",
     "revise_power_values",
+    "SimplePVSystem",
     "wind_turbine_matching",
 ]
