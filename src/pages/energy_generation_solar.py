@@ -11,8 +11,9 @@ __author__ = "Pyosch"
 __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 
 import logging
+import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
+import plotly.express as px
 from vpplib.environment import Environment
 from src.data_layer.cache import get_cached_unique_locations, get_cached_mastr_data
 from src.mastr.simulation import (
@@ -92,33 +93,53 @@ def energy_generation_solar() -> None:
 
                 sim_status.update(label="✅ Simulation complete!", state="complete", expanded=False)
 
+            # --- Collapse all per-system series into one total ---
+            total_series = sum(pv_systems_aggregated.values())
+            total_kw: pd.Series = total_series.sum(axis=1)
+
             # --- Summary metrics ---
             total_capacity_kw = params_df["pdc0_module_W"].sum() / 1000
-            all_series = [ts for ts in pv_systems_aggregated.values() if hasattr(ts, "max")]
-            peak_gen_kw = max((ts.max().max() for ts in all_series), default=0.0)
+            peak_gen_kw = float(total_kw.max())
 
             col1, col2, col3 = st.columns(3)
             col1.metric("PV Systems", len(pv_systems_aggregated))
             col2.metric("Total Capacity", f"{total_capacity_kw:.1f} kW")
             col3.metric("Peak Generation", f"{peak_gen_kw:.2f} kW")
 
-            # --- Chart ---
-            fig, ax = plt.subplots(figsize=(10, 6))
-            for name, pv_system in pv_systems_aggregated.items():
-                if hasattr(pv_system, "plot"):
-                    pv_system.plot(ax=ax, label=name)
-                else:
-                    try:
-                        ax.plot(pv_system, label=name)
-                    except Exception as plot_error:
-                        st.warning(f"Could not plot {name}: {plot_error}")
-            ax.set_title(f"Solar Energy Generation in {location} ({start} to {end})")
-            ax.set_xlabel("Time")
-            ax.set_ylabel("Power (kW)")
-            ax.legend()
-            ax.grid(True)
-            st.pyplot(fig)
-            plt.close(fig)
+            # --- Aggregated generation time series ---
+            fig_ts = px.line(
+                x=total_kw.index,
+                y=total_kw.values,
+                labels={"x": "Time", "y": "Power (kW)"},
+                title=f"Aggregated Solar Generation – {location} ({start[:10]})",
+            )
+            fig_ts.update_layout(xaxis_title="Time", yaxis_title="Power (kW)")
+            st.plotly_chart(fig_ts, use_container_width=True)
+
+            # --- Area-level distribution charts ---
+            capacity_kw = params_df["pdc0_module_W"] / 1000
+            fig_hist = px.histogram(
+                capacity_kw,
+                nbins=30,
+                labels={"value": "System capacity (kW)"},
+                title="Distribution of PV System Capacities",
+            )
+            fig_hist.update_layout(yaxis_title="Number of systems", showlegend=False)
+
+            fig_az = px.histogram(
+                params_df,
+                x="surface_azimuth",
+                nbins=36,
+                labels={"surface_azimuth": "Azimuth (°)"},
+                title="PV Panel Azimuth Distribution",
+            )
+            fig_az.update_layout(yaxis_title="Number of systems")
+
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.plotly_chart(fig_hist, use_container_width=True)
+            with col_b:
+                st.plotly_chart(fig_az, use_container_width=True)
 
             # --- Data corrections log ---
             if log_handler.records:
