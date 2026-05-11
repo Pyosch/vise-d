@@ -18,7 +18,6 @@ PROJECT_ROOT: Final[Path] = Path(__file__).parent.parent.parent.resolve()
 
 # Data directories
 DATA_DIR: Final[Path] = PROJECT_ROOT / "data"
-ERA5_WIND_DIR: Final[Path] = DATA_DIR / "era5_germany_2024_wind"
 FIGURES_DIR: Final[Path] = DATA_DIR / "figures"
 
 # Cache directory

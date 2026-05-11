@@ -29,7 +29,6 @@ from src.config.paths import (
     CACHE_DIR,
     DATA_DIR,
     DOCS_DIR,
-    ERA5_WIND_DIR,
     EXAMPLES_DIR,
     FIGURES_DIR,
     MASTR_DB_PATH,
@@ -58,7 +57,6 @@ __all__ = [
     # Path constants
     "PROJECT_ROOT",
     "DATA_DIR",
-    "ERA5_WIND_DIR",
     "FIGURES_DIR",
     "CACHE_DIR",
     "MASTR_DB_PATH",
