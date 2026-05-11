@@ -57,7 +57,12 @@ def get_cached_environment(
         env = Environment(start=start, end=end)
         if lat is not None and lon is not None:
             try:
-                env.get_dwd_pv_data(lat=lat, lon=lon)
+                import pandas as pd
+                from src.data_layer.weather_integration import fetch_weather_for_pv
+                start_dt = pd.Timestamp(start).to_pydatetime()
+                end_dt = pd.Timestamp(end).to_pydatetime()
+                pv_data, _ = fetch_weather_for_pv(lat, lon, start_dt, end_dt)
+                env.pv_data = pv_data
             except Exception as e:
                 st.error(f"❌ Failed to fetch PV data: {str(e)}")
                 return None
