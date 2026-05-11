@@ -83,7 +83,7 @@ def energy_generation_solar() -> None:
                 pv_system_mastr = build_pvsystems_from_params(params_df, ref_env)
                 progress_bar.progress(75)
 
-                st.write("Running time series simulation…")
+                st.write(f"Running time series simulation for {len(params_df)} systems…")
                 prepare_pv_time_series_mastr(pv_system_mastr)
                 progress_bar.progress(90)
 
