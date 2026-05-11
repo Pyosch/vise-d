@@ -158,6 +158,8 @@ class SimplePVSystem:
             surface_azimuth=row['surface_azimuth'],
             module_parameters=module_parameters,
             inverter_parameters=inverter_parameters,
+            racking_model='open_rack',
+            module_type='glass_polymer',
         )
         location = pvlib.location.Location(
             latitude=row['latitude'],
@@ -170,6 +172,7 @@ class SimplePVSystem:
             ac_model='pvwatts',
             aoi_model='no_loss',
             spectral_model='no_loss',
+            temperature_model='sapm',
             name=identifier,
         )
 
