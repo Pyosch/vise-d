@@ -7,6 +7,7 @@ load profiles and the vpplib time-series power-flow interface.
 from __future__ import annotations
 
 import copy
+import logging
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -29,7 +30,12 @@ from vpplib.environment import Environment
 from src.config.paths import DATA_DIR, MASTR_DB_PATH, PV_PARAMS_DIR
 from src.data_layer.environment import get_cached_environment
 from src.data_layer.weather_integration import fetch_weather_for_pv, fetch_weather_for_wind
-from src.mastr.preprocessing import prepare_solar_data, prepare_wind_data
+from src.mastr.preprocessing import (
+    prepare_solar_data,
+    prepare_wind_data,
+    get_unique_solar_locations,
+    get_unique_wind_locations,
+)
 from src.mastr.simulation import (
     aggregate_pv_time_series,
     aggregate_wind_time_series,
@@ -44,6 +50,17 @@ from src.mastr.simulation import (
 from src.utils.vpplib_interface import assign_assets_to_buses, build_timeseries_net
 
 
+class _StreamlitLogHandler(logging.Handler):
+    """Captures log records into a list for display in Streamlit."""
+
+    def __init__(self):
+        super().__init__()
+        self.records: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(self.format(record))
+
+
 _NETWORKS: dict[str, callable] = {
     "4-Knoten-Stichleitung": pn.panda_four_load_branch,
     "CIGRE Mittelspannung": pn.create_cigre_network_mv,
@@ -53,6 +70,18 @@ _NETWORKS: dict[str, callable] = {
 
 def _fresh_net(name: str):
     return _NETWORKS[name]()
+
+
+@st.cache_data
+def _load_available_locations() -> list[str]:
+    """Load unique locations from MaStR database (union of solar and wind)."""
+    try:
+        solar_locs = get_unique_solar_locations(mastr_db_path=str(MASTR_DB_PATH)) or []
+        wind_locs = get_unique_wind_locations(mastr_db_path=str(MASTR_DB_PATH)) or []
+        combined = sorted(set(solar_locs) | set(wind_locs))
+        return combined if combined else ["Aachen"]
+    except Exception:
+        return ["Aachen"]
 
 
 @st.cache_data
@@ -109,11 +138,17 @@ def network_scenario():
     st.subheader("2. Region und Zeitraum")
     col_loc, col_dates = st.columns([1, 2])
     with col_loc:
-        location = st.text_input("Ort (MaStR-Filterung)", value="Aachen")
+        available_locations = _load_available_locations()
+        default_loc = "Aachen" if "Aachen" in available_locations else available_locations[0]
+        location = st.selectbox(
+            "Ort (MaStR-Filterung)",
+            options=available_locations,
+            index=available_locations.index(default_loc),
+        )
     with col_dates:
         c1, c2 = st.columns(2)
-        default_start = datetime(2023, 7, 3)
-        default_end = datetime(2023, 7, 9, 23, 45)
+        default_end = datetime.today().date() - timedelta(days=1)
+        default_start = default_end - timedelta(days=6)
         start_date = c1.date_input("Von", value=default_start)
         end_date = c2.date_input("Bis", value=default_end)
 
@@ -130,26 +165,11 @@ def network_scenario():
     if st.button("MaStR-Anlagen laden", type="primary"):
         net = _fresh_net(net_name)
 
-        with st.spinner("Geocoding..."):
-            try:
-                lat, lon = _geocode(location)
-            except Exception as e:
-                st.error(f"Geocoding fehlgeschlagen: {e}")
-                return
-
-        with st.spinner("Wetterdaten abrufen..."):
-            try:
-                pv_env = get_cached_environment(start_str, end_str, lat, lon)
-                if pv_env is None:
-                    st.error("PV-Umgebung konnte nicht erstellt werden.")
-                    return
-
-                wind_weather, _ = fetch_weather_for_wind(lat, lon, start_dt, end_dt)
-                wind_env = Environment(start=start_str, end=end_str)
-                wind_env.wind_data = wind_weather
-            except Exception as e:
-                st.error(f"Fehler beim Wetterdatenabruf: {e}")
-                return
+        progress_bar = st.progress(0)
+        log_handler = _StreamlitLogHandler()
+        log_handler.setFormatter(logging.Formatter("%(asctime)s  %(message)s", datefmt="%H:%M:%S"))
+        root_logger = logging.getLogger()
+        root_logger.addHandler(log_handler)
 
         pv_sgen_map: dict[str, int] = {}
         wind_sgen_map: dict[str, int] = {}
@@ -157,20 +177,77 @@ def network_scenario():
         pv_info = {"count": 0, "with_coords": 0}
         wind_info = {"count": 0}
 
-        with st.spinner("PV-Anlagen laden..."):
-            try:
-                gdf_solar, _ = prepare_solar_data(location, str(MASTR_DB_PATH))
-                gdf_solar = revise_power_values(gdf_solar)
-                pv_info["count"] = len(gdf_solar)
-                pv_info["with_coords"] = int(gdf_solar[["Breitengrad", "Laengengrad"]].notna().all(axis=1).sum())
+        try:
+            with st.status("Anlagen werden geladen und simuliert…", expanded=True) as load_status:
 
-                if not gdf_solar.empty:
+                # --- Geocoding ---
+                st.write(f"Geocoding: {location}…")
+                try:
+                    lat, lon = _geocode(location)
+                except Exception as e:
+                    st.error(f"Geocoding fehlgeschlagen: {e}")
+                    return
+                progress_bar.progress(8)
+
+                # --- Wetterdaten ---
+                st.write("DWD-Wetterdaten abrufen (PV)…")
+                try:
+                    pv_env = get_cached_environment(start_str, end_str, lat, lon)
+                    if pv_env is None:
+                        st.error("PV-Umgebung konnte nicht erstellt werden.")
+                        return
+                except Exception as e:
+                    st.error(f"Fehler beim PV-Wetterdatenabruf: {e}")
+                    return
+                progress_bar.progress(18)
+
+                st.write("DWD-Wetterdaten abrufen (Wind)…")
+                try:
+                    wind_weather, _ = fetch_weather_for_wind(lat, lon, start_dt, end_dt)
+                    wind_env = Environment(start=start_str, end=end_str)
+                    wind_env.wind_data = wind_weather
+                except Exception as e:
+                    st.error(f"Fehler beim Wind-Wetterdatenabruf: {e}")
+                    return
+                progress_bar.progress(28)
+
+                # --- PV-Anlagen ---
+                st.write(f"MaStR-Solardaten laden ({location})…")
+                try:
+                    gdf_solar, _ = prepare_solar_data(location, str(MASTR_DB_PATH))
+                    gdf_solar = revise_power_values(gdf_solar)
+                    pv_info["count"] = len(gdf_solar)
+                    pv_info["with_coords"] = int(
+                        gdf_solar[["Breitengrad", "Laengengrad"]].notna().all(axis=1).sum()
+                    )
+                    st.write(f"  → {pv_info['count']} PV-Anlagen gefunden, "
+                             f"{pv_info['with_coords']} mit Koordinaten.")
+                except Exception as e:
+                    st.warning(f"PV-Daten konnten nicht geladen werden: {e}")
+                    gdf_solar = None
+                progress_bar.progress(38)
+
+                if gdf_solar is not None and not gdf_solar.empty:
+                    st.write("PV-Anlagen den Netzknoten zuweisen…")
                     pv_bus_assignments = assign_assets_to_buses(net, gdf_solar)
-                    params_df = load_or_build_pv_params(gdf_solar, PV_PARAMS_DIR / f"params_{location.lower()}.csv")
+                    progress_bar.progress(45)
+
+                    st.write("PV-Parameter laden / berechnen…")
+                    params_df = load_or_build_pv_params(
+                        gdf_solar, PV_PARAMS_DIR / f"params_{location.lower()}.csv"
+                    )
+                    progress_bar.progress(52)
+
+                    st.write(f"PV-Systemmodelle aufbauen ({len(params_df)} Anlagen)…")
                     pv_systems = build_pvsystems_from_params(params_df, pv_env)
+                    progress_bar.progress(60)
+
+                    st.write("PV-Zeitreihen simulieren…")
                     prepare_pv_time_series_mastr(pv_systems)
                     pv_aggregated = aggregate_pv_time_series(pv_systems)
+                    progress_bar.progress(68)
 
+                    st.write("PV-Einspeiser ins Pandapower-Netz eintragen…")
                     for mastr_nr, ts in pv_aggregated.items():
                         bus_idx = pv_bus_assignments.get(mastr_nr)
                         if bus_idx is None:
@@ -179,26 +256,32 @@ def network_scenario():
                         peak_mw = float(ts_series.max()) / 1000.0
                         sgen_idx = pp.create_sgen(
                             net, bus=bus_idx, p_mw=max(peak_mw, 0.001),
-                            name=f"PV_{mastr_nr}", type="PV", in_service=True
+                            name=f"PV_{mastr_nr}", type="PV", in_service=True,
                         )
                         pv_sgen_map[mastr_nr] = sgen_idx
                         sgen_timeseries[sgen_idx] = ts_series
-            except Exception as e:
-                st.warning(f"PV-Anlagen konnten nicht geladen werden: {e}")
+                    progress_bar.progress(73)
 
-        with st.spinner("Windkraftanlagen laden..."):
-            try:
-                gdf_wind, _ = prepare_wind_data(location, str(MASTR_DB_PATH))
-                wind_info["count"] = len(gdf_wind)
+                # --- Windkraftanlagen ---
+                st.write(f"MaStR-Winddaten laden ({location})…")
+                try:
+                    gdf_wind, _ = prepare_wind_data(location, str(MASTR_DB_PATH))
+                    wind_info["count"] = len(gdf_wind)
+                    st.write(f"  → {wind_info['count']} Windkraftanlagen gefunden.")
+                except Exception as e:
+                    st.warning(f"Winddaten konnten nicht geladen werden: {e}")
+                    gdf_wind = None
+                progress_bar.progress(78)
 
-                if not gdf_wind.empty:
+                if gdf_wind is not None and not gdf_wind.empty:
+                    st.write("Windturbinen-Matching und Zeitreihensimulation…")
                     gdf_wind = wind_turbine_matching(gdf_wind)
                     wind_bus_assignments = assign_assets_to_buses(net, gdf_wind)
                     wind_dict = init_windturbines_mastr(gdf_wind, wind_env)
                     prepare_wind_time_series_mastr(wind_dict)
                     wind_agg = aggregate_wind_time_series(wind_dict)
+                    progress_bar.progress(88)
 
-                    # One aggregate wind sgen at the most common bus
                     if wind_bus_assignments:
                         from collections import Counter
                         dominant_bus = Counter(wind_bus_assignments.values()).most_common(1)[0][0]
@@ -206,27 +289,35 @@ def network_scenario():
                         peak_wind_mw = float(wind_ts.max()) / 1000.0
                         wind_sgen_idx = pp.create_sgen(
                             net, bus=dominant_bus, p_mw=max(peak_wind_mw, 0.001),
-                            name="Wind_aggregiert", type="WKA", in_service=True
+                            name="Wind_aggregiert", type="WKA", in_service=True,
                         )
                         wind_sgen_map["wind_agg"] = wind_sgen_idx
                         sgen_timeseries[wind_sgen_idx] = wind_ts
-            except Exception as e:
-                st.warning(f"Windkraftanlagen konnten nicht geladen werden: {e}")
+                        st.write("Wind-Einspeiser (aggregiert) ins Netz eingetragen.")
 
-        # Build sgen_df with common simulation index
-        if sgen_timeseries:
-            # Find common index from first sgen
-            first_ts = next(iter(sgen_timeseries.values()))
-            sim_index = first_ts.index if hasattr(first_ts, 'index') else pd.date_range(start_str, end_str, freq='15min')
+                # --- Zeitreihen-DataFrame aufbauen ---
+                st.write("Simulationsindex und Einspeiser-DataFrame aufbauen…")
+                if sgen_timeseries:
+                    first_ts = next(iter(sgen_timeseries.values()))
+                    sim_index = (
+                        first_ts.index
+                        if hasattr(first_ts, "index")
+                        else pd.date_range(start_str, end_str, freq="15min")
+                    )
+                    sgen_df = pd.DataFrame(index=sim_index)
+                    for sgen_idx, ts in sgen_timeseries.items():
+                        aligned = _align_to_index(ts, sim_index)
+                        sgen_df[sgen_idx] = aligned / 1000.0  # kW → MW
+                else:
+                    sim_index = pd.date_range(start_str, periods=672, freq="15min")
+                    sgen_df = pd.DataFrame(index=sim_index)
+                    st.warning("Keine Erzeugungsanlagen gefunden. Verwende leeren Sgen-DataFrame.")
+                progress_bar.progress(100)
 
-            sgen_df = pd.DataFrame(index=sim_index)
-            for sgen_idx, ts in sgen_timeseries.items():
-                aligned = _align_to_index(ts, sim_index)
-                sgen_df[sgen_idx] = aligned / 1000.0  # kW → MW
-        else:
-            sim_index = pd.date_range(start_str, periods=672, freq='15min')
-            sgen_df = pd.DataFrame(index=sim_index)
-            st.warning("Keine Erzeugungsanlagen gefunden. Verwende leeren Sgen-DataFrame.")
+                load_status.update(label="✅ Anlagen geladen und simuliert!", state="complete", expanded=False)
+
+        finally:
+            root_logger.removeHandler(log_handler)
 
         # Store in session state
         st.session_state["_net"] = net
@@ -235,10 +326,14 @@ def network_scenario():
         st.session_state["selected_net"] = net
 
         m1, m2, m3 = st.columns(3)
-        m1.metric("PV-Anlagen gefunden", pv_info["count"])
+        m1.metric("PV-Anlagen", pv_info["count"])
         m2.metric("davon mit Koordinaten", pv_info.get("with_coords", 0))
-        m3.metric("Windkraftanlagen gefunden", wind_info["count"])
-        st.success("Anlagen geladen und simuliert.")
+        m3.metric("Windkraftanlagen", wind_info["count"])
+
+        if log_handler.records:
+            with st.expander(f"⚙️ Datenkorrektur-Log ({len(log_handler.records)} Einträge)", expanded=False):
+                for msg in log_handler.records:
+                    st.text(msg)
 
     # ------------------------------------------------------------------ #
     # Step 4: Load configuration                                           #
@@ -287,16 +382,15 @@ def network_scenario():
         p_per_load = mean_mw / len(load_indices)
 
         if has_flex:
-            if net.load.index[0] == 0:
-                profile_key = "baseline_load_df" if mean_mw == baseline_mean_mw else "flex_scenario_load_df"
-                profile_df = st.session_state.get(profile_key, st.session_state["baseline_load_df"])
-                weekly_vals = profile_df["p_mw"].values / len(load_indices)
-                load_data = {
-                    idx: _tile_weekly_to_index(weekly_vals, sim_index).values
-                    for idx in load_indices
-                }
-            else:
-                load_data = {idx: np.full(len(sim_index), p_per_load) for idx in load_indices}
+            # Use the flex profile regardless of what the load indices are.
+            # The profile p_mw is split equally across all load elements.
+            profile_key = "baseline_load_df" if mean_mw == baseline_mean_mw else "flex_scenario_load_df"
+            profile_df = st.session_state.get(profile_key, st.session_state["baseline_load_df"])
+            weekly_vals = profile_df["p_mw"].values / len(load_indices)
+            load_data = {
+                idx: _tile_weekly_to_index(weekly_vals, sim_index).values
+                for idx in load_indices
+            }
         else:
             load_data = {idx: np.full(len(sim_index), p_per_load) for idx in load_indices}
 
@@ -356,8 +450,10 @@ def network_scenario():
         st.markdown(f"**{title}**")
 
         # Leitungsauslastung heatmap
+        # res_line columns are integer line indices; all values are loading_percent.
+        # Do not filter by column name — use all columns directly.
         if not res_line.empty:
-            loading_cols = [c for c in res_line.columns if "loading" in str(c).lower()]
+            loading_cols = res_line.columns.tolist()
             if loading_cols:
                 heat_df = res_line[loading_cols]
                 heat_df.columns = [str(c) for c in heat_df.columns]
@@ -369,21 +465,21 @@ def network_scenario():
                     labels={"x": "Zeitstempel", "y": "Leitung", "color": "Auslastung (%)"},
                     title="Leitungsauslastung (%)",
                 )
-                st.plotly_chart(fig_heat, use_container_width=True)
+                st.plotly_chart(fig_heat, use_container_width=True, key=f"heat_{title}")
 
                 # Engpass-Zeitpunkte
+                # heat_df already has string indices — use it directly to avoid
+                # index mismatch with res_line (which still has datetime/int index).
                 congestion_mask = (heat_df > 80).any(axis=1)
-                congestion_df = res_line.loc[congestion_mask, loading_cols]
+                congestion_df = heat_df.loc[congestion_mask]
                 if not congestion_df.empty:
                     st.markdown(f"**Engpass-Zeitpunkte (> 80 %):** {len(congestion_df)}")
-                    display_df = congestion_df.head(20).copy()
-                    display_df.index = display_df.index.astype(str)
-                    display_df.columns = [str(c) for c in display_df.columns]
-                    st.dataframe(display_df.style.format("{:.1f}"), height=200)
+                    st.dataframe(congestion_df.head(20).style.format("{:.1f}"), height=200)
 
         # Spannungsband
+        # res_bus columns are integer bus indices; all values are vm_pu.
         if not res_bus.empty:
-            vm_cols = [c for c in res_bus.columns if "vm" in str(c).lower()]
+            vm_cols = res_bus.columns.tolist()
             if vm_cols:
                 vm_df = res_bus[vm_cols]
                 vm_min = vm_df.min(axis=1)
@@ -400,7 +496,7 @@ def network_scenario():
                 fig_vm.add_hline(y=1.05, line_dash="dot", line_color="gray", annotation_text="1.05 p.u.")
                 fig_vm.add_hline(y=0.95, line_dash="dot", line_color="gray", annotation_text="0.95 p.u.")
                 fig_vm.update_layout(title="Spannungsband (p.u.)", height=300, showlegend=True)
-                st.plotly_chart(fig_vm, use_container_width=True)
+                st.plotly_chart(fig_vm, use_container_width=True, key=f"vm_{title}")
 
     col_b, col_f = st.columns(2)
     with col_b:
@@ -433,4 +529,4 @@ def network_scenario():
                 )
 
 
-network_scenario()
+
