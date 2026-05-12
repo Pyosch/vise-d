@@ -29,7 +29,10 @@ from src.pages import (
     wind_installation_mastr,
     storage_installation_mastr,
     energy_generation_solar,
-    wind_energy_generation
+    wind_energy_generation,
+    flexibility_configurator,
+    network_scenario,
+    mv_fallstudie,
 )
 from src.pages.networks import Netzberechnung
 from src.pages.planning_ffpv_wea import planning_ffpv_wea
@@ -67,6 +70,14 @@ st.write('Willkommen beim VISE-D Dashboard! Die Seite befindet sich noch in der 
 # Page Navigation
 # =============================================================================
 
+# Build page objects for pages that need cross-page navigation references.
+_page_network_scenario = st.Page(network_scenario, title="Netzmodell-Szenario")
+_page_flex_configurator = st.Page(flexibility_configurator, title="Flexibilitätskonfigurator")
+
+# Store references so other pages can call st.switch_page() with a Page object.
+st.session_state["_page_network_scenario"] = _page_network_scenario
+st.session_state["_page_flex_configurator"] = _page_flex_configurator
+
 pg = st.navigation([
     st.Page(research_results, title="Forschungsergebnisse"),
     st.Page(bev_settings, title="BEV Einstellungen"),
@@ -84,8 +95,10 @@ pg = st.navigation([
     st.Page(wind_energy_generation, title="Windenergieerzeugung"),
     st.Page(planning_ffpv_wea, title="FFPV & WEA Planung"),
     st.Page(openstef_forecasting, title="Kurzfristige Energieprognose (OpenSTEF)"),
-    st.Page(Netzberechnung, title="Netzberechnung")
-    
+    st.Page(Netzberechnung, title="Netzberechnung"),
+    _page_flex_configurator,
+    _page_network_scenario,
+    st.Page(mv_fallstudie, title="Fallstudie: MS-Netz Validierung"),
 ])
 
 pg.run()

@@ -27,6 +27,9 @@ from src.pages.storage_installation_mastr import storage_installation_mastr
 from src.pages.energy_generation_solar import energy_generation_solar
 from src.pages.wind_energy_generation import wind_energy_generation
 from src.pages.planning_ffpv_wea import planning_ffpv_wea
+from src.pages.flexibility_configurator import flexibility_configurator
+from src.pages.network_scenario import network_scenario
+from src.pages.mv_fallstudie import mv_fallstudie
 
 __all__ = [
     'research_results',
@@ -46,4 +49,7 @@ __all__ = [
     'energy_generation_solar',
     'wind_energy_generation',
     'planning_ffpv_wea',
+    'flexibility_configurator',
+    'network_scenario',
+    'mv_fallstudie',
 ]
