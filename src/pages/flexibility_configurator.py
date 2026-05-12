@@ -197,7 +197,7 @@ def flexibility_configurator():
     if "baseline_load_df" in st.session_state:
         st.divider()
         if st.button("→ Im Netzmodell analysieren", type="secondary"):
-            st.switch_page("pages/network_scenario.py")
+            st.switch_page(st.session_state["_page_network_scenario"])
 
 
-flexibility_configurator()
+
