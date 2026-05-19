@@ -46,7 +46,7 @@ import plotly.graph_objects as go
 
 from src.config.paths import MASTR_DB_PATH, PV_PARAMS_DIR
 from src.data_layer.environment import get_cached_environment
-from src.data_layer.weather_integration import fetch_weather_for_wind
+from src.data_layer.weather_integration import fetch_weather_for_pv, fetch_weather_for_wind
 from src.mastr.preprocessing import (
     get_unique_solar_locations,
     get_unique_wind_locations,
@@ -640,6 +640,21 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                     try:
                         lat, lon = _geocode(pv_loc)
                         day = pd.Timestamp(time_start)
+                        day_naive = day.tz_localize(None)
+                        # Fetch metadata to capture the station used, then run PV model.
+                        # The DWD file cache absorbs the duplicate request inside
+                        # get_normalized_pv_output.
+                        _, pv_meta = fetch_weather_for_pv(
+                            latitude=float(lat),
+                            longitude=float(lon),
+                            start_date=day_naive.to_pydatetime(),
+                            end_date=(day_naive + pd.Timedelta(days=1)).to_pydatetime(),
+                            resolution="15min",
+                        )
+                        solar_stations = pv_meta.get("stations_used", {}).get("solar", [])
+                        st.session_state["nsv2_profile_pv_station"] = (
+                            solar_stations[0] if solar_stations else None
+                        )
                         ts = get_normalized_pv_output(lat, lon, day, day + pd.Timedelta(days=1))
                         st.session_state["nsv2_profile_pv"] = _normalize_ts(ts)
                         st.success(f"PV-Profil erzeugt für {pv_loc} am {time_start}.")
@@ -647,6 +662,14 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                         st.error(f"PV-Profilgenerierung fehlgeschlagen: {e}")
 
         if "nsv2_profile_pv" in st.session_state:
+            station = st.session_state.get("nsv2_profile_pv_station")
+            if station:
+                st.caption(
+                    f"DWD-Wetterstation: **{station.get('name', '—')}** "
+                    f"(ID {station.get('station_id', '?')}, "
+                    f"{station.get('distance_km', 0):.1f} km Entfernung, "
+                    f"{station.get('latitude', 0):.3f}°N {station.get('longitude', 0):.3f}°E)"
+                )
             _profile_chart(st.session_state["nsv2_profile_pv"], "kW / kWp", "nsv2_chart_pv")
 
     # ------------------------------------------------------------------ #
