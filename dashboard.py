@@ -32,6 +32,7 @@ from src.pages import (
     wind_energy_generation,
     flexibility_configurator,
     network_scenario,
+    netzmodell_v2,
     mv_fallstudie,
 )
 from src.pages.networks import Netzberechnung
@@ -98,6 +99,7 @@ pg = st.navigation([
     st.Page(Netzberechnung, title="Netzberechnung"),
     _page_flex_configurator,
     _page_network_scenario,
+    st.Page(netzmodell_v2, title="Netzmodell-Szenario (Neu)"),
     st.Page(mv_fallstudie, title="Fallstudie: MS-Netz Validierung"),
 ])
 

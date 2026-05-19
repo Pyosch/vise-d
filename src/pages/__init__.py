@@ -29,6 +29,7 @@ from src.pages.wind_energy_generation import wind_energy_generation
 from src.pages.planning_ffpv_wea import planning_ffpv_wea
 from src.pages.flexibility_configurator import flexibility_configurator
 from src.pages.network_scenario import network_scenario
+from src.pages.netzmodell_v2 import netzmodell_v2
 from src.pages.mv_fallstudie import mv_fallstudie
 
 __all__ = [
@@ -51,5 +52,6 @@ __all__ = [
     'planning_ffpv_wea',
     'flexibility_configurator',
     'network_scenario',
+    'netzmodell_v2',
     'mv_fallstudie',
 ]
