@@ -584,37 +584,63 @@ def netzmodell_v2():
     # ------------------------------------------------------------------ #
     st.subheader("1. Netzauswahl")
 
-    source = st.radio(
-        "Netzquelle",
-        options=["Vordefiniertes Netz", "Netz hochladen"],
-        horizontal=True,
-        key="nsv2_source_radio",
-    )
+    # Use index= driven from explicit session state rather than key=.
+    # Streamlit deletes widget state (key=) when navigating away from a page,
+    # which would reset the radio/selectbox and trigger a spurious network reload.
+    # Explicit session state (set via st.session_state[...] = ...) survives navigation.
+    _source_opts = ["Vordefiniertes Netz", "Netz hochladen"]
+    _stored_source = st.session_state.get("nsv2_net_source_ui", _source_opts[0])
+    _source_idx = _source_opts.index(_stored_source) if _stored_source in _source_opts else 0
+    source = st.radio("Netzquelle", options=_source_opts, index=_source_idx, horizontal=True)
+    st.session_state["nsv2_net_source_ui"] = source
 
     net: pp.pandapowerNet | None = None
 
     if source == "Vordefiniertes Netz":
-        st.session_state["nsv2_net_source"] = "predefined"
+        _net_opts = list(_NETWORKS.keys())
+        _stored_name = st.session_state.get("nsv2_net_name", _net_opts[0])
+        _name_idx = _net_opts.index(_stored_name) if _stored_name in _net_opts else 0
+        net_name = st.selectbox("Netz auswählen", options=_net_opts, index=_name_idx)
 
-        net_name = st.selectbox(
-            "Netz auswählen",
-            options=list(_NETWORKS.keys()),
-            key="nsv2_net_name_select",
+        _needs_load = (
+            "nsv2_net" not in st.session_state
+            or st.session_state.get("nsv2_net_source") != "predefined"
         )
-        st.session_state["nsv2_net_name"] = net_name
+        _selection_changed = net_name != st.session_state.get("nsv2_net_name")
 
-        # Only reload when selection changes — preserves DER additions across reruns.
-        if st.session_state.get("nsv2_last_net_name") != net_name:
+        if _needs_load:
             try:
                 net = _NETWORKS[net_name]()
-                st.session_state["nsv2_net"] = net
-                st.session_state["nsv2_last_net_name"] = net_name
+                st.session_state.update({
+                    "nsv2_net": net,
+                    "nsv2_net_name": net_name,
+                    "nsv2_net_source": "predefined",
+                })
                 st.session_state.pop("nsv2_mastr_sgen_ts", None)
             except Exception as e:
                 st.error(f"Netz konnte nicht geladen werden: {e}")
                 return
-        else:
-            net = st.session_state["nsv2_net"]
+        elif _selection_changed:
+            loaded = st.session_state["nsv2_net_name"]
+            st.warning(
+                f"Geladenes Netz: **{loaded}** (mit ggf. hinzugefügten DER). "
+                f"Zu **{net_name}** wechseln?"
+            )
+            if st.button("Ja, Netz wechseln (DER werden verworfen)", key="nsv2_switch_btn"):
+                try:
+                    net = _NETWORKS[net_name]()
+                    st.session_state.update({
+                        "nsv2_net": net,
+                        "nsv2_net_name": net_name,
+                        "nsv2_net_source": "predefined",
+                    })
+                    st.session_state.pop("nsv2_mastr_sgen_ts", None)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Netz konnte nicht geladen werden: {e}")
+                    return
+
+        net = st.session_state.get("nsv2_net")
 
     else:
         st.session_state["nsv2_net_source"] = "upload"
@@ -626,10 +652,7 @@ def netzmodell_v2():
         )
 
         if uploaded is None:
-            if (
-                "nsv2_net" in st.session_state
-                and st.session_state.get("nsv2_net_source") == "upload"
-            ):
+            if "nsv2_net" in st.session_state and st.session_state.get("nsv2_net_source") == "upload":
                 net = st.session_state["nsv2_net"]
                 st.caption(
                     f"Zuletzt geladenes Netz: {st.session_state.get('nsv2_net_name', 'Unbekannt')}"
@@ -654,6 +677,7 @@ def netzmodell_v2():
 
                 st.session_state["nsv2_net"] = net
                 st.session_state["nsv2_net_name"] = uploaded.name
+                st.session_state["nsv2_net_source"] = "upload"
                 st.session_state.pop("nsv2_mastr_sgen_ts", None)
                 st.success(
                     f"Netz geladen: {len(net.bus)} Knoten, {len(net.line)} Leitungen"
@@ -669,7 +693,9 @@ def netzmodell_v2():
             help="Entfernt alle DER und lädt das Netz neu.",
             key="nsv2_reset",
         ):
-            st.session_state.pop("nsv2_last_net_name", None)
+            st.session_state.pop("nsv2_net", None)
+            st.session_state.pop("nsv2_net_name", None)
+            st.session_state.pop("nsv2_net_source", None)
             st.session_state.pop("nsv2_mastr_sgen_ts", None)
             st.rerun()
 
