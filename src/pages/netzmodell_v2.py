@@ -7,8 +7,6 @@ Section 3.5: Inline profile generation — PV, EV, HP, Storage, Basislast.
 Section 4: Timeseries PF simulation + voltage band & line loading results.
 """
 
-"""Netzmodell-Szenario v2 — WP1–WP4: Network source, DER config, profiles, simulation."""
-
 from __future__ import annotations
 
 import copy
