@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import plotly.io as pio
 import webbrowser
+from src.ui.components.netzmittimeseries import netzmittimeseries
 
 # Disable auto-opening of plots in browser
 pio.renderers.default = "json"
@@ -22,7 +23,7 @@ def Netzberechnung():
     st.markdown("### 🔌 Network Source")
     network_source = st.radio(
         "Choose how to load your network:",
-        ["Upload Excel File", "Select Predefined Network"],
+        ["Upload Excel File", "Select Predefined Network", "Network with Timeseries simulation"],
         horizontal=True
     )
 
@@ -51,6 +52,9 @@ def Netzberechnung():
                 # Clean up temporary file
                 os.unlink(tmp_path)
     
+    elif network_source == "Network with Timeseries simulation":
+        netzmittimeseries()
+
     else:  # Select Predefined Network
         st.markdown("### 📚 Predefined Network Templates")
         networks = [

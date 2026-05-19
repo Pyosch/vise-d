@@ -146,48 +146,52 @@ def electrical_storage_configuration():
                     baseload = pd.DataFrame({
                         "0": [baseload_power] * len(time_index)
                     }, index=time_index)
-                    
-                    # Calculate residual load (consumption - generation)
-                    house_loadshape = pd.DataFrame()
-                    house_loadshape["baseload"] = baseload["0"].loc[start_str:end_str]
-                    house_loadshape["pv_gen"] = PhotoV.timeseries.loc[start_str:end_str]
+
+                    # Calculate residual load (consumption - generation) with robust index alignment.
+                    pv_series = PhotoV.timeseries.loc[start_str:end_str]
+                    if isinstance(pv_series, pd.DataFrame):
+                        pv_series = pv_series.iloc[:, 0]
+
+                    house_loadshape = pd.DataFrame(index=time_index)
+                    house_loadshape["baseload"] = baseload["0"].reindex(time_index)
+                    house_loadshape["pv_gen"] = pd.to_numeric(
+                        pv_series.reindex(time_index), errors="coerce"
+                    ).fillna(0.0)
                     house_loadshape["residual_load"] = (
                         house_loadshape["baseload"] - house_loadshape["pv_gen"]
-                    )
+                    ).fillna(0.0)
                     
                     # Assign residual load to storage
                     st.session_state["es"].residual_load = house_loadshape.residual_load
                     
                     # Prepare time series data for Electrical Storage
                     st.session_state["es"].prepare_time_series()
+
+                    storage_ts = st.session_state["es"].timeseries
+                    if isinstance(storage_ts, pd.DataFrame):
+                        storage_power = storage_ts["residual_load"] if "residual_load" in storage_ts.columns else storage_ts.iloc[:, 0]
+                        storage_soc = storage_ts["state_of_charge"] if "state_of_charge" in storage_ts.columns else None
+                    else:
+                        storage_power = pd.to_numeric(storage_ts, errors="coerce").fillna(0.0)
+                        storage_soc = None
                     
                     st.markdown("### 📊 Simulationsergebnisse")
                     
                     col1, col2, col3 = st.columns(3)
                     with col1:
-                        total_charged = st.session_state['es'].timeseries[
-                            st.session_state['es'].timeseries > 0
-                        ].sum()
-                        if hasattr(total_charged, 'iloc'):
-                            total_charged = total_charged.iloc[0]
+                        total_charged = storage_power[storage_power > 0].sum()
                         st.metric(
                             "Gesamt geladen",
                             f"{float(total_charged):.2f} kWh"
                         )
                     with col2:
-                        total_discharged = abs(st.session_state['es'].timeseries[
-                            st.session_state['es'].timeseries < 0
-                        ].sum())
-                        if hasattr(total_discharged, 'iloc'):
-                            total_discharged = total_discharged.iloc[0]
+                        total_discharged = abs(storage_power[storage_power < 0].sum())
                         st.metric(
                             "Gesamt entladen",
                             f"{float(total_discharged):.2f} kWh"
                         )
                     with col3:
-                        max_power_val = st.session_state['es'].timeseries.abs().max()
-                        if hasattr(max_power_val, 'iloc'):
-                            max_power_val = max_power_val.iloc[0]
+                        max_power_val = storage_power.abs().max()
                         st.metric(
                             "Max. Leistung",
                             f"{float(max_power_val):.2f} kW"
@@ -208,12 +212,16 @@ def electrical_storage_configuration():
                     
                     # Show data preview
                     with st.expander("📋 Zeitreihen-Daten (Vorschau)"):
-                        preview_df = pd.DataFrame({
+                        preview_data = {
                             'PV Generation': house_loadshape["pv_gen"],
                             'Grundlast': house_loadshape["baseload"],
                             'Residuallast': house_loadshape["residual_load"],
-                            'Speicher': st.session_state["es"].timeseries
-                        })
+                            'Speicher': storage_power
+                        }
+                        if storage_soc is not None:
+                            preview_data['Speicher SOC'] = storage_soc
+
+                        preview_df = pd.DataFrame(preview_data)
                         st.dataframe(preview_df.head(20))
                     
                     # Create visualization
@@ -231,7 +239,7 @@ def electrical_storage_configuration():
                     ax1.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
                     
                     # Plot 2: Storage Operation
-                    st.session_state["es"].timeseries.plot(ax=ax2, color='green')
+                    storage_power.plot(ax=ax2, color='green')
                     ax2.set_title("Speicher-Betrieb (positiv = laden, negativ = entladen)")
                     ax2.set_xlabel("Zeit")
                     ax2.set_ylabel("Leistung (kW)")

@@ -72,7 +72,7 @@ def heatpump_configuration():
         t_0 = st.number_input(
             "Heizgrenztemperatur (°C)",
             min_value=0.0,
-            max_value=20.0,
+            max_value=70.0,
             value=15.0,
             step=0.5,
             help="Außentemperatur, ab der geheizt wird",
