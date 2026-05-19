@@ -580,14 +580,16 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
 # Section 3.5: Profile Generation
 # ---------------------------------------------------------------------------
 
-def _profile_chart(profile: pd.Series, ylabel: str, chart_key: str) -> None:
-    """Compact 96-step profile preview."""
+def _profile_chart(
+    profile: pd.Series, ylabel: str, chart_key: str, xlabel: str = "Uhrzeit (h)"
+) -> None:
+    """Profile preview chart. x-axis in hours at 15-min resolution."""
     time_h = [i * 0.25 for i in range(len(profile))]
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=time_h, y=profile.values, mode="lines",
                              line=dict(width=2), showlegend=False))
     fig.update_layout(
-        xaxis_title="Uhrzeit (h)", yaxis_title=ylabel,
+        xaxis_title=xlabel, yaxis_title=ylabel,
         height=220, margin=dict(l=0, r=0, t=10, b=0), hovermode="x unified",
     )
     st.plotly_chart(fig, use_container_width=True, key=chart_key)
@@ -633,31 +635,52 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
         else:
             pv_loc = st.text_input("Ort", value="Aachen", key="nsv2_pv_loc",
                                    help="Stadtname für DWD-Wetterdaten")
-            st.caption(f"Datum aus Abschnitt 2: {time_start}" if time_start
-                       else "Bitte Zeitraum in Abschnitt 2 festlegen.")
+            time_end = st.session_state.get("nsv2_time_end", time_start)
+            if time_start and time_end:
+                n_days = (pd.Timestamp(time_end) - pd.Timestamp(time_start)).days + 1
+                st.caption(f"Zeitraum aus Abschnitt 2: {time_start} – {time_end} ({n_days} Tag(e))")
+            else:
+                st.caption("Bitte Zeitraum in Abschnitt 2 festlegen.")
+
             if st.button("PV-Profil generieren", key="nsv2_pv_gen", disabled=time_start is None):
-                with st.spinner("DWD-Wetterdaten abrufen und PV-Profil berechnen…"):
+                with st.spinner(f"DWD-Wetterdaten abrufen und PV-Profil berechnen ({n_days} Tag(e))…"):
                     try:
                         lat, lon = _geocode(pv_loc)
-                        day = pd.Timestamp(time_start)
-                        day_naive = day.tz_localize(None)
-                        # Fetch metadata to capture the station used, then run PV model.
-                        # The DWD file cache absorbs the duplicate request inside
-                        # get_normalized_pv_output.
+                        day0_naive = pd.Timestamp(time_start).tz_localize(None)
+
+                        # Capture station metadata from the first day's fetch.
+                        # The DWD file cache absorbs the duplicate inside get_normalized_pv_output.
                         _, pv_meta = fetch_weather_for_pv(
                             latitude=float(lat),
                             longitude=float(lon),
-                            start_date=day_naive.to_pydatetime(),
-                            end_date=(day_naive + pd.Timedelta(days=1)).to_pydatetime(),
+                            start_date=day0_naive.to_pydatetime(),
+                            end_date=(day0_naive + pd.Timedelta(days=1)).to_pydatetime(),
                             resolution="15min",
                         )
                         solar_stations = pv_meta.get("stations_used", {}).get("solar", [])
                         st.session_state["nsv2_profile_pv_station"] = (
                             solar_stations[0] if solar_stations else None
                         )
-                        ts = get_normalized_pv_output(lat, lon, day, day + pd.Timedelta(days=1))
-                        st.session_state["nsv2_profile_pv"] = _normalize_ts(ts)
-                        st.success(f"PV-Profil erzeugt für {pv_loc} am {time_start}.")
+
+                        # One 96-step call per day, then concatenate into the full profile.
+                        daily = []
+                        current = pd.Timestamp(time_start)
+                        end_ts = pd.Timestamp(time_end)
+                        while current <= end_ts:
+                            day_ts = get_normalized_pv_output(
+                                lat, lon, current, current + pd.Timedelta(days=1)
+                            )
+                            daily.append(
+                                pd.to_numeric(day_ts, errors="coerce").fillna(0.0).reset_index(drop=True)
+                            )
+                            current += pd.Timedelta(days=1)
+
+                        full_profile = pd.concat(daily, ignore_index=True)
+                        st.session_state["nsv2_profile_pv"] = full_profile
+                        st.success(
+                            f"PV-Profil erzeugt: {len(daily)} Tag(e) "
+                            f"({time_start} – {time_end}) für {pv_loc}."
+                        )
                     except Exception as e:
                         st.error(f"PV-Profilgenerierung fehlgeschlagen: {e}")
 
@@ -670,7 +693,10 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                     f"{station.get('distance_km', 0):.1f} km Entfernung, "
                     f"{station.get('latitude', 0):.3f}°N {station.get('longitude', 0):.3f}°E)"
                 )
-            _profile_chart(st.session_state["nsv2_profile_pv"], "kW / kWp", "nsv2_chart_pv")
+            pv_steps = len(st.session_state["nsv2_profile_pv"])
+            pv_xlabel = "Uhrzeit (h)" if pv_steps <= 96 else "Zeit seit Beginn (h)"
+            _profile_chart(st.session_state["nsv2_profile_pv"], "kW / kWp", "nsv2_chart_pv",
+                           xlabel=pv_xlabel)
 
     # ------------------------------------------------------------------ #
     # EV / BEV                                                             #
