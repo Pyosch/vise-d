@@ -1,16 +1,17 @@
-"""Netzmodell-Szenario v2 — WP1+WP2: Network source & DER configuration.
+"""Netzmodell-Szenario v2 — WP1–WP4.
 
 Section 1: Network source (predefined / upload) with persistent state.
-Section 2: Time range (stored for WP4 simulation pipeline).
-Section 3: DER configuration — three tabs:
-    - Szenario (penetration-rate placement across load buses)
-    - Gezielt  (name-search, targeted single-bus placement)
-    - MaStR    (real-world PV/Wind from MaStR database)
-Section 4: Simulation stub (WP4).
+Section 2: Time range.
+Section 3: DER configuration — Szenario (penetration), Gezielt (name-search), MaStR.
+Section 3.5: Inline profile generation — PV, EV, HP, Storage, Basislast.
+Section 4: Timeseries PF simulation + voltage band & line loading results.
 """
+
+"""Netzmodell-Szenario v2 — WP1–WP4: Network source, DER config, profiles, simulation."""
 
 from __future__ import annotations
 
+import copy
 import logging
 import os
 import tempfile
@@ -42,7 +43,10 @@ try:
 except Exception:
     _HAS_VPPLIB = False
 
+import plotly.express as px
 import plotly.graph_objects as go
+from pandapower.control import ConstControl
+from pandapower.timeseries import DFData
 
 from src.config.paths import MASTR_DB_PATH, PV_PARAMS_DIR
 from src.data_layer.environment import get_cached_environment
@@ -888,12 +892,307 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Section 4: Simulation helpers
+# ---------------------------------------------------------------------------
+
+def _tile_to(series: pd.Series, n: int) -> np.ndarray:
+    """Tile a Series to exactly n elements."""
+    vals = np.asarray(series.values, dtype=float)
+    reps = (n // len(vals)) + 2
+    return np.tile(vals, reps)[:n]
+
+
+def _build_sim_profiles(
+    net: pp.pandapowerNet, n_steps: int
+) -> dict[str, pd.DataFrame]:
+    """Build integer-indexed MW DataFrames for all DER elements.
+
+    Columns = pandapower element indices (int), values = MW.
+    Single-day (96-step) profiles are tiled to fill n_steps.
+    Elements with no matching profile are omitted; pandapower uses their static p_mw.
+    """
+    pv_profile  = st.session_state.get("nsv2_profile_pv")
+    ev_profile  = st.session_state.get("nsv2_profile_ev")
+    hp_profile  = st.session_state.get("nsv2_profile_hp")
+    st_profile  = st.session_state.get("nsv2_profile_storage")
+    base_mult   = st.session_state.get("nsv2_profile_base")
+    mastr_ts    = st.session_state.get("nsv2_mastr_sgen_ts", {})
+
+    sgen_df    = pd.DataFrame(index=range(n_steps))
+    load_df    = pd.DataFrame(index=range(n_steps))
+    storage_df = pd.DataFrame(index=range(n_steps))
+
+    # PV sgens — scenario/targeted (not already in mastr_ts)
+    if pv_profile is not None and len(net.sgen) > 0:
+        pv_arr = _tile_to(pv_profile, n_steps)
+        pv_mask = net.sgen["name"].str.contains("PV", na=False, case=False)
+        for idx in net.sgen[pv_mask].index:
+            if idx not in mastr_ts:
+                p_mwp = float(net.sgen.at[idx, "p_mw"])
+                sgen_df[idx] = pv_arr * p_mwp  # kW/kWp → MW/MWp → MW
+
+    # MaStR sgens — individual timeseries in kW
+    for sgen_idx, ts_kw in mastr_ts.items():
+        if sgen_idx in net.sgen.index:
+            arr = _tile_to(pd.Series(np.asarray(ts_kw.values, dtype=float)), n_steps)
+            sgen_df[sgen_idx] = arr / 1000.0
+
+    # EV loads
+    if ev_profile is not None and len(net.load) > 0:
+        ev_arr = _tile_to(ev_profile, n_steps)
+        ev_mask = net.load["name"].str.contains("EV", na=False, case=False)
+        for idx in net.load[ev_mask].index:
+            load_df[idx] = ev_arr / 1000.0
+
+    # HP loads
+    if hp_profile is not None and len(net.load) > 0:
+        hp_arr = _tile_to(hp_profile, n_steps)
+        hp_mask = net.load["name"].str.contains("HP|Wärme", na=False, case=False)
+        for idx in net.load[hp_mask].index:
+            load_df[idx] = hp_arr / 1000.0
+
+    # Base loads (all loads not EV/HP)
+    if base_mult is not None and len(net.load) > 0:
+        der_pattern = "EV|HP|Wärme|Szenario|Gezielt"
+        base_mask = ~net.load["name"].str.contains(der_pattern, na=False, case=False)
+        for idx in net.load[base_mask].index:
+            if idx in base_mult.columns:
+                mult_arr = _tile_to(pd.Series(base_mult[idx].values), n_steps)
+                load_df[idx] = mult_arr * float(net.load.at[idx, "p_mw"])
+
+    # Storage
+    if st_profile is not None and hasattr(net, "storage") and len(net.storage) > 0:
+        st_arr = _tile_to(st_profile, n_steps)
+        for idx in net.storage.index:
+            storage_df[idx] = st_arr / 1000.0
+
+    return {"sgen": sgen_df, "load": load_df, "storage": storage_df}
+
+
+def _run_timeseries_pf(
+    net: pp.pandapowerNet,
+    n_steps: int,
+    profiles: dict[str, pd.DataFrame],
+    progress_bar=None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Run per-timestep pandapower PF using ConstControl/DFData.
+
+    Returns (voltage_df [n_steps × buses], loading_df [n_steps × lines]).
+    Uses the manual loop rather than run_timeseries() to stay OPF-compatible.
+    """
+    # Clear any controllers left from previous runs
+    if hasattr(net, "controller") and len(net.controller) > 0:
+        net.controller.drop(net.controller.index, inplace=True)
+
+    # One DFData + one ConstControl per element
+    for element, df in [
+        ("sgen",    profiles["sgen"]),
+        ("load",    profiles["load"]),
+        ("storage", profiles["storage"]),
+    ]:
+        if df.empty:
+            continue
+        ds = DFData(df)
+        for col in df.columns:
+            try:
+                ConstControl(
+                    net, element=element, element_index=int(col),
+                    variable="p_mw", data_source=ds, profile_name=col,
+                )
+            except Exception:
+                pass
+
+    controllers = (
+        net.controller["object"].tolist()
+        if hasattr(net, "controller") and len(net.controller) > 0
+        else []
+    )
+
+    voltage_rows: list = []
+    loading_rows: list = []
+    update_every = max(1, n_steps // 50)
+
+    for t in range(n_steps):
+        for ctrl in controllers:
+            try:
+                ctrl.time_step(net, t)
+                ctrl.control_step(net, t)
+            except Exception:
+                pass
+
+        try:
+            pp.runpp(net, verbose=False)
+            voltage_rows.append(net.res_bus["vm_pu"].values.copy())
+            if len(net.res_line) > 0:
+                loading_rows.append(net.res_line["loading_percent"].values.copy())
+        except Exception:
+            voltage_rows.append(np.full(len(net.bus), np.nan))
+            if len(net.res_line) > 0:
+                loading_rows.append(np.full(len(net.res_line), np.nan))
+
+        if progress_bar is not None and t % update_every == 0:
+            progress_bar.progress((t + 1) / n_steps)
+
+    if progress_bar is not None:
+        progress_bar.progress(1.0)
+
+    voltage_df = pd.DataFrame(voltage_rows, columns=net.bus.index)
+    loading_df = (
+        pd.DataFrame(loading_rows, columns=net.line.index)
+        if loading_rows else pd.DataFrame()
+    )
+    return voltage_df, loading_df
+
+
+def _render_sim_results(
+    voltage_df: pd.DataFrame,
+    loading_df: pd.DataFrame,
+    dt_index,
+) -> None:
+    """Render voltage band and line loading results in two tabs."""
+    x_labels = [str(t) for t in dt_index]
+
+    tab_v, tab_l = st.tabs(["⚡ Spannungsband", "📈 Leitungsauslastung"])
+
+    # ---- Voltage ---- #
+    with tab_v:
+        vm_min = voltage_df.min(axis=1)
+        vm_max = voltage_df.max(axis=1)
+        violations = int(((vm_min < 0.95) | (vm_max > 1.05)).sum())
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Min. Spannung", f"{vm_min.min():.4f} p.u.")
+        c2.metric("Max. Spannung", f"{vm_max.max():.4f} p.u.")
+        c3.metric("Zeitschritte außerhalb 0.95–1.05", violations,
+                  delta="Verletzungen" if violations > 0 else "OK",
+                  delta_color="inverse" if violations > 0 else "off")
+
+        fig_v = go.Figure()
+        fig_v.add_trace(go.Scatter(
+            x=x_labels, y=vm_max.values, name="Max U (p.u.)",
+            line=dict(color="#2563eb"), fill=None,
+        ))
+        fig_v.add_trace(go.Scatter(
+            x=x_labels, y=vm_min.values, name="Min U (p.u.)",
+            line=dict(color="#dc2626"), fill="tonexty",
+            fillcolor="rgba(239,68,68,0.1)",
+        ))
+        fig_v.add_hline(y=1.05, line_dash="dot", line_color="gray",
+                        annotation_text="1.05 p.u.")
+        fig_v.add_hline(y=0.95, line_dash="dot", line_color="gray",
+                        annotation_text="0.95 p.u.")
+        fig_v.update_layout(
+            title="Spannungsband (p.u.)", height=350,
+            xaxis_title="Zeit", yaxis_title="Spannung (p.u.)",
+            showlegend=True, hovermode="x unified",
+        )
+        st.plotly_chart(fig_v, use_container_width=True, key="nsv2_res_voltage")
+
+    # ---- Line loading ---- #
+    with tab_l:
+        if loading_df.empty:
+            st.info("Keine Leitungsdaten vorhanden.")
+            return
+
+        max_load = loading_df.max().max()
+        warn_steps = int((loading_df > 80).any(axis=1).sum())
+        over_steps = int((loading_df > 100).any(axis=1).sum())
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Max. Leitungsauslastung", f"{max_load:.1f} %")
+        c2.metric("Zeitschritte > 80 %", warn_steps)
+        c3.metric("Zeitschritte > 100 % (Überlast)", over_steps,
+                  delta_color="inverse" if over_steps > 0 else "off")
+
+        heat_df = loading_df.copy()
+        heat_df.columns = [str(c) for c in heat_df.columns]
+        heat_df.index = x_labels[:len(heat_df)]
+        fig_h = px.imshow(
+            heat_df.T,
+            color_continuous_scale=[[0, "#22c55e"], [0.667, "#facc15"], [1.0, "#ef4444"]],
+            zmin=0, zmax=120,
+            labels={"x": "Zeit", "y": "Leitung", "color": "Auslastung (%)"},
+            title="Leitungsauslastung (%)",
+        )
+        fig_h.update_layout(height=max(250, len(loading_df.columns) * 20 + 100))
+        st.plotly_chart(fig_h, use_container_width=True, key="nsv2_res_loading")
+
+        congested = loading_df[(loading_df > 80).any(axis=1)]
+        if not congested.empty:
+            st.markdown(f"**Engpass-Zeitpunkte (> 80 %):** {len(congested)}")
+            disp = congested.copy()
+            disp.index = x_labels[:len(disp)]
+            disp.columns = [str(c) for c in disp.columns]
+            st.dataframe(disp.head(20).style.format("{:.1f}"), height=200)
+
+
+def _section_simulation(net: pp.pandapowerNet) -> None:
+    # Profile status
+    profiles_info = {
+        "PV":       ("nsv2_profile_pv",      "kW/kWp"),
+        "EV":       ("nsv2_profile_ev",       "kW"),
+        "Wärmepumpe": ("nsv2_profile_hp",     "kW"),
+        "Speicher": ("nsv2_profile_storage",  "kW"),
+        "Basislast":("nsv2_profile_base",     "Multiplikatoren"),
+    }
+    with st.expander("Profil-Status", expanded=True):
+        pv_prof = st.session_state.get("nsv2_profile_pv")
+        n_steps = len(pv_prof) if pv_prof is not None else 96
+        for label, (key, unit) in profiles_info.items():
+            val = st.session_state.get(key)
+            if val is None:
+                st.caption(f"⚠️ {label}: nicht gesetzt → Elemente bleiben statisch")
+            elif isinstance(val, pd.DataFrame):
+                st.caption(f"✅ {label}: {len(val)} Schritte × {len(val.columns)} Lastknoten ({unit})")
+            else:
+                steps = len(val)
+                tiled = f" → wird auf {n_steps} Schritte geachst" if steps < n_steps else ""
+                st.caption(f"✅ {label}: {steps} Schritte ({unit}){tiled}")
+
+    # Simulation parameters
+    time_start = st.session_state.get("nsv2_time_start")
+    dt_index = (
+        pd.date_range(str(time_start), periods=n_steps, freq="15min")
+        if time_start else pd.RangeIndex(n_steps)
+    )
+    st.caption(
+        f"Simulationsschritte: {n_steps} "
+        f"({n_steps * 0.25:.0f} Stunden, 15-min-Raster)"
+    )
+
+    if st.button("Zeitreihensimulation starten", type="primary", key="nsv2_sim_run"):
+        net_copy = copy.deepcopy(net)
+        profiles = _build_sim_profiles(net_copy, n_steps)
+        progress_bar = st.progress(0)
+        with st.spinner("Simulation läuft…"):
+            voltage_df, loading_df = _run_timeseries_pf(
+                net_copy, n_steps, profiles, progress_bar
+            )
+        voltage_df.index = dt_index
+        if not loading_df.empty:
+            loading_df.index = dt_index[: len(loading_df)]
+        st.session_state.update({
+            "nsv2_results_voltage": voltage_df,
+            "nsv2_results_loading": loading_df,
+            "nsv2_results_dt_index": dt_index,
+        })
+        st.success(f"Simulation abgeschlossen ({n_steps} Schritte).")
+
+    if "nsv2_results_voltage" in st.session_state:
+        _render_sim_results(
+            st.session_state["nsv2_results_voltage"],
+            st.session_state["nsv2_results_loading"],
+            st.session_state.get("nsv2_results_dt_index", pd.RangeIndex(n_steps)),
+        )
+
+
+# ---------------------------------------------------------------------------
 # Main page function
 # ---------------------------------------------------------------------------
 
 def netzmodell_v2():
     st.title("Netzmodell-Szenario")
-    st.caption("Entwicklungsversion — WP1+WP2+WP3")
+    st.caption("Entwicklungsversion — WP1–WP4")
 
     # ------------------------------------------------------------------ #
     # Section 1: Netzauswahl                                               #
@@ -1058,8 +1357,13 @@ def netzmodell_v2():
     # ------------------------------------------------------------------ #
     # Section 4: Simulation & Ergebnisse                                   #
     # ------------------------------------------------------------------ #
+    # Section 4: Simulation & Ergebnisse                                   #
+    # ------------------------------------------------------------------ #
     st.subheader("4. Simulation & Ergebnisse")
-    st.info("Simulationspipeline (Lastfluss / Zeitreihe) folgt in WP4.")
+    if net is None:
+        st.info("Bitte zuerst ein Netz in Abschnitt 1 laden.")
+    else:
+        _section_simulation(net)
 
 
 # ROADMAP: OPF (Optimale Lastflussberechnung)
