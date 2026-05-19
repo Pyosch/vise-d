@@ -661,6 +661,12 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                         st.session_state["nsv2_profile_pv_station"] = (
                             solar_stations[0] if solar_stations else None
                         )
+                        if pv_meta.get("warnings"):
+                            st.warning(
+                                "Keine gemessenen Solardaten verfügbar — "
+                                "Clearsky-Modell (wolkenlos, theoretisches Maximum) verwendet. "
+                                "Ergebnisse spiegeln nicht die tatsächliche Bewölkung wider."
+                            )
 
                         # One 96-step call per day, then concatenate into the full profile.
                         daily = []
