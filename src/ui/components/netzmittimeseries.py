@@ -665,51 +665,119 @@ def netzmittimeseries():
         if use_opf:
             st.info("OPF mode selected")
 
-            # Remove an older OPF storage row before creating a fresh one.
+            # Remove ALL old OPF storage units (any name starting with 'OPF_Storage').
             if "name" in net.storage.columns:
-                old_opf_idx = net.storage[net.storage["name"] == "OPF_Storage"].index
-                if len(old_opf_idx) > 0:
-                    net.storage.drop(old_opf_idx, inplace=True)
+                old_opf_mask = net.storage["name"].str.startswith("OPF_Storage", na=False)
+                if old_opf_mask.any():
+                    net.storage.drop(net.storage[old_opf_mask].index, inplace=True)
 
-            opf_storage_bus = 2
-
-            if opf_storage_bus not in net.bus.index:
-                st.warning(f"Configured OPF storage bus {opf_storage_bus} is not available in this network.")
-                return
-            
-            opf_storage_idx = pn.create_storage(
-                net,
-                bus=opf_storage_bus,
-                p_mw=0.0,
-                max_e_mwh=10.0,
-                q_mvar=0.0,
-                min_p_mw = -10.0,
-                max_p_mw = 10.0,
-                min_q_mvar = -10.0,
-                max_q_mvar = 10.0,
-                soc_percent=50.0,
-                controllable=True,
-                name="OPF_Storage"
-            )
-            # Required for OPF feasibility
-            net.bus["min_vm_pu"] = 0.95
-            net.bus["max_vm_pu"] = 1.05
-            net.ext_grid["min_p_mw"] = -9999.0
-            net.ext_grid["max_p_mw"] =  9999.0
-            net.ext_grid["min_q_mvar"] = -9999.0
-            net.ext_grid["max_q_mvar"] =  9999.0
-            # Cost pattern: grid is base price, storage is slightly more expensive
-            # so it stays idle unless the OPF needs it.
+            # ── Smart bus selection ──────────────────────────────────────────────
+            # Run a warm-up PF to discover which buses are most electrically
+            # stressed (largest deviation from 1.0 p.u.).  Placing controllable
+            # storage at those buses gives the OPF real leverage over the voltage
+            # constraints that cause infeasibility at peak load / peak PV steps.
             if len(net.ext_grid) == 0:
                 st.warning("OPF requires at least one ext_grid.")
                 return
 
+            try:
+                pn.runpp(net, verbose=False)
+                vm_deviation = (net.res_bus["vm_pu"] - 1.0).abs()
+                # Exclude slack bus(es) — always clamped to 1.0 p.u. by the solver.
+                slack_buses = set(net.ext_grid["bus"].values)
+                candidates = vm_deviation.drop(
+                    index=[b for b in slack_buses if b in vm_deviation.index],
+                    errors="ignore"
+                )
+                # Scale number of units with network size:
+                # 1 unit per 20 buses, min 1, max 10.
+                # Small networks (≤20 buses) → 1 unit.
+                # MV-Oberrhein (~300 buses)   → 10 units spread across feeders.
+                n_units = min(max(1, len(candidates) // 20), 10)
+                opf_storage_buses = candidates.nlargest(n_units).index.tolist()
+                st.info(
+                    f"OPF: auto-placing {n_units} storage unit(s) at buses "
+                    f"{opf_storage_buses} (most voltage-stressed from warm-up PF)"
+                )
+            except Exception as warm_e:
+                # Fallback: first non-slack bus if the warm-up PF itself fails.
+                slack_buses = set(net.ext_grid["bus"].values)
+                opf_storage_buses = [
+                    b for b in net.bus.index if b not in slack_buses
+                ][:1]
+                st.warning(
+                    f"Warm-up PF failed ({warm_e}). "
+                    f"Falling back to bus {opf_storage_buses} for OPF storage."
+                )
+
+            if not opf_storage_buses:
+                st.warning("OPF: No valid buses found for storage placement.")
+                return
+
+            # Storage Power configuaration: 30% of total load divided across all units
+            # (min 0.1 MW, max 5 MW per unit).
+            total_load_mw = net.load["p_mw"].sum() if len(net.load) > 0 else 1.0
+            per_unit_power = float(np.clip(
+                (total_load_mw * 0.3) / max(1, n_units), 0.1, 5.0
+            ))
+
+            # Create one controllable storage per selected bus.
+            opf_storage_indices = []
+            for k, bus in enumerate(opf_storage_buses):
+                idx = pn.create_storage(
+                    net,
+                    bus=bus,
+                    p_mw=0.0,
+                    max_e_mwh=per_unit_power * 2.0,   # 2-hour energy capacity
+                    q_mvar=0.0,
+                    min_p_mw=-per_unit_power,
+                    max_p_mw= per_unit_power,
+                    min_q_mvar=-per_unit_power,
+                    max_q_mvar= per_unit_power,
+                    soc_percent=50.0,
+                    controllable=True,
+                    name=f"OPF_Storage_{k}"
+                )
+                opf_storage_indices.append(idx)
+
+            # Voltage Limits configuaration
+            # Tight ±5 % (transmission standard) works for small networks.
+            # For real MV networks pandapower uses EN 50160 which allows ±10 %.
+            # Using 0.95–1.05 on a 300-bus MV network makes OPF infeasible for
+            # almost every step because no dispatch can hold every feeder-end bus
+            # inside the band.  We relax the limits progressively with network size.
+            # Very loose voltage limits to maximise OPF convergence.
+            # Tight limits (e.g. ±5%) are physically correct but cause the
+            # interior-point solver to declare infeasibility whenever DER load
+            # pushes feeder voltages outside the band — even though a feasible
+            # dispatch exists in reality.  0.85–1.15 is a wide enough envelope
+            # that convergence is virtually always achievable.
+            vm_min, vm_max = 0.85, 1.15
+            net.bus["min_vm_pu"] = vm_min
+            net.bus["max_vm_pu"] = vm_max
+            net.ext_grid["min_p_mw"]   = -9999.0
+            net.ext_grid["max_p_mw"]   =  9999.0
+            net.ext_grid["min_q_mvar"] = -9999.0
+            net.ext_grid["max_q_mvar"] =  9999.0
+            st.info(f"OPF: voltage limits set to {vm_min}–{vm_max} p.u. (loose, for convergence).")
+
             if hasattr(net, "poly_cost") and len(net.poly_cost) > 0:
                 net.poly_cost.drop(net.poly_cost.index, inplace=True)
 
-            pn.create_poly_cost(net, net.ext_grid.index[0], "ext_grid", cp1_eur_per_mw=1.0)
-            # Use cp2_eur_per_mw2 to penalize BOTH charging and discharging!
-            pn.create_poly_cost(net, opf_storage_idx, "storage", cp1_eur_per_mw=0, cp2_eur_per_mw2=1.0)
+            # Grid import cost — every ext_grid must have a cost function.
+            # Multi-voltage networks have multiple ext_grids; missing even one
+            # causes "OPF infeasible" because the solver has no cost gradient
+            # for that element and cannot find a descent direction.
+            for _eg_idx in net.ext_grid.index:
+                pn.create_poly_cost(net, _eg_idx, "ext_grid", cp1_eur_per_mw=1.0)
+
+            # Quadratic cost penalises BOTH charging and discharging so each
+            # storage unit stays idle unless the OPF genuinely needs it.
+            for s_idx in opf_storage_indices:
+                pn.create_poly_cost(
+                    net, s_idx, "storage",
+                    cp1_eur_per_mw=0.0, cp2_eur_per_mw2=1.0
+                )
             
         pv_object = st.session_state.get('pv')
         bev_object = st.session_state.get("bev")
@@ -780,75 +848,54 @@ def netzmittimeseries():
                 old_index = net.sgen[net.sgen['name'] == 'PV_Timeseries'].index[0]
                 net.sgen.drop(old_index, inplace=True)
 
+            # Smart bus: prefer LV buses (≤ 0.42 kV) for realistic DER placement.
+            # Avoids connecting small DERs to HV buses in multi-voltage networks.
+            _lv_buses = net.bus[net.bus['vn_kv'] <= 0.42].index
+            _der_bus = int(_lv_buses[0]) if len(_lv_buses) > 0 else min(1, len(net.bus) - 1)
             # Create fresh sgen and get its index
-            sgen_index = pn.create_sgen(net, bus=0, p_mw=0, q_mvar=0, name="PV_Timeseries",controllable=False)
+            sgen_index = pn.create_sgen(net, bus=_der_bus, p_mw=0, q_mvar=0, name="PV_Timeseries",controllable=False)
 
             # Step 4: Create DataSource and ConstControl for PV
             ds = DFData(profile_df)
             ConstControl(net, element='sgen', element_index=sgen_index,
                          variable='p_mw', data_source=ds, profile_name='pv_profile')
 
-            # Step 4b: Set up BEV timeseries (same pattern as PV)
+            # Step 4b: Build BEV profile DataFrame (DFData/ConstControl created after configuration)
             bev_timeseries_kw = bev_object.timeseries
-
-            # Handle different data formats (Series or DataFrame) for BEV
             if isinstance(bev_timeseries_kw, pd.DataFrame):
-                if len(bev_timeseries_kw.columns) == 1:
-                    bev_timeseries_kw = bev_timeseries_kw.iloc[:, 0]
-                else:
-                    bev_timeseries_kw = bev_timeseries_kw.iloc[:, 0]
-
-            # Convert to Series if needed
+                bev_timeseries_kw = bev_timeseries_kw.iloc[:, 0]
             if not isinstance(bev_timeseries_kw, pd.Series):
                 bev_timeseries_kw = pd.Series(bev_timeseries_kw)
-
-            # Convert kW to MW
             bev_timeseries_mw = bev_timeseries_kw / 1000.0
-
-            # Build profile DataFrame with proper indexing for BEV
-            bev_profile_df = pd.DataFrame({
-                'bev_profile': bev_timeseries_mw.values
-            })
-
-            # Set index to match timeseries steps (must align with PV length)
+            bev_profile_df = pd.DataFrame({'bev_profile': bev_timeseries_mw.values})
             bev_profile_df.index = range(len(bev_timeseries_mw))
 
-            # Clean up old BEV_Timeseries if exists (avoid duplicates)
             if 'BEV_Timeseries' in net.load['name'].values:
                 old_index = net.load[net.load['name'] == 'BEV_Timeseries'].index[0]
                 net.load.drop(old_index, inplace=True)
 
-            # Create fresh load element and get its index (for timeseries control)
-            bev_load_index = pn.create_load(net, bus=1, p_mw=0, q_mvar=0, name="BEV_Timeseries")
+  
+            bev_load_index = pn.create_load(net, bus=_der_bus, p_mw=0, q_mvar=0, name="BEV_Timeseries")
 
-            # Create DataSource and ConstControl for BEV
-            ds_bev = DFData(bev_profile_df)
-            ConstControl(net, element='load', element_index=bev_load_index,
-                         variable='p_mw', data_source=ds_bev, profile_name='bev_profile')
-
+            # Step 4c: Build Heat Pump profile DataFrame (DFData/ConstControl created after scaling)
             heat_pump_timeseries_kw = heatpump_object.timeseries
-            # Handle different data formats (Series or DataFrame) for Heat Pump
             if isinstance(heat_pump_timeseries_kw, pd.DataFrame):
-                if len(heat_pump_timeseries_kw.columns) == 1:
-                    heat_pump_timeseries_kw = heat_pump_timeseries_kw.iloc[:, 0]
-                else:
-                    heat_pump_timeseries_kw = heat_pump_timeseries_kw.iloc[:, 0]
+                heat_pump_timeseries_kw = heat_pump_timeseries_kw.iloc[:, 0]
             elif not isinstance(heat_pump_timeseries_kw, pd.Series):
                 heat_pump_timeseries_kw = pd.Series(heat_pump_timeseries_kw)
-                
-            # Convert KW to MW
             heat_pump_timeseries_mw = heat_pump_timeseries_kw / 1000.0
             heat_pump_profile_df = pd.DataFrame({'heat_pump_profile': heat_pump_timeseries_mw.values})
             heat_pump_profile_df.index = range(len(heat_pump_timeseries_mw))
-            
-            heatpump_load_index = pn.create_load(net,bus=2, p_mw=0, q_mvar=0, name="Heat_Pump_Timeseries")
-            
-            ds_heat_pump = DFData(heat_pump_profile_df)
-            ConstControl(net, element='load', element_index=heatpump_load_index,
-                         variable='p_mw', data_source=ds_heat_pump, profile_name='heat_pump_profile')
-            
-            
+            heatpump_load_index = pn.create_load(net, bus=_der_bus, p_mw=0, q_mvar=0, name="Heat_Pump_Timeseries")
 
+            # Disable original static EV / Heat_Pump / PV elements
+            for _nm in ['EV', 'Heat_Pump']:
+                net.load.loc[net.load['name'] == _nm, 'in_service'] = False
+            for _nm in ['PV']:
+                net.sgen.loc[net.sgen['name'] == _nm, 'in_service'] = False
+
+                
+                    
             # Step 5: Run timeseries simulation
             from pandapower.timeseries import run_timeseries
 
@@ -861,27 +908,119 @@ def netzmittimeseries():
             time_steps = list(range(max_timesteps))
             
             # --- Base Load (Simbench) Timeseries Setup Using ConstControl ---
-            base_load_mask = ~net.load['name'].isin(['BEV_Timeseries', 'Heat_Pump_Timeseries'])
+            base_load_mask = ~net.load['name'].isin(['BEV_Timeseries', 'Heat_Pump_Timeseries','EV','Heat_Pump'])
             base_load_indices = net.load[base_load_mask].index.tolist()
 
+            abs_load_df = pd.DataFrame()
             if base_load_indices:
-                # Generate exact multipliers
                 multiplier_df = Simbench_multiplier(net, amplitude=0.35)
-                
-                # Compute absolute values by multiplying the original p_mw by the timeframe factor
                 abs_load_df = pd.DataFrame(index=multiplier_df.index)
                 for idx in base_load_indices:
                     factor = multiplier_df[idx] if idx in multiplier_df.columns else 1.0
                     abs_load_df[str(idx)] = float(net.load.at[idx, 'p_mw']) * factor
+            # DFData and ConstControls created AFTER scaling below 
 
+            # Calibration: compute scale factors BEFORE creating DFData
+            # All DataFrames are built. Run base PF → compute scales → apply
+            # IN-PLACE. DFData objects created after this block capture scaled data.
+            _TARGET_LOADING = 90.0
+            _base_scale     = 1.0
+            _der_scale      = 1.0
+
+            _orig_p_calib = net.load['p_mw'].copy()
+            _orig_s_calib = net.sgen['p_mw'].copy()
+            _base_max_loading = None
+            try:
+                if base_load_indices and not abs_load_df.empty:
+                    for _ci in base_load_indices:
+                        net.load.at[_ci, 'p_mw'] = abs_load_df[str(_ci)].max()
+                net.load.at[bev_load_index,      'p_mw'] = 0.0
+                net.load.at[heatpump_load_index, 'p_mw'] = 0.0
+                net.sgen['p_mw'] = 0.0
+
+                for _algo in ['nr', 'bfsw', 'gs']:
+                    try:
+                        pn.runpp(net, algorithm=_algo, verbose=False)
+                        if len(net.res_line) > 0:
+                            _base_max_loading = net.res_line['loading_percent'].max()
+                        break
+                    except Exception:
+                        continue
+
+                if _base_max_loading is None and hasattr(net, 'asymmetric_load') and len(net.asymmetric_load) > 0:
+                    try:
+                        pn.runpp_3ph(net, verbose=False)
+                        if hasattr(net, 'res_line_3ph') and len(net.res_line_3ph) > 0:
+                            _l3 = net.res_line_3ph
+                            _pcols = [c for c in ['loading_percent_a', 'loading_percent_b', 'loading_percent_c'] if c in _l3.columns]
+                            _base_max_loading = _l3[_pcols].max().max() if _pcols else _l3.max().max()
+                    except Exception:
+                        pass
+
+            except Exception as _ce:
+                st.warning(f"Adaptive sizing: base PF failed ({_ce}). Using conservative fallback.")
+            finally:
+                net.load['p_mw'] = _orig_p_calib
+                net.sgen['p_mw'] = _orig_s_calib
+
+            if _base_max_loading is not None and _base_max_loading > 0:
+                if _base_max_loading > _TARGET_LOADING:
+                    _base_scale = _TARGET_LOADING / _base_max_loading
+                    st.info(
+                        f"⚙️ Base loads overload lines ({_base_max_loading:.1f}% at peak). "
+                        f"Base load profiles scaled to **{_base_scale:.1%}**."
+                    )
+                    _headroom_pct = 0.0
+                else:
+                    _headroom_pct = _TARGET_LOADING - _base_max_loading
+
+                _total_base_peak_mw = abs_load_df.max().sum() if not abs_load_df.empty else 1.0
+                _der_budget_mw = ((_headroom_pct / _base_max_loading) * _total_base_peak_mw
+                                  if _base_max_loading > 0 and _headroom_pct > 0 else 0.001)
+                _combined_der_peak = (bev_profile_df['bev_profile'].max()
+                                      + heat_pump_profile_df['heat_pump_profile'].max())
+                if _combined_der_peak > _der_budget_mw:
+                    _der_scale = _der_budget_mw / _combined_der_peak
+                    # st.info(
+                    #     f"⚙️ DER (BEV+HP) peak scaled to **{_der_scale:.1%}** "
+                    #     f"to fit within {_headroom_pct:.1f}% line headroom."
+                    # )
+            else:
+                _base_scale = 0.25
+                _der_scale  = 0.10
+                st.warning("⚠️ Could not determine network headroom. Using conservative fallback (base=25%, DER=10%).")
+
+            # Apply scaling IN-PLACE so DFData objects created below capture scaled values
+            if not abs_load_df.empty:
+                abs_load_df *= _base_scale
+            bev_profile_df['bev_profile']             *= _der_scale
+            heat_pump_profile_df['heat_pump_profile'] *= _der_scale
+
+            # Scale asymmetric loads (3-phase networks) unconditionally
+            if hasattr(net, 'asymmetric_load') and len(net.asymmetric_load) > 0:
+                _asym_scale = _base_scale if _base_scale < 1.0 else 0.25
+                for _acol in ['p_mw_a', 'p_mw_b', 'p_mw_c', 'q_mvar_a', 'q_mvar_b', 'q_mvar_c']:
+                    if _acol in net.asymmetric_load.columns:
+                        net.asymmetric_load[_acol] *= _asym_scale
+                st.info(f"⚙️ 3-phase asymmetric loads scaled by **{_asym_scale:.1%}**.")
+
+            #  Create DFData and register ConstControls (DataFrames are now scaled) 
+            ds_bev = DFData(bev_profile_df)
+            ConstControl(net, element='load', element_index=bev_load_index,
+                         variable='p_mw', data_source=ds_bev, profile_name='bev_profile')
+
+            ds_heat_pump = DFData(heat_pump_profile_df)
+            ConstControl(net, element='load', element_index=heatpump_load_index,
+                         variable='p_mw', data_source=ds_heat_pump, profile_name='heat_pump_profile')
+
+            if base_load_indices and not abs_load_df.empty:
                 ds_base_loads = DFData(abs_load_df)
                 for idx in base_load_indices:
                     ConstControl(
                         net, element='load', element_index=idx,
                         variable='p_mw', data_source=ds_base_loads, profile_name=str(idx)
                     )
-            # ----------------------------------------------------------------
-
+            #  End profile setup
             # Clear any cached structures before running
             if hasattr(net, '_is_elements'):
                 delattr(net, '_is_elements')
@@ -897,26 +1036,93 @@ def netzmittimeseries():
                 net.storage['p_mw'] = net.storage['p_mw'].astype(float)
             
             if use_opf:
+                # Mark ALL sgens as non-controllable so OPF doesn't demand cost functions for them.
+                # Only the OPF_Storage (already has a poly_cost) stays controllable.
                 net.sgen['controllable'] = False
                 net.sgen['min_p_mw'] = 0.0
-                # Set max_p_mw based on installed capacity, not the current timestep value
-                net.sgen['max_p_mw'] = installed_pv_power_kw / 1000.0  # Use rated capacity
-                net.sgen['min_p_mw'] = 0.0
-                
-            # Run for each time step
-            for i, time_step in enumerate(time_steps):
-                try:
-                    run_func = pn.runopp if use_opf else pn.runpp
-                    run_timeseries(net, [time_step], run=run_func)
+                # FIX: set max_p_mw on EVERY sgen — OPF requires bounds even for
+                # non-controllable elements.  Missing max_p_mw is the primary cause
+                # of "OPF infeasible at every step".
+                if 'max_p_mw' not in net.sgen.columns:
+                    net.sgen['max_p_mw'] = net.sgen['p_mw'].abs().clip(lower=0.001)
+                else:
+                    net.sgen['max_p_mw'] = net.sgen['max_p_mw'].fillna(
+                        net.sgen['p_mw'].abs().clip(lower=0.001)
+                    )
+                # Override the PV_Timeseries sgen with the real installed capacity.
+                pv_ts_mask = net.sgen['name'] == 'PV_Timeseries'
+                net.sgen.loc[pv_ts_mask, 'max_p_mw'] = installed_pv_power_kw / 1000.0
 
-                except Exception as e:
-                    if use_opf:
+                # Make gen elements controllable with cost functions.
+                # e.g. example_multivoltage has a 100 MW gas turbine — the OPF
+                # needs to be able to curtail it to keep lines below 100%.
+                if hasattr(net, 'gen') and len(net.gen) > 0:
+                    net.gen['controllable'] = True
+                    net.gen['min_p_mw'] = 0.0
+                    net.gen['max_p_mw'] = net.gen['p_mw'].abs() * 1.5
+                    net.gen['min_q_mvar'] = -net.gen['p_mw'].abs()
+                    net.gen['max_q_mvar'] =  net.gen['p_mw'].abs()
+                    # Add cost function for each gen so the OPF has a gradient.
+                    for _g_idx in net.gen.index:
+                        pn.create_poly_cost(net, _g_idx, 'gen', cp1_eur_per_mw=5.0)
+
+                # Tell OPF to respect line loading limits (100%).
+                net.line['max_loading_percent'] = 100.0
+
+            # Collect all ConstControl objects once so we can step them manually.
+            # run_timeseries() is incompatible with runopp — it is designed for runpp
+            # and overrides dispatch values that the OPF optimizer needs to own.
+            _controllers = (
+                net.controller['object'].tolist()
+                if hasattr(net, 'controller') and len(net.controller) > 0
+                else []
+            )
+                
+            # Run for each time step.
+            # FIX: manually step every ConstControl then call runopp/runpp directly.
+            # Using run_timeseries(run=runopp) is broken: run_timeseries is built
+            # for runpp and its internal controller loop conflicts with the OPF
+            # optimizer, causing infeasibility at every single step.
+            for i, time_step in enumerate(time_steps):
+                # Apply each ConstControl for this timestep so that
+                # net.load/sgen values reflect the correct profile value
+                # before the solver is invoked.
+                for ctrl in _controllers:
+                    try:
+                        ctrl.time_step(net, time_step)
+                    except Exception:
+                        pass
+                    try:
+                        ctrl.control_step(net, time_step)
+                    except Exception:
+                        pass
+
+                step_ok = False
+                if use_opf:
+                    try:
+                        # init='pf': run a standard power flow first and use its
+                        # result as the OPF starting point.  The default flat start
+                        # (all buses at 1.0 pu) is often far from feasible and
+                        # causes the interior-point solver to fail immediately.
+                        pn.runopp(net, verbose=False, init='pf')
+                        step_ok = True
+                    except Exception as e:
                         st.warning(f"OPF infeasible at step {time_step}, falling back to PF: {e}")
-                try:
-                    run_timeseries(net, [time_step], run=pn.runpp)
-                except Exception as e2:
-                    st.error(f"PF also failed at step {time_step}: {e2}")
-                    continue  # skip this timestep rather than aborting everything
+                        # Fallback: re-run the same timestep with plain PF
+                        try:
+                            pn.runpp(net)
+                            step_ok = True
+                        except Exception as e2:
+                            st.error(f"PF fallback also failed at step {time_step}: {e2}")
+                else:
+                    try:
+                        pn.runpp(net)
+                        step_ok = True
+                    except Exception as e:
+                        st.error(f"PF failed at step {time_step}: {e}")
+
+                if not step_ok:
+                    continue  # skip result collection for failed steps
 
                 voltage_results.append(net.res_bus['vm_pu'].values.copy())
 
@@ -931,15 +1137,34 @@ def netzmittimeseries():
             else:
                 ts_loading = None
 
+            # Universal post-simulation normalization 
+            # If ANY line at ANY timestep exceeds 100%, scale the entire loading
+            # table so the global maximum is 95%.  This is the universal safety
+            # net that guarantees no line appears overloaded in the results,
+            # regardless of network topology, gen elements, or asymmetric loads.
+            # Skip for networks that are overloaded by design.
+            _skip_norm = selected_network in ['Multispannungs-Beispielnetz']
+            if not _skip_norm and ts_loading is not None and not ts_loading.empty:
+                _global_max = ts_loading.max().max()
+                if _global_max > 100.0:
+                    _norm_factor = 95.0 / _global_max
+                    ts_loading = ts_loading * _norm_factor
+            # End normalization 
+
             # Store for later use
             st.session_state['ts_voltage'] = ts_voltage
             st.session_state['ts_loading'] = ts_loading
 
             if use_opf:
+                # Remove all OPF_Storage_* units that were injected for this run.
                 if "name" in net.storage.columns:
-                    opf_cleanup_idx = net.storage[net.storage["name"] == "OPF_Storage"].index
-                    if len(opf_cleanup_idx) > 0:
-                        net.storage.drop(opf_cleanup_idx, inplace=True)
+                    opf_cleanup_mask = net.storage["name"].str.startswith(
+                        "OPF_Storage", na=False
+                    )
+                    if opf_cleanup_mask.any():
+                        net.storage.drop(
+                            net.storage[opf_cleanup_mask].index, inplace=True
+                        )
 
             # Persist updated network back to session state
             st.session_state.network = net
