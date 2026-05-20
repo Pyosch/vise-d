@@ -24,7 +24,6 @@ from src.mastr.simulation import (
     revise_power_values
 )
 from src.config import MASTR_DB_PATH, PV_PARAMS_DIR
-from src.data_layer.weather_integration import fetch_weather_for_pv
 
 
 class _StreamlitLogHandler(logging.Handler):
@@ -72,10 +71,7 @@ def energy_generation_solar() -> None:
 
                 st.write("Fetching DWD weather data…")
                 ref_env = Environment(start=start, end=end)
-                start_dt = pd.Timestamp(start).to_pydatetime()
-                end_dt = pd.Timestamp(end).to_pydatetime()
-                pv_data, _meta = fetch_weather_for_pv(city_district.lat, city_district.lon, start_dt, end_dt)
-                ref_env.pv_data = pv_data
+                ref_env.get_dwd_pv_data(lat=city_district.lat, lon=city_district.lon)
                 progress_bar.progress(50)
 
                 st.write("Loading / building PV parameters…")

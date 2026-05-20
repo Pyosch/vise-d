@@ -1393,7 +1393,7 @@ def get_weather_for_windpowerlib(lat, lon, year=2024, months=None):
     """
     import calendar
     from datetime import datetime
-    from src.data_layer.weather_integration import fetch_weather_for_wind
+    from vpplib.environment import Environment
 
     if months is None:
         months = list(range(1, 13))
@@ -1404,13 +1404,12 @@ def get_weather_for_windpowerlib(lat, lon, year=2024, months=None):
     end_date = datetime(year, last_month, last_day, 23, 59, 59)
 
     try:
-        weather_data, _meta = fetch_weather_for_wind(
-            latitude=lat,
-            longitude=lon,
-            start_date=start_date,
-            end_date=end_date,
-            resolution="hourly",
+        env = Environment(
+            start=start_date.strftime("%Y-%m-%d %H:%M:%S"),
+            end=end_date.strftime("%Y-%m-%d %H:%M:%S"),
         )
+        env.get_dwd_wind_data(lat=lat, lon=lon)
+        weather_data = env.wind_data
     except Exception as e:
         st.error(f"❌ Konnte keine DWD Wetterdaten laden: {e}")
         return None, None
@@ -1422,10 +1421,10 @@ def get_weather_for_windpowerlib(lat, lon, year=2024, months=None):
 def _get_prevailing_wind_direction(lat, lon, start_date, end_date, default=225.0):
     """Return prevailing wind direction (°) from DWD observations, or SW default."""
     try:
-        from src.data_layer.weather_integration import get_dwd_fetcher
+        from vpplib.dwd_client import DWDClient
         from src.config import DWD
 
-        fetcher = get_dwd_fetcher()
+        fetcher = DWDClient(cache_dir="cache/dwd_cache", timezone=DWD.TIMEZONE)
         raw_data, _ = fetcher.get_observations(
             latitude=lat,
             longitude=lon,

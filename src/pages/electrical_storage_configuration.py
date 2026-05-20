@@ -17,7 +17,6 @@ from vpplib import ElectricalEnergyStorage
 from vpplib.environment import Environment
 from src.ui.components import electrical_storage
 from src.ui.components.location_weather import location_weather_selector
-from src.data_layer.weather_integration import fetch_weather_for_pv
 
 
 def electrical_storage_configuration():
@@ -67,49 +66,36 @@ def electrical_storage_configuration():
         electrical_storage_simulation_button = st.form_submit_button("🚀 Speicher Simulation starten")
            
         if electrical_storage_simulation_button:
-            with st.spinner("Wetterdaten werden abgerufen..."):
+            with st.spinner("Wetterdaten werden abgerufen und PV-System simuliert..."):
                 try:
-                    # Fetch weather data using DWD fetcher
-                    weather_data, metadata = fetch_weather_for_pv(
-                        latitude=location_data['latitude'],
-                        longitude=location_data['longitude'],
-                        start_date=location_data['start_date'],
-                        end_date=location_data['end_date'],
-                        resolution="15min"
-                    )
-                    
-                    st.success("✅ Wetterdaten erfolgreich abgerufen!")
-                    
-                    # Display metadata
-                    with st.expander("ℹ️ Wetterdaten-Information"):
-                        if location_data['method'] == 'station':
-                            st.write(f"**Station:** {location_data['station_id']}")
-                        st.write(f"**Koordinaten:** {location_data['latitude']:.4f}°N, {location_data['longitude']:.4f}°E")
-                        st.write(f"**Angefragt:** {location_data['start_date'].date()} bis {location_data['end_date'].date()}")
-                        st.write(f"**Verfügbar:** {weather_data.index[0]} bis {weather_data.index[-1]}")
-                        st.write(f"**Datenpunkte:** {len(weather_data)}")
-                        
-                        if metadata.get('warnings'):
-                            st.warning("⚠️ Hinweise:")
-                            for warning in metadata['warnings']:
-                                st.write(f"- {warning}")
-                    
-                except Exception as e:
-                    st.error(f"❌ Fehler beim Abrufen der Wetterdaten: {e}")
-                    return
-            
-            with st.spinner("PV-System und Speicher werden simuliert..."):
-                try:
-                    # Create environment with pre-fetched weather data
                     env = Environment(
                         timebase=15,
                         start=location_data['start_date'].strftime("%Y-%m-%d %H:%M:%S"),
                         end=location_data['end_date'].strftime("%Y-%m-%d %H:%M:%S"),
                         surpress_output_globally=False
                     )
-                    
-                    # Inject pre-fetched weather data
-                    env.pv_data = weather_data
+                    station_meta = env.get_dwd_pv_data(
+                        lat=location_data['latitude'],
+                        lon=location_data['longitude'],
+                    )
+
+                    st.success("✅ Wetterdaten erfolgreich abgerufen!")
+                    with st.expander("ℹ️ Wetterdaten-Information"):
+                        if location_data['method'] == 'station':
+                            st.write(f"**Station:** {location_data['station_id']}")
+                        st.write(f"**Koordinaten:** {location_data['latitude']:.4f}°N, {location_data['longitude']:.4f}°E")
+                        st.write(f"**Angefragt:** {location_data['start_date'].date()} bis {location_data['end_date'].date()}")
+                        st.write(f"**Datenpunkte:** {len(env.pv_data)}")
+                        if not station_meta.empty:
+                            row = station_meta.iloc[0]
+                            st.write(f"**Station:** {row.get('name', '—')} (ID {row.get('station_id', '?')}, {row.get('distance', 0):.1f} km)")
+
+                except Exception as e:
+                    st.error(f"❌ Fehler beim Abrufen der Wetterdaten: {e}")
+                    return
+
+            with st.spinner("PV-System und Speicher werden simuliert..."):
+                try:
                     
                     # Check if PV system is configured
                     if "pv" not in st.session_state:

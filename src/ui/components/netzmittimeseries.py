@@ -11,8 +11,7 @@ import webbrowser
 
 # PVlib imports for normalized 1kWp PV model
 from pvlib import pvsystem, modelchain, location
-from pvlib.irradiance import disc
-from src.data_layer.weather_integration import fetch_weather_for_pv
+from vpplib.environment import Environment
 
 
 def get_normalized_pv_output(lat, lon, start_date, end_date):
@@ -40,41 +39,29 @@ def get_normalized_pv_output(lat, lon, start_date, end_date):
     system = pvsystem.PVSystem(arrays=arrays, inverter_parameters=dict(pdc0=1000))
     mc = modelchain.ModelChain(system, loc, aoi_model='physical', spectral_model='no_loss')
 
-    # --- 2. Fetch Weather Data via project integration (same pipeline as PV configuration) ---
-    weather, _ = fetch_weather_for_pv(
-        latitude=float(lat),
-        longitude=float(lon),
-        start_date=day_start.tz_localize(None),
-        end_date=day_end.tz_localize(None),
-        resolution="15min"
+    # --- 2. Fetch weather via vpplib Environment (handles obs/MOSMIX blending automatically) ---
+    env = Environment(
+        start=day_start.tz_localize(None).strftime("%Y-%m-%d %H:%M:%S"),
+        end=day_end.tz_localize(None).strftime("%Y-%m-%d %H:%M:%S"),
+        use_timezone_aware_time_index=True,
     )
-    if weather.empty:
+    env.get_dwd_pv_data(lat=float(lat), lon=float(lon))    # sets env.pv_data (ghi, dhi, dni)
+    env.get_dwd_temp_data(lat=float(lat), lon=float(lon))  # sets env.temp_data (temperature °C)
+
+    if env.pv_data is None or (hasattr(env.pv_data, 'empty') and env.pv_data.empty):
         raise ValueError("No weather data available for requested date/location.")
 
-    weather.index = pd.DatetimeIndex(weather.index)
-    if weather.index.tz is None:
-        weather.index = weather.index.tz_localize(tz)
-    else:
-        weather.index = weather.index.tz_convert(tz)
-    weather = weather.sort_index()
+    weather = env.pv_data[['ghi', 'dhi', 'dni']].copy()
+    weather['temp_air']   = env.temp_data['temperature'].reindex(weather.index, method='nearest')
+    weather['wind_speed'] = 2.0  # m/s — representative default; minimal effect on yield
 
-    # Keep exactly one day and align to a fixed 15-min profile index.
+    weather = weather.sort_index()
     weather = weather[(weather.index >= day_start) & (weather.index < day_end)]
     if weather.empty:
         raise ValueError("No weather rows remain after filtering to the selected day.")
 
     target_index = pd.date_range(start=day_start, end=day_end, freq='15min', inclusive='left', tz=tz)
     weather = weather.reindex(target_index).interpolate(method='time').ffill().bfill()
-
-    required_cols = ['temp_air', 'ghi', 'wind_speed']
-    missing_required = [c for c in required_cols if c not in weather.columns]
-    if missing_required:
-        raise ValueError(f"Missing required weather columns for PV model: {missing_required}")
-
-    if 'dni' not in weather.columns or 'dhi' not in weather.columns:
-        solar_position = loc.get_solarposition(weather.index)
-        weather['dni'] = disc(weather['ghi'], solar_position['zenith'], weather.index)['dni']
-        weather['dhi'] = (weather['ghi'] - weather['dni'] * np.cos(np.radians(solar_position['zenith']))).clip(lower=0)
     weather = weather.dropna(subset=['temp_air', 'ghi', 'wind_speed', 'dni', 'dhi'])
 
     # --- 3. Run Model ---

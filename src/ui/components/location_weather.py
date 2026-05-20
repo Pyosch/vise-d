@@ -16,7 +16,8 @@ from datetime import datetime, date, timedelta
 import streamlit as st
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
-from src.data_layer.weather_integration import find_nearest_stations
+from vpplib.dwd_client import DWDClient
+from src.config import DWD, DATA_DIR
 
 
 def location_weather_selector(
@@ -140,13 +141,38 @@ def location_weather_selector(
                     st.success(f"✅ Standort gefunden: {location.address}")
                     st.info(f"📍 Koordinaten: {lat:.4f}°N, {lon:.4f}°E")
                     
-                    # Find nearest DWD stations
-                    stations = find_nearest_stations(
-                        latitude=lat,
-                        longitude=lon,
-                        parameters=parameters,
-                        n_stations=5
+                    # Find nearest DWD stations via vpplib DWDClient
+                    cache_dir = DATA_DIR / ".." / DWD.CACHE_DIR
+                    cache_dir.mkdir(parents=True, exist_ok=True)
+                    _client = DWDClient(
+                        cache_dir=str(cache_dir),
+                        cache_expiry_hours=DWD.CACHE_EXPIRY_HOURS,
+                        timezone=DWD.TIMEZONE,
                     )
+                    stations = {}
+                    for _param in parameters:
+                        _objs = _client.station_manager.find_nearest_stations(
+                            latitude=lat,
+                            longitude=lon,
+                            parameter=_param,
+                            n=5,
+                            max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
+                            resolution='hourly',
+                            active_only=False,
+                        )
+                        stations[_param] = [
+                            {
+                                'station_id': s.station_id,
+                                'name': s.name,
+                                'latitude': s.latitude,
+                                'longitude': s.longitude,
+                                'elevation': s.elevation,
+                                'distance_km': round(s.distance_km, 2),
+                                'is_active': s.end_date.isoformat() if s.end_date else None,
+                                'quality_score': s.quality_score,
+                            }
+                            for s in _objs
+                        ]
                     
                     # Store in session state
                     st.session_state[f"stations_{form_key_suffix}"] = stations

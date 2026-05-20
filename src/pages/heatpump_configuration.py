@@ -18,7 +18,6 @@ from vpplib.user_profile import UserProfile
 from vpplib.environment import Environment
 from src.ui.components import heatpump_settings
 from src.ui.components.location_weather import location_weather_selector
-from src.data_layer.weather_integration import fetch_weather_for_heatpump
 
 
 def heatpump_configuration():
@@ -86,42 +85,35 @@ def heatpump_configuration():
         if heatpump_simulation_button:
             with st.spinner("Wetterdaten werden abgerufen..."):
                 try:
-                    # Fetch weather data using DWD fetcher
-                    weather_data, metadata = fetch_weather_for_heatpump(
-                        latitude=location_data['latitude'],
-                        longitude=location_data['longitude'],
-                        start_date=location_data['start_date'],
-                        end_date=location_data['end_date'],
-                        resolution="15min"
+                    _env_temp = Environment(
+                        start=location_data['start_date'].strftime("%Y-%m-%d %H:%M:%S"),
+                        end=location_data['end_date'].strftime("%Y-%m-%d %H:%M:%S"),
                     )
-                    
+                    station_meta = _env_temp.get_dwd_temp_data(
+                        lat=location_data['latitude'],
+                        lon=location_data['longitude'],
+                    )
+                    # temp_data has column 'temperature' in °C; rename for downstream use
+                    weather_data = _env_temp.temp_data.rename(columns={'temperature': 'temp_air'})
+
                     st.success("✅ Wetterdaten erfolgreich abgerufen!")
-                    
-                    # Display metadata
                     with st.expander("ℹ️ Wetterdaten-Information"):
                         if location_data['method'] == 'station':
                             st.write(f"**Station:** {location_data['station_id']}")
                         st.write(f"**Koordinaten:** {location_data['latitude']:.4f}°N, {location_data['longitude']:.4f}°E")
                         st.write(f"**Angefragt:** {location_data['start_date'].date()} bis {location_data['end_date'].date()}")
-                        st.write(f"**Verfügbar:** {weather_data.index[0]} bis {weather_data.index[-1]}")
                         st.write(f"**Datenpunkte:** {len(weather_data)}")
-                        
-                        if metadata.get('warnings'):
-                            st.warning("⚠️ Hinweise:")
-                            for warning in metadata['warnings']:
-                                st.write(f"- {warning}")
-                    
+                        if not station_meta.empty:
+                            row = station_meta.iloc[0]
+                            st.write(f"**Station:** {row.get('name', '—')} (ID {row.get('station_id', '?')}, {row.get('distance', 0):.1f} km)")
+
                 except Exception as e:
                     st.error(f"❌ Fehler beim Abrufen der Wetterdaten: {e}")
                     return
-            
+
             with st.spinner("Wärmepumpe wird simuliert..."):
                 try:
-                    # Process temperature data for UserProfile
-                    # vpplib expects DataFrames with 'temperature' column
-                    
                     # Determine date range from daily aggregation
-                    # Resample to daily to get clean day boundaries
                     daily_temp = weather_data['temp_air'].resample('D').mean()
                     
                     # Create full hourly, daily, and 15-min time ranges

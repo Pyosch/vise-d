@@ -48,7 +48,6 @@ from pandapower.timeseries import DFData
 
 from src.config.paths import MASTR_DB_PATH, PV_PARAMS_DIR
 from src.data_layer.environment import get_cached_environment
-from src.data_layer.weather_integration import fetch_weather_for_pv, fetch_weather_for_wind
 from src.mastr.preprocessing import (
     get_unique_solar_locations,
     get_unique_wind_locations,
@@ -526,9 +525,8 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
                 if "Wind" in tech:
                     st.write("DWD-Wetterdaten abrufen (Wind)…")
                     try:
-                        wind_weather, _ = fetch_weather_for_wind(lat, lon, start_dt, end_dt)
                         wind_env = Environment(start=start_str, end=end_str)
-                        wind_env.wind_data = wind_weather
+                        wind_env.get_dwd_wind_data(lat=lat, lon=lon)
                     except Exception as e:
                         st.error(f"Fehler beim Wind-Wetterdatenabruf: {e}")
                         return

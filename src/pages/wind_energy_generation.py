@@ -17,7 +17,6 @@ import streamlit as st
 import plotly.express as px
 from vpplib.environment import Environment
 from src.data_layer.cache import get_cached_unique_locations, get_cached_mastr_data
-from src.data_layer.weather_integration import fetch_weather_for_wind
 from src.mastr.simulation import (
     wind_turbine_matching,
     init_windturbines_mastr,
@@ -71,27 +70,16 @@ def wind_energy_generation() -> None:
                 progress_bar.progress(30)
 
                 st.write("Fetching DWD weather data…")
-                ref_env = Environment(start=start, end=end)
                 start_dt = datetime.combine(yesterday, datetime.min.time())
                 end_dt = start_dt + timedelta(days=1)
-                dwd_data, _meta = fetch_weather_for_wind(
-                    latitude=city_district.centroid.y,
-                    longitude=city_district.centroid.x,
-                    start_date=start_dt,
-                    end_date=end_dt,
-                    resolution="15min",
+                ref_env = Environment(
+                    start=start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                    end=end_dt.strftime("%Y-%m-%d %H:%M:%S"),
                 )
-                progress_bar.progress(50)
-
-                st.write("Transforming DWD data to windpowerlib format…")
-                temp_col = "temperature" if "temperature" in dwd_data.columns else "TT_10"
-                ref_env.wind_data = pd.DataFrame({
-                    ("wind_speed",      "10"): dwd_data["wind_speed"],
-                    ("temperature",      "2"): dwd_data[temp_col] + 273.15,  # °C → K
-                    ("pressure",         "0"): dwd_data["pressure"] * 100,   # hPa → Pa
-                    ("roughness_length", "0"): 0.15,
-                }, index=dwd_data.index)
-                ref_env.wind_data.columns = pd.MultiIndex.from_tuples(ref_env.wind_data.columns)
+                ref_env.get_dwd_wind_data(
+                    lat=city_district.centroid.y,
+                    lon=city_district.centroid.x,
+                )
                 progress_bar.progress(65)
 
                 st.write(f"Initialising {len(gdf_wind)} wind turbine models…")

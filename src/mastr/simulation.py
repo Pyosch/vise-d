@@ -702,40 +702,26 @@ if __name__ == "__main__":
 
     gdf_solar, city_district = prepare_solar_data(location=location, mastr_db_path=mastr_db_path)
     gdf_solar = revise_power_values(gdf_solar)
-    from src.data_layer.weather_integration import fetch_weather_for_pv, fetch_weather_for_wind
     ref_env = Environment(start=start, end=end)
-    _start_dt = pd.Timestamp(start).to_pydatetime()
-    _end_dt = pd.Timestamp(end).to_pydatetime()
-    _pv_data, _ = fetch_weather_for_pv(city_district.lat[0], city_district.lon[0], _start_dt, _end_dt)
-    ref_env.pv_data = _pv_data
-    
+    ref_env.get_dwd_pv_data(lat=city_district.lat[0], lon=city_district.lon[0])
+
     pv_systems_dict = pick_pvsystem_mastr(gdf_solar.head(), ref_env) # Change to choose all PV systems later
     prepare_pv_time_series_mastr(pv_systems_dict)
     pv_systems_aggregated = aggregate_pv_time_series(pv_systems_dict)
-    
+
     fig, ax = plt.subplots()
     for name, pv_system in pv_systems_aggregated.items():
         pv_system.plot(ax=ax, label=name)
 
     plt.show()
-    
 
-    
-    
+
     ### Windenergie ###
     mastr_db_path = r'C:\Users\mashu\.open-MaStR\data\sqlite\open-mastr.db'
     gdf_wind, city_district = prepare_wind_data(location=location, mastr_db_path=mastr_db_path)
     gdf_wind = wind_turbine_matching(gdf_wind)
-    
-    # Get wind data for testing
-    _wind_data, _ = fetch_weather_for_wind(
-        latitude=city_district.centroid.y,
-        longitude=city_district.centroid.x,
-        start_date=_start_dt,
-        end_date=_end_dt,
-        resolution="15min",
-    )
-    ref_env.wind_data = _wind_data
+
+    ref_env.get_dwd_wind_data(lat=city_district.centroid.y, lon=city_district.centroid.x)
     
     windturbines_dict = init_windturbines_mastr(gdf_wind, environment=ref_env)
     prepare_wind_time_series_mastr(windturbines_dict)
