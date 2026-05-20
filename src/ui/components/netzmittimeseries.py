@@ -51,6 +51,22 @@ def get_normalized_pv_output(lat, lon, start_date, end_date):
     if env.pv_data is None or (hasattr(env.pv_data, 'empty') and env.pv_data.empty):
         raise ValueError("No weather data available for requested date/location.")
 
+    def _ensure_tz_index(df, timezone):
+        """Normalize vpplib weather indices to the requested timezone."""
+        if df is None or not hasattr(df, "index"):
+            return df
+        result = df.copy()
+        idx = pd.DatetimeIndex(result.index)
+        if idx.tz is None:
+            idx = idx.tz_localize(timezone)
+        else:
+            idx = idx.tz_convert(timezone)
+        result.index = idx
+        return result
+
+    env.pv_data = _ensure_tz_index(env.pv_data, tz)
+    env.temp_data = _ensure_tz_index(env.temp_data, tz)
+
     weather = env.pv_data[['ghi', 'dhi', 'dni']].copy()
     weather['temp_air']   = env.temp_data['temperature'].reindex(weather.index, method='nearest')
     weather['wind_speed'] = 2.0  # m/s — representative default; minimal effect on yield

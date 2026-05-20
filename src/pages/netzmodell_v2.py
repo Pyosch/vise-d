@@ -648,25 +648,34 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                         lat, lon = _geocode(pv_loc)
                         day0_naive = pd.Timestamp(time_start).tz_localize(None)
 
-                        # Capture station metadata from the first day's fetch.
-                        # The DWD file cache absorbs the duplicate inside get_normalized_pv_output.
-                        _, pv_meta = fetch_weather_for_pv(
-                            latitude=float(lat),
-                            longitude=float(lon),
-                            start_date=day0_naive.to_pydatetime(),
-                            end_date=(day0_naive + pd.Timedelta(days=1)).to_pydatetime(),
-                            resolution="15min",
+                        # Capture station metadata from vpplib using the first day.
+                        # The DWD cache should absorb this extra lookup before the
+                        # per-day calls to get_normalized_pv_output().
+                        preview_env = Environment(
+                            start=day0_naive.strftime("%Y-%m-%d %H:%M:%S"),
+                            end=(day0_naive + pd.Timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+                            use_timezone_aware_time_index=True,
                         )
-                        solar_stations = pv_meta.get("stations_used", {}).get("solar", [])
-                        st.session_state["nsv2_profile_pv_station"] = (
-                            solar_stations[0] if solar_stations else None
+                        station_meta = preview_env.get_dwd_pv_data(
+                            lat=float(lat),
+                            lon=float(lon),
                         )
-                        if pv_meta.get("warnings"):
-                            st.warning(
-                                "Keine gemessenen Solardaten verfügbar — "
-                                "Clearsky-Modell (wolkenlos, theoretisches Maximum) verwendet. "
-                                "Ergebnisse spiegeln nicht die tatsächliche Bewölkung wider."
-                            )
+                        if preview_env.pv_data is None or (
+                            hasattr(preview_env.pv_data, "empty") and preview_env.pv_data.empty
+                        ):
+                            raise ValueError("Keine PV-Wetterdaten fuer den gewaehlten Standort gefunden.")
+
+                        station_info = None
+                        if station_meta is not None and hasattr(station_meta, "empty") and not station_meta.empty:
+                            row = station_meta.iloc[0]
+                            station_info = {
+                                "name": row.get("name", "-"),
+                                "station_id": row.get("station_id", "?"),
+                                "distance_km": float(row.get("distance_km", row.get("distance", 0.0)) or 0.0),
+                                "latitude": float(row.get("latitude", 0.0) or 0.0),
+                                "longitude": float(row.get("longitude", 0.0) or 0.0),
+                            }
+                        st.session_state["nsv2_profile_pv_station"] = station_info
 
                         # One 96-step call per day, then concatenate into the full profile.
                         daily = []
