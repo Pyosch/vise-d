@@ -14,15 +14,8 @@ __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 from datetime import datetime
 from typing import Optional, Tuple, Dict, List
 import pandas as pd
-import numpy as np
 from vpplib.dwd_client import DWDClient
 from src.config import DWD, DATA_DIR
-
-try:
-    from pvlib import location, clearsky, irradiance
-    PVLIB_AVAILABLE = True
-except ImportError:
-    PVLIB_AVAILABLE = False
 
 
 def get_dwd_fetcher() -> DWDClient:
@@ -121,105 +114,43 @@ def fetch_weather_for_pv(
     
     Raises:
         ValueError: If no suitable DWD station found within search radius
-        RuntimeError: If data fetching or transformation fails
     """
     fetcher = get_dwd_fetcher()
-    
-    try:
-        # Fetch 10-minute data from DWD (highest resolution available)
-        # Use allow_multi_station to combine data from multiple stations if needed
-        # This ensures we get solar data even if nearest station lacks it
-        data, metadata = fetcher.get_observations(
-            latitude=latitude,
-            longitude=longitude,
-            parameters=['solar', 'temperature', 'wind', 'pressure'],
-            start_date=start_date,
-            end_date=end_date,
-            resolution='10_minutes',
-            max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
-            n_stations=n_stations,
-            for_pvlib=True,  # Auto-format for pvlib compatibility
-            allow_multi_station=allow_multi_station
-        )
-        
-        # Check if data is empty
-        if data.empty:
-            # Provide helpful error message with details
-            error_msg = f"Keine PV-Wetterdaten verfügbar.\n"
-            error_msg += f"Standort: {latitude:.4f}°N, {longitude:.4f}°E\n"
-            error_msg += f"Zeitraum: {start_date.date()} bis {end_date.date()}\n"
-            if metadata.get('warnings'):
-                error_msg += "Hinweise:\n" + "\n".join(f"  • {w}" for w in metadata['warnings'])
-            raise ValueError(error_msg)
-        
-        # Ensure DatetimeIndex for resampling
-        if not isinstance(data.index, pd.DatetimeIndex):
-            raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
-        
-        # Clean up quality flag columns to fix Arrow serialization issues
-        # These columns are metadata and not needed for vpplib
-        qn_cols = [col for col in data.columns if col.startswith('QN_')]
-        if qn_cols:
-            data = data.drop(columns=qn_cols)
-        
-        # Validate that required solar radiation columns are present
-        required_cols = ['ghi', 'dni', 'dhi']
-        missing_cols = [col for col in required_cols if col not in data.columns]
-        if missing_cols:
-            # Try to generate synthetic clearsky solar data as fallback
-            if PVLIB_AVAILABLE and 'temp_air' in data.columns:
-                warning_msg = (
-                    f"⚠️ Station hat keine Solarstrahlungsdaten. "
-                    f"Verwende synthetische Clearsky-Daten als Ersatz.\n"
-                    f"Fehlende Spalten: {missing_cols}\n"
-                )
-                if metadata.get('station_name'):
-                    warning_msg = f"Station: {metadata['station_name']}\n" + warning_msg
-                
-                # Add warning to metadata
-                if 'warnings' not in metadata:
-                    metadata['warnings'] = []
-                metadata['warnings'].append(warning_msg)
-                
-                # Generate clearsky solar data
-                data = _generate_clearsky_solar(
-                    data=data,
-                    latitude=latitude,
-                    longitude=longitude,
-                    timezone='Europe/Berlin'
-                )
-            else:
-                # No fallback available - raise error
-                available_cols = list(data.columns)
-                error_msg = (
-                    f"Keine Solardaten verfügbar für den gewählten Standort.\n"
-                    f"Fehlende Spalten: {missing_cols}\n"
-                    f"Verfügbare Spalten: {available_cols}\n\n"
-                    f"Die gewählte DWD-Station hat keine Solarstrahlungsdaten für den Zeitraum.\n"
-                )
-                if not PVLIB_AVAILABLE:
-                    error_msg += "\nPvlib ist nicht installiert - kann keine synthetischen Daten generieren.\n"
-                    error_msg += "Installieren Sie pvlib mit: pip install pvlib\n\n"
-                error_msg += (
-                    f"Bitte wählen Sie:\n"
-                    f"  • Eine andere DWD-Station mit Solar-Messungen, oder\n"
-                    f"  • Nutzen Sie die Koordinaten-Methode für eine andere Station"
-                )
-                if metadata.get('station_name'):
-                    error_msg = f"Station: {metadata['station_name']}\n" + error_msg
-                raise ValueError(error_msg)
-        
-        # Resample to target resolution if needed
-        if resolution != "10min":
-            if resolution == "15min":
-                data = data.resample('15min').interpolate(method='linear')
-            elif resolution == "hourly":
-                data = data.resample('h').interpolate(method='linear')
-        
-        return data, metadata
-        
-    except Exception as e:
-        raise RuntimeError(f"Failed to fetch PV weather data: {e}") from e
+
+    data, metadata = fetcher.get_observations(
+        latitude=latitude,
+        longitude=longitude,
+        parameters=['solar', 'temperature', 'wind', 'pressure'],
+        start_date=start_date,
+        end_date=end_date,
+        resolution='10_minutes',
+        max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
+        n_stations=n_stations,
+        for_pvlib=True,
+        allow_multi_station=allow_multi_station
+    )
+
+    if data.empty:
+        error_msg = f"Keine PV-Wetterdaten verfügbar.\n"
+        error_msg += f"Standort: {latitude:.4f}°N, {longitude:.4f}°E\n"
+        error_msg += f"Zeitraum: {start_date.date()} bis {end_date.date()}\n"
+        if metadata.get('warnings'):
+            error_msg += "Hinweise:\n" + "\n".join(f"  • {w}" for w in metadata['warnings'])
+        raise ValueError(error_msg)
+
+    if not isinstance(data.index, pd.DatetimeIndex):
+        raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
+
+    qn_cols = [col for col in data.columns if col.startswith('QN_')]
+    if qn_cols:
+        data = data.drop(columns=qn_cols)
+
+    if resolution == "15min":
+        data = data.resample('15min').interpolate(method='linear')
+    elif resolution == "hourly":
+        data = data.resample('h').interpolate(method='linear')
+
+    return data, metadata
 
 
 def fetch_weather_for_wind(
@@ -310,69 +241,50 @@ def fetch_weather_for_wind(
     
     Raises:
         ValueError: If no suitable DWD station found within search radius
-        RuntimeError: If data fetching or transformation fails
     """
     fetcher = get_dwd_fetcher()
-    
-    try:
-        # Fetch 10-minute data from DWD (raw columns: wind_speed, temperature, pressure)
-        data, metadata = fetcher.get_observations(
-            latitude=latitude,
-            longitude=longitude,
-            parameters=['wind', 'temperature', 'pressure'],
-            start_date=start_date,
-            end_date=end_date,
-            resolution='10_minutes',
-            max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
-            n_stations=n_stations,
-            allow_multi_station=allow_multi_station
-        )
-        
-        # Check if data is empty
-        if data.empty:
-            # Provide helpful error message with details
-            error_msg = f"Keine Wind-Wetterdaten verfügbar.\n"
-            error_msg += f"Standort: {latitude:.4f}°N, {longitude:.4f}°E\n"
-            error_msg += f"Zeitraum: {start_date.date()} bis {end_date.date()}\n"
-            if metadata.get('warnings'):
-                error_msg += "Hinweise:\n" + "\n".join(f"  • {w}" for w in metadata['warnings'])
-            raise ValueError(error_msg)
-        
-        # Ensure DatetimeIndex for resampling
-        if not isinstance(data.index, pd.DatetimeIndex):
-            raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
-        
-        # Clean up quality flag columns to fix Arrow serialization issues
-        qn_cols = [col for col in data.columns if col.startswith('QN_')]
-        if qn_cols:
-            # For windpowerlib MultiIndex, need to check all column levels
-            cols_to_drop = [col for col in data.columns if isinstance(col, tuple) and any(str(level).startswith('QN_') for level in col)]
-            if cols_to_drop:
-                data = data.drop(columns=cols_to_drop)
-            else:
-                # Fallback for simple index
-                data = data.drop(columns=qn_cols)
-        
-        # Resample to target resolution if needed
-        if resolution != "10min":
-            if resolution == "15min":
-                data = data.resample('15min').interpolate(method='linear')
-            elif resolution == "hourly":
-                data = data.resample('h').interpolate(method='linear')
-        
-        # Convert flat columns to windpowerlib MultiIndex format
-        # DWDClient returns: wind_speed (m/s), temperature (°C), pressure (hPa)
-        wind_data = pd.DataFrame(index=data.index)
-        wind_data[('wind_speed', '10')] = data.get('wind_speed', 0.0)
-        wind_data[('temperature', '2')] = data.get('temperature', 10.0) + 273.15  # °C → K
-        wind_data[('pressure', '0')] = data.get('pressure', 1013.25) * 100.0     # hPa → Pa
-        wind_data[('roughness_length', '0')] = 0.15  # m, open terrain
-        wind_data.columns = pd.MultiIndex.from_tuples(wind_data.columns)
 
-        return wind_data, metadata
-        
-    except Exception as e:
-        raise RuntimeError(f"Failed to fetch wind weather data: {e}") from e
+    data, metadata = fetcher.get_observations(
+        latitude=latitude,
+        longitude=longitude,
+        parameters=['wind', 'temperature', 'pressure'],
+        start_date=start_date,
+        end_date=end_date,
+        resolution='10_minutes',
+        max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
+        n_stations=n_stations,
+        allow_multi_station=allow_multi_station
+    )
+
+    if data.empty:
+        error_msg = f"Keine Wind-Wetterdaten verfügbar.\n"
+        error_msg += f"Standort: {latitude:.4f}°N, {longitude:.4f}°E\n"
+        error_msg += f"Zeitraum: {start_date.date()} bis {end_date.date()}\n"
+        if metadata.get('warnings'):
+            error_msg += "Hinweise:\n" + "\n".join(f"  • {w}" for w in metadata['warnings'])
+        raise ValueError(error_msg)
+
+    if not isinstance(data.index, pd.DatetimeIndex):
+        raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
+
+    qn_cols = [col for col in data.columns if col.startswith('QN_')]
+    if qn_cols:
+        data = data.drop(columns=qn_cols)
+
+    if resolution == "15min":
+        data = data.resample('15min').interpolate(method='linear')
+    elif resolution == "hourly":
+        data = data.resample('h').interpolate(method='linear')
+
+    # Convert to windpowerlib MultiIndex format (unit conversions required by windpowerlib)
+    wind_data = pd.DataFrame(index=data.index)
+    wind_data[('wind_speed', '10')] = data['wind_speed']
+    wind_data[('temperature', '2')] = data['temperature'] + 273.15  # °C → K
+    wind_data[('pressure', '0')]    = data['pressure'] * 100.0       # hPa → Pa
+    wind_data[('roughness_length', '0')] = 0.15
+    wind_data.columns = pd.MultiIndex.from_tuples(wind_data.columns)
+
+    return wind_data, metadata
 
 
 def fetch_weather_for_heatpump(
@@ -445,115 +357,46 @@ def fetch_weather_for_heatpump(
         RuntimeError: If data fetching or transformation fails
     """
     fetcher = get_dwd_fetcher()
-    
-    try:
-        # Determine DWD resolution based on target
-        dwd_resolution = 'hourly' if resolution in ['hourly', '15min'] else 'daily'
-        
-        # Fetch temperature data from DWD
-        data, metadata = fetcher.get_observations(
-            latitude=latitude,
-            longitude=longitude,
-            parameters=['temperature'],
-            start_date=start_date,
-            end_date=end_date,
-            resolution=dwd_resolution,
-            max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
-            n_stations=n_stations,
-            for_pvlib=True,  # Uses pvlib format for consistent column naming
-            allow_multi_station=allow_multi_station
-        )
-        
-        # Check if data is empty
-        if data.empty:
-            # Provide helpful error message with details
-            error_msg = f"Keine Temperaturdaten verfügbar.\n"
-            error_msg += f"Standort: {latitude:.4f}°N, {longitude:.4f}°E\n"
-            error_msg += f"Zeitraum: {start_date.date()} bis {end_date.date()}\n"
-            if metadata.get('stations_used'):
-                if 'temperature' in metadata['stations_used'] and metadata['stations_used']['temperature']:
-                    station = metadata['stations_used']['temperature'][0]
-                    error_msg += f"Nächste Station: {station.get('station_id')} - {station.get('name')}\n"
-                    error_msg += f"Entfernung: {station.get('distance_km', 0):.1f} km\n"
-            if metadata.get('warnings'):
-                error_msg += "Hinweise:\n" + "\n".join(f"  • {w}" for w in metadata['warnings'])
-            raise ValueError(error_msg)
-        
-        # Ensure DatetimeIndex for resampling
-        if not isinstance(data.index, pd.DatetimeIndex):
-            raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
-        
-        # Clean up quality flag columns to fix Arrow serialization issues
-        qn_cols = [col for col in data.columns if col.startswith('QN_')]
-        if qn_cols:
-            data = data.drop(columns=qn_cols)
-        
-        # Resample if needed
-        if resolution == "15min" and dwd_resolution == "hourly":
-            data = data.resample('15min').interpolate(method='linear')
-        
-        return data, metadata
-        
-    except Exception as e:
-        raise RuntimeError(f"Failed to fetch heat pump weather data: {e}") from e
 
+    dwd_resolution = 'hourly' if resolution in ['hourly', '15min'] else 'daily'
 
-def _generate_clearsky_solar(
-    data: pd.DataFrame,
-    latitude: float,
-    longitude: float,
-    timezone: str = 'Europe/Berlin'
-) -> pd.DataFrame:
-    """
-    Generate clearsky solar irradiance data using pvlib.
-    
-    This is a fallback when DWD station doesn't have measured solar data.
-    Uses the simplified Ineichen clearsky model to estimate GHI, DNI, DHI.
-    
-    Args:
-        data: Existing weather DataFrame with DatetimeIndex
-        latitude: Location latitude in decimal degrees
-        longitude: Location longitude in decimal degrees
-        timezone: Timezone string (default: 'Europe/Berlin')
-    
-    Returns:
-        DataFrame: Original data with added solar columns (ghi, dni, dhi)
-    
-    Note:
-        Clearsky models provide theoretical solar radiation under ideal
-        (cloudless) conditions. Real measurements would show reduced values
-        due to clouds, pollution, etc. Use for planning/estimation only.
-    """
-    if not PVLIB_AVAILABLE:
-        raise ImportError("pvlib required for clearsky solar generation")
-    
-    result = data.copy()
-    
-    # Create pvlib Location object
-    loc = location.Location(
+    data, metadata = fetcher.get_observations(
         latitude=latitude,
         longitude=longitude,
-        tz=timezone,
-        altitude=0  # Use sea level if elevation unknown
+        parameters=['temperature'],
+        start_date=start_date,
+        end_date=end_date,
+        resolution=dwd_resolution,
+        max_distance_km=DWD.MAX_STATION_DISTANCE_KM,
+        n_stations=n_stations,
+        for_pvlib=True,
+        allow_multi_station=allow_multi_station
     )
-    
-    # Get solar position for all timestamps
-    times = result.index
-    solpos = loc.get_solarposition(times)
-    
-    # Generate clearsky irradiance using simplified Ineichen model
-    clearsky_data = loc.get_clearsky(times, model='simplified_solis')
-    
-    # Add solar columns to result
-    result['ghi'] = clearsky_data['ghi']
-    result['dni'] = clearsky_data['dni']
-    result['dhi'] = clearsky_data['dhi']
-    
-    # Set negative or NaN values to zero (happens at night)
-    for col in ['ghi', 'dni', 'dhi']:
-        result[col] = result[col].fillna(0).clip(lower=0)
-    
-    return result
+
+    if data.empty:
+        error_msg = f"Keine Temperaturdaten verfügbar.\n"
+        error_msg += f"Standort: {latitude:.4f}°N, {longitude:.4f}°E\n"
+        error_msg += f"Zeitraum: {start_date.date()} bis {end_date.date()}\n"
+        if metadata.get('stations_used'):
+            if 'temperature' in metadata['stations_used'] and metadata['stations_used']['temperature']:
+                station = metadata['stations_used']['temperature'][0]
+                error_msg += f"Nächste Station: {station.get('station_id')} - {station.get('name')}\n"
+                error_msg += f"Entfernung: {station.get('distance_km', 0):.1f} km\n"
+        if metadata.get('warnings'):
+            error_msg += "Hinweise:\n" + "\n".join(f"  • {w}" for w in metadata['warnings'])
+        raise ValueError(error_msg)
+
+    if not isinstance(data.index, pd.DatetimeIndex):
+        raise ValueError(f"Expected DatetimeIndex but got {type(data.index).__name__}")
+
+    qn_cols = [col for col in data.columns if col.startswith('QN_')]
+    if qn_cols:
+        data = data.drop(columns=qn_cols)
+
+    if resolution == "15min" and dwd_resolution == "hourly":
+        data = data.resample('15min').interpolate(method='linear')
+
+    return data, metadata
 
 
 def find_nearest_stations(
