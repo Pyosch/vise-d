@@ -63,9 +63,14 @@ def heatpump_configuration():
         )
         building_type = st.selectbox(
             "Gebäudetyp",
-            options=["DE_HEF33", "DE_HEF09", "DE_HEF20"],
+            options=["DE_HEF33", "DE_HEF34", "DE_HMF33", "DE_HMF34", "DE_GKO34"],
             index=0,
-            help="Deutscher Gebäudetyp nach IWU (Institut Wohnen und Umwelt)",
+            help=(
+                "SigLinDe-Gebäudeklassifikation (BDEW):\n\n"
+                "**HEF** = Einfamilienhaus · **HMF** = Mehrfamilienhaus · **GKO** = Gewerbe/Kommunal\n\n"
+                "**33** = Altbau (vor WSchVO 1977, schlechte Dämmung)\n\n"
+                "**34** = Neubau/modernisiert (nach WSchVO 1984, gute Dämmung)"
+            ),
             key="hp_building_type"
         )
         t_0 = st.number_input(
