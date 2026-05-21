@@ -73,12 +73,13 @@ def heatpump_settings(form_key_suffix=""):
             ) 
 
         # Dropdown for Heat Pump Type
-            heat_pump_type = st.selectbox(
-            "Type of Heat Pump",
-            options=["Air", "Ground"],
+            _hp_type_label = st.selectbox(
+            "Wärmepumpentyp",
+            options=["Luft", "Erde"],
             index=0,
-                placeholder="Select heat pump type"
+                placeholder="Wärmepumpentyp wählen"
         )
+            heat_pump_type = {"Luft": "Air", "Erde": "Ground"}[_hp_type_label]
 
         # Number input for Heat System Temperature
             system_temperature = st.number_input(
