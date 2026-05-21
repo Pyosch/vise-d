@@ -58,7 +58,8 @@ def get_normalized_pv_output(lat, lon, start_date, end_date):
         result = df.copy()
         idx = pd.DatetimeIndex(result.index)
         if idx.tz is None:
-            idx = idx.tz_localize(timezone)
+            # vpplib/DWD naive indices are UTC; localize to UTC then convert
+            idx = idx.tz_localize('UTC').tz_convert(timezone)
         else:
             idx = idx.tz_convert(timezone)
         result.index = idx
