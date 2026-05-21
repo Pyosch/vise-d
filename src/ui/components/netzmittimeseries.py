@@ -1104,7 +1104,7 @@ def netzmittimeseries():
                         # result as the OPF starting point.  The default flat start
                         # (all buses at 1.0 pu) is often far from feasible and
                         # causes the interior-point solver to fail immediately.
-                        pn.runopp(net, verbose=False, init='pf')
+                        pn.runopp(net, verbose=False, init='pf', calculate_voltage_angles=False)
                         step_ok = True
                     except Exception as e:
                         st.warning(f"OPF infeasible at step {time_step}, falling back to PF: {e}")
