@@ -37,6 +37,8 @@ except Exception:
 try:
     from vpplib.environment import Environment
     from vpplib.battery_electric_vehicle import BatteryElectricVehicle
+    from vpplib.heat_pump import HeatPump
+    from vpplib.user_profile import UserProfile
     _HAS_VPPLIB = True
 except Exception:
     _HAS_VPPLIB = False
@@ -66,7 +68,7 @@ from src.mastr.simulation import (
     wind_turbine_matching,
 )
 from src.utils.vpplib_interface import assign_assets_to_buses
-from src.utils.simbench_profiles import Simbench_multiplier
+from src.utils.simbench_profiles import Simbench_multiplier, Simbench_multiplier_range
 from src.ui.components.netzmittimeseries import get_normalized_pv_output
 
 
@@ -581,15 +583,23 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
 # ---------------------------------------------------------------------------
 
 def _profile_chart(
-    profile: pd.Series, ylabel: str, chart_key: str, xlabel: str = "Uhrzeit (h)"
+    profile: pd.Series, ylabel: str, chart_key: str
 ) -> None:
-    """Profile preview chart. x-axis in hours at 15-min resolution."""
-    time_h = [i * 0.25 for i in range(len(profile))]
+    """Profile preview chart with a datetime x-axis derived from Section 2's time range."""
+    time_start = st.session_state.get("nsv2_time_start")
+    if time_start is not None:
+        x = pd.date_range(
+            start=pd.Timestamp(time_start),
+            periods=len(profile),
+            freq="15min",
+        )
+    else:
+        x = [i * 0.25 for i in range(len(profile))]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=time_h, y=profile.values, mode="lines",
+    fig.add_trace(go.Scatter(x=x, y=profile.values, mode="lines",
                              line=dict(width=2), showlegend=False))
     fig.update_layout(
-        xaxis_title=xlabel, yaxis_title=ylabel,
+        xaxis_title="Zeit", yaxis_title=ylabel,
         height=220, margin=dict(l=0, r=0, t=10, b=0), hovermode="x unified",
     )
     st.plotly_chart(fig, use_container_width=True, key=chart_key)
@@ -610,6 +620,11 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
     )
 
     time_start = st.session_state.get("nsv2_time_start")
+    time_end   = st.session_state.get("nsv2_time_end", time_start)
+    n_days = (
+        (pd.Timestamp(time_end) - pd.Timestamp(time_start)).days + 1
+        if time_start and time_end else 1
+    )
 
     tab_pv, tab_ev, tab_hp, tab_st, tab_bl = st.tabs(
         ["☀️ PV", "🚗 EV / BEV", "♨️ Wärmepumpe", "🔋 Speicher", "📊 Basislast"]
@@ -708,10 +723,7 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                     f"{station.get('distance_km', 0):.1f} km Entfernung, "
                     f"{station.get('latitude', 0):.3f}°N {station.get('longitude', 0):.3f}°E)"
                 )
-            pv_steps = len(st.session_state["nsv2_profile_pv"])
-            pv_xlabel = "Uhrzeit (h)" if pv_steps <= 96 else "Zeit seit Beginn (h)"
-            _profile_chart(st.session_state["nsv2_profile_pv"], "kW / kWp", "nsv2_chart_pv",
-                           xlabel=pv_xlabel)
+            _profile_chart(st.session_state["nsv2_profile_pv"], "kW / kWp", "nsv2_chart_pv")
 
     # ------------------------------------------------------------------ #
     # EV / BEV                                                             #
@@ -729,6 +741,8 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
             st.warning("vpplib nicht installiert — EV-Schnellkonfiguration nicht verfügbar.")
         else:
             st.markdown("**Schnellkonfiguration** *(kein Wetterdatenabruf erforderlich)*")
+            if time_start and time_end:
+                st.caption(f"Zeitraum aus Abschnitt 2: {time_start} – {time_end} ({n_days} Tag(e))")
             c1, c2 = st.columns(2)
             bat_max  = c1.number_input("Akkukapazität max (kWh)", 5.0,  200.0, 75.0, key="nsv2_ev_batmax")
             bat_min  = c1.number_input("Akkukapazität min (kWh)", 0.0,   50.0, 15.0, key="nsv2_ev_batmin")
@@ -737,11 +751,13 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
             eff = st.slider("Ladeeffizienz", 0.80, 1.00, 0.95, 0.01, key="nsv2_ev_eff")
 
             if st.button("EV-Profil generieren", key="nsv2_ev_gen", disabled=time_start is None):
-                with st.spinner("EV-Profil berechnen…"):
+                with st.spinner(f"EV-Profil berechnen ({n_days} Tag(e))…"):
                     try:
-                        day_str = str(time_start)
-                        env = Environment(start=f"{day_str} 00:00:00",
-                                          end=f"{day_str} 23:45:00", timebase=15)
+                        env = Environment(
+                            start=f"{time_start} 00:00:00",
+                            end=f"{time_end} 23:45:00",
+                            timebase=15,
+                        )
                         bev = BatteryElectricVehicle(
                             unit="kW", identifier="bev_quick", environment=env,
                             battery_max=bat_max, battery_min=bat_min,
@@ -749,8 +765,16 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                             charge_efficiency=eff, load_degradation_begin=0.8,
                         )
                         bev.prepare_time_series()
-                        st.session_state["nsv2_profile_ev"] = _normalize_ts(bev.timeseries).abs()
-                        st.success("EV-Profil erzeugt.")
+                        ts = bev.timeseries
+                        if isinstance(ts, pd.DataFrame):
+                            ts = ts.iloc[:, 0]
+                        st.session_state["nsv2_profile_ev"] = (
+                            pd.to_numeric(ts, errors="coerce").fillna(0.0).abs().reset_index(drop=True)
+                        )
+                        st.success(
+                            f"EV-Profil erzeugt: {len(st.session_state['nsv2_profile_ev'])} "
+                            f"Schritte ({n_days} Tag(e))."
+                        )
                     except Exception as e:
                         st.error(f"EV-Profilgenerierung fehlgeschlagen: {e}")
 
@@ -769,11 +793,143 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                 st.success("WP-Profil importiert.")
             st.divider()
 
+        st.markdown("**Schnellkonfiguration via DWD-Wetterdaten**")
+        if not _HAS_OSMNX or not _HAS_VPPLIB:
+            st.warning("osmnx und vpplib erforderlich — bitte installieren.")
+        else:
+            hp_loc = st.text_input("Ort", value="Aachen", key="nsv2_hp_loc",
+                                   help="Stadtname für DWD-Wetterdaten")
+            time_end = st.session_state.get("nsv2_time_end", time_start)
+            if time_start and time_end:
+                n_days = (pd.Timestamp(time_end) - pd.Timestamp(time_start)).days + 1
+                st.caption(f"Zeitraum aus Abschnitt 2: {time_start} – {time_end} ({n_days} Tag(e))")
+            else:
+                st.caption("Bitte Zeitraum in Abschnitt 2 festlegen.")
+
+            c1, c2, c3 = st.columns(3)
+            hp_el_power   = c1.number_input("Elektrische Leistung (kW)", 1.0, 100.0, 7.0,   key="nsv2_hp_el")
+            hp_th_power   = c2.number_input("Thermische Leistung (kW)",  1.0, 150.0, 18.0,  key="nsv2_hp_th")
+            _hp_type_label = c3.selectbox("Typ", ["Luft", "Erde"], key="nsv2_hp_type")
+            hp_type = {"Luft": "Air", "Erde": "Ground"}[_hp_type_label]
+            hp_sys_temp   = c1.number_input("Systemtemperatur (°C)", 30.0, 75.0, 60.0,      key="nsv2_hp_stemp")
+            yearly_demand = c2.number_input("Jährl. Wärmebedarf (kWh)", 1000.0, 50000.0, 12500.0, key="nsv2_hp_demand")
+            building_type = c3.selectbox(
+                "Gebäudetyp",
+                ["DE_HEF33", "DE_HEF34", "DE_HMF33", "DE_HMF34", "DE_GKO34"],
+                key="nsv2_hp_btype",
+                help=(
+                    "SigLinDe-Gebäudeklassifikation (BDEW):\n\n"
+                    "**HEF** = Einfamilienhaus · **HMF** = Mehrfamilienhaus · **GKO** = Gewerbe/Kommunal\n\n"
+                    "**33** = Altbau (vor WSchVO 1977, schlechte Dämmung)\n\n"
+                    "**34** = Neubau/modernisiert (nach WSchVO 1984, gute Dämmung)"
+                ),
+            )
+            t_0           = st.number_input("Heizgrenztemperatur (°C)", 0.0, 70.0, 40.0,    key="nsv2_hp_t0")
+
+            if st.button("WP-Profil generieren (DWD)", key="nsv2_hp_gen_dwd",
+                         disabled=time_start is None):
+                with st.spinner(f"Referenzjahr und Simulationszeitraum abrufen ({n_days} Tag(e))…"):
+                    try:
+                        lat, lon = _geocode(hp_loc)
+                        import datetime as _dt
+
+                        # Step 1: full reference year to calibrate consumerfactor
+                        yesterday = _dt.date.today() - _dt.timedelta(days=1)
+                        ref_start = yesterday.replace(year=yesterday.year - 1)
+                        ref_env = Environment(
+                            timebase=15,
+                            start=f"{ref_start} 00:00:00",
+                            end=f"{yesterday} 23:45:00",
+                            time_freq="15 min",
+                            surpress_output_globally=True,
+                        )
+                        ref_env.get_dwd_mean_temp_hours(lat=float(lat), lon=float(lon),
+                                                        min_quality_per_parameter=10)
+                        ref_env.get_dwd_mean_temp_days(lat=float(lat), lon=float(lon),
+                                                       min_quality_per_parameter=10)
+                        ref_env.mean_temp_quarter_hours = (
+                            ref_env.mean_temp_hours.resample("15 Min").interpolate()
+                        )
+                        ref_profile = UserProfile(
+                            identifier=None,
+                            latitude=float(lat),
+                            longitude=float(lon),
+                            thermal_energy_demand_yearly=yearly_demand,
+                            mean_temp_days=ref_env.mean_temp_days,
+                            mean_temp_hours=ref_env.mean_temp_hours,
+                            mean_temp_quarter_hours=ref_env.mean_temp_quarter_hours,
+                            building_type=building_type,
+                            comfort_factor=None,
+                            t_0=t_0,
+                        )
+                        ref_profile.get_thermal_energy_demand()
+
+                        # Step 2: actual simulation period with calibrated consumerfactor
+                        sim_env = Environment(
+                            timebase=15,
+                            start=f"{time_start} 00:00:00",
+                            end=f"{time_end} 23:45:00",
+                            time_freq="15 min",
+                            surpress_output_globally=True,
+                        )
+                        sim_env.get_dwd_mean_temp_hours(lat=float(lat), lon=float(lon),
+                                                        min_quality_per_parameter=10)
+                        sim_env.get_dwd_mean_temp_days(lat=float(lat), lon=float(lon),
+                                                       min_quality_per_parameter=10)
+                        sim_env.mean_temp_quarter_hours = (
+                            sim_env.mean_temp_hours.resample("15 Min").interpolate()
+                        )
+                        sim_profile = UserProfile(
+                            identifier=None,
+                            latitude=float(lat),
+                            longitude=float(lon),
+                            thermal_energy_demand_yearly=yearly_demand,
+                            mean_temp_days=sim_env.mean_temp_days,
+                            mean_temp_hours=sim_env.mean_temp_hours,
+                            mean_temp_quarter_hours=sim_env.mean_temp_quarter_hours,
+                            building_type=building_type,
+                            comfort_factor=None,
+                            t_0=t_0,
+                            consumerfactor=ref_profile.consumerfactor,
+                        )
+                        sim_profile.get_thermal_energy_demand()
+
+                        hp_vpp = HeatPump(
+                            identifier="hp_quick",
+                            unit="kW",
+                            thermal_energy_demand=sim_profile.thermal_energy_demand,
+                            environment=sim_env,
+                            heat_pump_type=hp_type,
+                            heat_sys_temp=hp_sys_temp,
+                            el_power=hp_el_power,
+                            th_power=hp_th_power,
+                            ramp_up_time=1 / 15,
+                            ramp_down_time=1 / 15,
+                            min_runtime=1,
+                            min_stop_time=2,
+                        )
+                        hp_vpp.get_cop()
+                        hp_vpp.prepare_time_series()
+
+                        ts = hp_vpp.timeseries
+                        if isinstance(ts, pd.DataFrame):
+                            ts = ts.iloc[:, 0]
+                        st.session_state["nsv2_profile_hp"] = (
+                            pd.to_numeric(ts, errors="coerce").fillna(0.0).reset_index(drop=True)
+                        )
+                        st.success(
+                            f"WP-Profil erzeugt: {len(st.session_state['nsv2_profile_hp'])} "
+                            f"Schritte ({n_days} Tag(e)) für {hp_loc}."
+                        )
+                    except Exception as e:
+                        st.error(f"WP-Profilgenerierung fehlgeschlagen: {e}")
+                        import traceback
+                        with st.expander("Fehlerdetails"):
+                            st.code(traceback.format_exc())
+
+        st.divider()
         st.markdown("**Parametrisches Tagesganglinienprofil** *(vereinfacht, ohne Wetterdaten)*")
-        st.caption(
-            "Für ein wettergetriebenes Profil bitte die Wärmepumpen-Konfigurationsseite "
-            "besuchen und das Ergebnis hier importieren."
-        )
+        st.caption("Für ein wettergetriebenes Profil bitte den Button oben verwenden.")
         c1, c2 = st.columns(2)
         hp_kw = c1.number_input("Elektrische Leistung (kW)", 1.0, 100.0, 7.0, key="nsv2_hp_kw")
         hp_season = c2.selectbox("Jahreszeit", ["Winter", "Übergang", "Sommer"], key="nsv2_hp_season")
@@ -809,6 +965,9 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
             key="nsv2_st_strat", horizontal=True,
         )
 
+        if time_start and time_end:
+            st.caption(f"Zeitraum aus Abschnitt 2: {time_start} – {time_end} ({n_days} Tag(e))")
+
         if strategy == "PV-Überschuss speichern":
             pv_profile = st.session_state.get("nsv2_profile_pv")
             if pv_profile is None:
@@ -820,19 +979,21 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                 max_p = st.number_input("Max. Lade-/Entladeleistung (kW)", 0.5, 100.0, 5.0,
                                         key="nsv2_st_maxp")
                 if st.button("Speicher-Profil generieren", key="nsv2_st_gen_pv"):
-                    storage = np.zeros(96)
-                    for i in range(96):
-                        pv_val = float(pv_profile.iloc[i]) if i < len(pv_profile) else 0.0
+                    n_steps = len(pv_profile)
+                    storage = np.zeros(n_steps)
+                    for i in range(n_steps):
+                        pv_val = float(pv_profile.iloc[i])
+                        step_in_day = i % 96
                         if pv_val >= threshold:
                             storage[i] = -max_p          # charging (pp: negative p_mw)
-                        elif 60 <= i <= 84:              # 15:00–21:00: discharge
+                        elif 60 <= step_in_day <= 84:    # 15:00–21:00: discharge
                             storage[i] = max_p
                     charge_e = abs(storage[storage < 0].sum())
                     disch_e  = storage[storage > 0].sum()
                     if disch_e > 0 and charge_e > 0:
                         storage[storage > 0] *= min(1.0, charge_e / disch_e)
                     st.session_state["nsv2_profile_storage"] = pd.Series(storage)
-                    st.success("Speicher-Profil (PV-Überschuss) erzeugt.")
+                    st.success(f"Speicher-Profil (PV-Überschuss) erzeugt: {n_steps} Schritte.")
 
         else:
             c1, c2 = st.columns(2)
@@ -845,16 +1006,17 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
             if st.button("Speicher-Profil generieren", key="nsv2_st_gen_fix"):
                 cs = charge_start.hour * 4 + charge_start.minute // 15
                 ce = charge_end.hour   * 4 + charge_end.minute   // 15
-                storage = np.zeros(96)
+                storage_day = np.zeros(96)
                 for i in range(96):
                     in_window = (cs <= ce and cs <= i < ce) or (cs > ce and (i >= cs or i < ce))
-                    storage[i] = -max_p if in_window else dis_p
-                charge_e = abs(storage[storage < 0].sum())
-                disch_steps = (storage > 0).sum()
+                    storage_day[i] = -max_p if in_window else dis_p
+                charge_e = abs(storage_day[storage_day < 0].sum())
+                disch_steps = (storage_day > 0).sum()
                 if disch_steps > 0 and charge_e > 0:
-                    storage[storage > 0] *= min(1.0, charge_e / (dis_p * disch_steps))
+                    storage_day[storage_day > 0] *= min(1.0, charge_e / (dis_p * disch_steps))
+                storage = np.tile(storage_day, n_days)
                 st.session_state["nsv2_profile_storage"] = pd.Series(storage)
-                st.success("Speicher-Profil (feste Zeiten) erzeugt.")
+                st.success(f"Speicher-Profil (feste Zeiten) erzeugt: {len(storage)} Schritte.")
 
         if "nsv2_profile_storage" in st.session_state:
             _profile_chart(st.session_state["nsv2_profile_storage"],
@@ -869,23 +1031,30 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
             "Automatisch aus dem SimBench-Datensatz erzeugt. "
             "Klassifizierung nach Lastname (Haushalt, Gewerbe, Industrie, Landwirtschaft)."
         )
-        if time_start is not None:
-            day_index = (time_start - datetime(2020, 1, 1).date()).days % 365
-        else:
-            day_index = 0
-        st.caption(f"Tag im Jahr: {day_index} (aus Abschnitt 2)")
+        if time_start and time_end:
+            st.caption(f"Zeitraum aus Abschnitt 2: {time_start} – {time_end} ({n_days} Tag(e))")
 
         if st.button("Basislastprofil erzeugen", key="nsv2_bl_gen") \
                 or "nsv2_profile_base" not in st.session_state:
             if len(net.load) == 0:
                 st.info("Keine Lastknoten im Netz — Basislastprofil nicht erforderlich.")
             else:
-                with st.spinner("SimBench-Profile laden…"):
+                with st.spinner(f"SimBench-Profile laden ({n_days} Tag(e))…"):
                     try:
-                        multiplier_df = Simbench_multiplier(net, day_index=day_index)
+                        if time_start and time_end:
+                            start_day = (
+                                pd.Timestamp(time_start).date()
+                                - datetime(2020, 1, 1).date()
+                            ).days % 365
+                            multiplier_df = Simbench_multiplier_range(
+                                net, start_day_index=start_day, n_days=n_days
+                            )
+                        else:
+                            multiplier_df = Simbench_multiplier(net, day_index=0)
                         st.session_state["nsv2_profile_base"] = multiplier_df
                         st.success(
-                            f"Profile erzeugt: {len(multiplier_df.columns)} Lastknoten, Tag {day_index}."
+                            f"Profile erzeugt: {len(multiplier_df.columns)} Lastknoten, "
+                            f"{len(multiplier_df)} Schritte ({n_days} Tag(e))."
                         )
                     except Exception as e:
                         st.error(f"SimBench-Profile konnten nicht geladen werden: {e}")
@@ -1218,7 +1387,7 @@ def netzmodell_v2():
 
     if source == "Vordefiniertes Netz":
         _net_opts = list(_NETWORKS.keys())
-        _stored_name = st.session_state.get("nsv2_net_name", _net_opts[0])
+        _stored_name = st.session_state.get("nsv2_net_name", _net_opts[2])
         _name_idx = _net_opts.index(_stored_name) if _stored_name in _net_opts else 0
         net_name = st.selectbox("Netz auswählen", options=_net_opts, index=_name_idx)
 
