@@ -47,3 +47,18 @@ def test_time_subprocess_import_missing_library():
     ms, note = time_subprocess_import("_nonexistent_library_xyz")
     assert ms < 0
     assert "[not installed]" in note
+
+
+from scripts.profile_startup import time_page_import
+
+
+def test_time_page_import_known_module():
+    ms, note = time_page_import("pathlib")
+    assert ms >= 0
+    assert note == ""
+
+
+def test_time_page_import_missing_module():
+    ms, note = time_page_import("_nonexistent_module_xyz")
+    assert ms < 0
+    assert "[error]" in note

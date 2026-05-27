@@ -122,3 +122,39 @@ def run_section1() -> list[tuple[str, float, str]]:
     print(" " * 60, end="\r")  # clear progress line
     results.sort(key=lambda x: x[1], reverse=True)
     return results
+
+
+def time_page_import(module_name: str) -> tuple[float, str]:
+    """Import a module in-process and return (elapsed_ms, note).
+
+    Modules share sys.modules — the first module to import a heavy library
+    pays the full cost; subsequent modules see cached imports and appear fast.
+    This reflects real startup behavior.
+
+    Returns (-1, "[error: <msg>]") on ImportError.
+    """
+    t0 = time.perf_counter()
+    try:
+        importlib.import_module(module_name)
+    except Exception as e:
+        return -1, f"[error] {type(e).__name__}"
+    return (time.perf_counter() - t0) * 1000, ""
+
+
+def run_section2() -> list[tuple[str, float, str]]:
+    """Import each page module in-process and time it.
+
+    Returns list of (short_name, ms, note) sorted slowest-first.
+    Cumulative sys.modules caching means the first module that pulls in
+    pandapower/osmnx/etc. will appear slow; later ones will be fast.
+    """
+    results = []
+    for module in PAGE_MODULES:
+        short = module.split(".")[-1]  # e.g. "netzmodell"
+        print(f"  importing {short}...", end="\r", flush=True)
+        ms, note = time_page_import(module)
+        results.append((short, ms, note))
+
+    print(" " * 60, end="\r")
+    results.sort(key=lambda x: x[1], reverse=True)
+    return results
