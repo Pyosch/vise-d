@@ -1,161 +1,331 @@
-"""Photovoltaic (PV) configuration page for VISE-D dashboard.
+"""PV-Konfiguration — Standortbasierte und Anlagenbasierte Simulation.
 
-This page provides configuration and simulation for PV systems.
+Zwei Modi:
+  Standortbasiert: Ort per Stadtname (Geocoding) oder Koordinaten, beliebige Kapazität.
+  Anlagenbasiert:  MaStR-Anlagen auswählen (Stadt + Namensfilter), Mehrfachauswahl.
 
-Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
-Created: January 2026
+Vereinfachte Berechnung über get_normalized_pv_output (1-kWp-Referenzsystem + DWD).
 """
 
-__author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+from __future__ import annotations
 
+import io
+from datetime import date, timedelta
+
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
-import matplotlib.pyplot as plt
-from datetime import datetime
-from vpplib.photovoltaic import Photovoltaic
-from vpplib.environment import Environment
-from src.ui.components import pv_settings
-from src.ui.components.location_weather import location_weather_selector
+
+try:
+    import osmnx as ox
+    _HAS_OSMNX = True
+except Exception:
+    _HAS_OSMNX = False
+
+from src.config.paths import MASTR_DB_PATH
+from src.mastr.preprocessing import get_unique_solar_locations, prepare_solar_data
+from src.ui.components.netzmittimeseries import get_normalized_pv_output
 
 
-def pv_configuration():
-    """Configure and simulate photovoltaic systems.
-    
-    This function sets up PV system configuration including module selection,
-    inverter selection, tilt angle, azimuth, and string configuration.
-    Simulates PV generation using vpplib and DWD weather data.
-    
-    Returns:
-        None: Updates session state and displays simulation results.
-    """
-    st.title("☀️ PV Konfiguration")
-    st.markdown("Konfigurieren Sie Ihr Photovoltaik-System und simulieren Sie die Energieerzeugung.")
-    
-    # Location and weather station selection
-    location_data = location_weather_selector(
-        form_key_suffix="pv_config",
-        parameters=['solar', 'temperature', 'wind', 'pressure'],
-        show_date_range=True,
-        default_lat=51.4,
-        default_lon=6.97
-        # Date defaults: None = past 7 days (today - 7 days to today)
+# ---------------------------------------------------------------------------
+# Cached helpers
+# ---------------------------------------------------------------------------
+
+@st.cache_data
+def _solar_locations() -> list[str]:
+    try:
+        locs = get_unique_solar_locations(str(MASTR_DB_PATH)) or []
+        return locs if locs else ["Aachen"]
+    except Exception:
+        return ["Aachen"]
+
+
+@st.cache_data
+def _solar_mastr(city: str) -> pd.DataFrame:
+    """Load MaStR solar data for city and return as plain DataFrame."""
+    try:
+        gdf, _ = prepare_solar_data(city, str(MASTR_DB_PATH))
+        cols = [
+            "EinheitMastrNummer", "NameStromerzeugungseinheit",
+            "Nettonennleistung", "Bruttoleistung",
+            "Breitengrad", "Laengengrad",
+        ]
+        available = [c for c in cols if c in gdf.columns]
+        return pd.DataFrame(gdf[available]).reset_index(drop=True)
+    except Exception:
+        return pd.DataFrame()
+
+
+@st.cache_data
+def _geocode(city: str) -> tuple[float, float]:
+    lat, lon = ox.geocode(city)
+    return float(lat), float(lon)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _profile_chart(profiles: dict[str, pd.Series], key: str) -> None:
+    fig = go.Figure()
+    for label, series in profiles.items():
+        fig.add_trace(go.Scatter(
+            x=series.index.tolist() if hasattr(series.index, 'tolist') else list(range(len(series))),
+            y=series.values,
+            mode="lines",
+            name=label,
+            line=dict(width=2),
+        ))
+    fig.update_layout(
+        xaxis_title="Zeit",
+        yaxis_title="Leistung (kW)",
+        height=320,
+        margin=dict(l=0, r=0, t=10, b=0),
+        hovermode="x unified",
+        showlegend=len(profiles) > 1,
     )
-    
-    if not location_data:
-        st.warning("⚠️ Bitte wählen Sie einen Standort und Zeitraum aus.")
+    st.plotly_chart(fig, use_container_width=True, key=key)
+
+
+def _metrics(series: pd.Series, capacity_kwp: float) -> None:
+    peak = float(series.max())
+    total_kwh = float(series.sum()) * 0.25  # 15-min steps → hours
+    cf = (total_kwh / (capacity_kwp * len(series) * 0.25) * 100) if capacity_kwp > 0 else 0.0
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Spitzenleistung", f"{peak:.2f} kW")
+    c2.metric("Energie", f"{total_kwh:.1f} kWh")
+    c3.metric("Kapazitätsfaktor", f"{cf:.1f} %")
+
+
+def _csv_download(profiles: dict[str, pd.Series], key: str) -> None:
+    df = pd.DataFrame(profiles)
+    buf = io.BytesIO()
+    df.to_csv(buf, encoding="utf-8")
+    st.download_button(
+        "CSV herunterladen",
+        data=buf.getvalue(),
+        file_name="pv_profile.csv",
+        mime="text/csv",
+        key=key,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Main page
+# ---------------------------------------------------------------------------
+
+def pv_configuration() -> None:
+    st.title("PV-Konfiguration")
+
+    # ── Mode ────────────────────────────────────────────────────────────────
+    mode = st.radio(
+        "Simulationstyp",
+        ["Standortbasierte Simulation", "Anlagenbasierte Simulation"],
+        horizontal=True,
+        key="pv_cfg_mode",
+    )
+
+    lat: float | None = None
+    lon: float | None = None
+    capacity_kwp: float = 10.0
+    selected_installations: list[dict] = []  # list of {label, capacity_kwp, lat, lon}
+
+    # ── Location / installation config ──────────────────────────────────────
+    if mode == "Standortbasierte Simulation":
+        st.subheader("Standort")
+        if not _HAS_OSMNX:
+            st.error("osmnx ist nicht installiert — Geocoding nicht verfügbar.")
+            return
+
+        city_input = st.text_input("Ort (Stadtname)", value="Aachen", key="pv_cfg_city")
+        capacity_kwp = st.number_input(
+            "Installierte Leistung (kWp)", min_value=0.1, max_value=100_000.0,
+            value=10.0, key="pv_cfg_cap",
+        )
+
+        if city_input:
+            try:
+                lat, lon = _geocode(city_input)
+                st.caption(f"Koordinaten: {lat:.4f}°N, {lon:.4f}°E")
+            except Exception as e:
+                st.error(f"Geocoding fehlgeschlagen: {e}")
+                return
+
+    else:  # Anlagenbasierte Simulation
+        st.subheader("MaStR-Anlagen auswählen")
+        if not _HAS_OSMNX:
+            st.error("osmnx ist nicht installiert — Geocoding nicht verfügbar.")
+            return
+
+        locations = _solar_locations()
+        default_idx = locations.index("Aachen") if "Aachen" in locations else 0
+        city = st.selectbox("Stadt", locations, index=default_idx, key="pv_cfg_mastr_city")
+
+        df_mastr = _solar_mastr(city)
+        if df_mastr.empty:
+            st.warning(f"Keine MaStR-Solardaten für {city} gefunden.")
+            return
+
+        name_col = "NameStromerzeugungseinheit"
+        cap_col  = "Nettonennleistung"
+        lat_col  = "Breitengrad"
+        lon_col  = "Laengengrad"
+
+        name_filter = st.text_input(
+            "Namensfilter (Anlagenname enthält…)", key="pv_cfg_namefilter"
+        )
+        filtered = df_mastr.copy()
+        if name_filter and name_col in filtered.columns:
+            mask = filtered[name_col].fillna("").str.contains(name_filter, case=False, na=False)
+            filtered = filtered[mask]
+
+        if filtered.empty:
+            st.info("Kein Treffer — Filter anpassen.")
+            return
+
+        def _label(row: pd.Series) -> str:
+            name = str(row.get(name_col, "—"))
+            cap  = row.get(cap_col, 0)
+            try:
+                cap_str = f"{float(cap):.0f} kW"
+            except (ValueError, TypeError):
+                cap_str = "? kW"
+            return f"{name} ({cap_str})"
+
+        filtered["_label"] = filtered.apply(_label, axis=1)
+        all_labels = filtered["_label"].tolist()
+
+        selected_labels = st.multiselect(
+            f"Anlagen auswählen ({len(filtered)} verfügbar)",
+            options=all_labels,
+            key="pv_cfg_multiselect",
+        )
+
+        if not selected_labels:
+            st.info("Bitte mindestens eine Anlage auswählen.")
+            return
+
+        selected_rows = filtered[filtered["_label"].isin(selected_labels)]
+        preview_cols = [c for c in [name_col, cap_col, lat_col, lon_col] if c in selected_rows.columns]
+        st.dataframe(selected_rows[preview_cols].reset_index(drop=True), use_container_width=True)
+
+        # City centroid for weather data
+        try:
+            lat, lon = _geocode(city)
+        except Exception as e:
+            st.error(f"Geocoding fehlgeschlagen: {e}")
+            return
+
+        for _, row in selected_rows.iterrows():
+            try:
+                cap = float(row.get(cap_col, 0) or 0)
+            except (ValueError, TypeError):
+                cap = 0.0
+            selected_installations.append({
+                "label": row["_label"],
+                "capacity_kwp": cap,
+            })
+
+        capacity_kwp = sum(inst["capacity_kwp"] for inst in selected_installations)
+
+    # ── Time range ───────────────────────────────────────────────────────────
+    st.subheader("Zeitraum")
+    default_end   = date.today() - timedelta(days=1)
+    default_start = default_end - timedelta(days=6)
+    col_s, col_e = st.columns(2)
+    date_start = col_s.date_input("Von", value=default_start, key="pv_cfg_start")
+    date_end   = col_e.date_input("Bis", value=default_end,   key="pv_cfg_end")
+    n_days = (pd.Timestamp(date_end) - pd.Timestamp(date_start)).days + 1
+
+    if n_days < 1:
+        st.error("Enddatum muss nach dem Startdatum liegen.")
         return
 
-    # Persist the currently selected location/date from Auswahl-Zusammenfassung
-    # so other tabs (e.g. network timeseries) can use the exact same coordinates.
-    st.session_state["pv_location_data"] = {
-        "latitude": float(location_data["latitude"]),
-        "longitude": float(location_data["longitude"]),
-        "start_date": location_data.get("start_date"),
-        "end_date": location_data.get("end_date"),
-        "method": location_data.get("method"),
-    }
-    
-    st.markdown("---")
-    
-    # PV system settings form
-    pv_settings(form_key_suffix="pv1")
-           
-    with st.form(key="pv_simulation_form"):
-        # PV simulation button
-        pv_simulation_button = st.form_submit_button("🚀 PV Simulation starten")
-           
-        if pv_simulation_button:
-            with st.spinner("Wetterdaten werden abgerufen und PV-System wird simuliert..."):
-                try:
-                    env = Environment(
-                        start=location_data['start_date'].strftime("%Y-%m-%d %H:%M:%S"),
-                        end=location_data['end_date'].strftime("%Y-%m-%d %H:%M:%S"),
-                        use_timezone_aware_time_index=True,
-                        surpress_output_globally=False
-                    )
-                    station_meta = env.get_dwd_pv_data(
-                        lat=location_data['latitude'],
-                        lon=location_data['longitude'],
-                    )
+    st.caption(f"{n_days} Tag(e) x 96 Schritte = {n_days * 96} Zeitschritte (15-min-Raster)")
 
-                    st.success("✅ Wetterdaten erfolgreich abgerufen!")
-                    with st.expander("ℹ️ Wetterdaten-Information"):
-                        if location_data['method'] == 'station':
-                            st.write(f"**Station:** {location_data['station_id']}")
-                        st.write(f"**Koordinaten:** {location_data['latitude']:.4f}°N, {location_data['longitude']:.4f}°E")
-                        st.write(f"**Angefragt:** {location_data['start_date'].date()} bis {location_data['end_date'].date()}")
-                        st.write(f"**Datenpunkte:** {len(env.pv_data)}")
-                        if not station_meta.empty:
-                            row = station_meta.iloc[0]
-                            st.write(f"**Station:** {row.get('name', '—')} (ID {row.get('station_id', '?')}, {row.get('distance', 0):.1f} km)")
+    # ── Generate ─────────────────────────────────────────────────────────────
+    if lat is None or lon is None:
+        return
 
-                except Exception as e:
-                    st.error(f"❌ Fehler beim Abrufen der Wetterdaten: {e}")
-                    return
-            
-                    # Initialize PV with form inputs
-                    st.session_state["pv"] = Photovoltaic(
-                        identifier=f"PV_{location_data['latitude']:.2f}_{location_data['longitude']:.2f}",
-                        unit="kW",
-                        latitude=location_data['latitude'],
-                        longitude=location_data['longitude'],
-                        environment=env,
-                        module_lib=st.session_state["pv_settings"]["PV Module Library"],
-                        module=st.session_state["pv_settings"]["PV Module"],
-                        inverter_lib=st.session_state["pv_settings"]["PV Inverter Library"],
-                        inverter=st.session_state["pv_settings"]["PV Inverter"],
-                        surface_tilt=st.session_state["pv_settings"]["PV Surface Tilt"],
-                        surface_azimuth=st.session_state["pv_settings"]["PV Surface Azimuth"],
-                        modules_per_string=st.session_state["pv_settings"]["PV Modules per String"],
-                        strings_per_inverter=st.session_state["pv_settings"]["PV Strings per Inverter"],
-                        temp_lib='sapm',
-                        temp_model='open_rack_glass_glass'
-                    )
-                
-                    st.success("✅ PV-System erfolgreich konfiguriert!")
-                    
-                    # Prepare and display time series
-                    st.session_state["pv"].prepare_time_series()
-                    
-                    st.markdown("### 📊 Simulationsergebnisse")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        total_generation = st.session_state['pv'].timeseries.sum()
-                        if hasattr(total_generation, 'iloc'):
-                            total_generation = total_generation.iloc[0]
-                        st.metric(
-                            "Gesamterzeugung",
-                            f"{float(total_generation):.2f} kWh"
-                        )
-                    with col2:
-                        max_power = st.session_state['pv'].timeseries.max()
-                        if hasattr(max_power, 'iloc'):
-                            max_power = max_power.iloc[0]
-                        st.metric(
-                            "Maximale Leistung",
-                            f"{float(max_power):.2f} kW"
-                        )
-                    
-                    # Show data preview
-                    with st.expander("📋 Zeitreihen-Daten (Vorschau)"):
-                        st.dataframe(st.session_state["pv"].timeseries.head(20))
-                    
-                    # Create a Matplotlib figure
-                    st.markdown("### 📈 Zeitreihen-Visualisierung")
-                    fig, ax = plt.subplots(figsize=(16, 9))
-                    st.session_state["pv"].timeseries.plot(ax=ax)
-                    ax.set_title("PV Energieerzeugung")
-                    ax.set_xlabel("Zeit")
-                    ax.set_ylabel("Leistung (kW)")
-                    ax.grid(True, alpha=0.3)
-                    plt.tight_layout()
-                    st.pyplot(fig)
-                    plt.close(fig)
-                    
-                except Exception as e:
-                    st.error(f"❌ Fehler bei der PV-Simulation: {e}")
-                    import traceback
-                    with st.expander("🔍 Fehlerdetails"):
-                        st.code(traceback.format_exc())
+    if st.button("Profil generieren", type="primary", key="pv_cfg_run"):
+        profiles: dict[str, pd.Series] = {}
+
+        if mode == "Standortbasierte Simulation":
+            daily: list[pd.Series] = []
+            status_txt = st.empty()
+            for i in range(n_days):
+                current = pd.Timestamp(date_start) + pd.Timedelta(days=i)
+                status_txt.caption(f"DWD-Daten abrufen: Tag {i + 1}/{n_days} ({current.date()})…")
+                day_ts = get_normalized_pv_output(lat, lon, current, current + pd.Timedelta(days=1))
+                daily.append(
+                    pd.to_numeric(day_ts, errors="coerce").fillna(0.0).reset_index(drop=True)
+                )
+            status_txt.empty()
+            normalized = pd.concat(daily, ignore_index=True)
+            dt_index = pd.date_range(
+                start=pd.Timestamp(date_start), periods=len(normalized), freq="15min"
+            )
+            profile = pd.Series(normalized.values * capacity_kwp, index=dt_index)
+            profiles[f"{city_input} ({capacity_kwp:.0f} kWp)"] = profile
+
+        else:  # Anlagenbasiert
+            daily_normalized: list[pd.Series] = []
+            status_txt = st.empty()
+            for i in range(n_days):
+                current = pd.Timestamp(date_start) + pd.Timedelta(days=i)
+                status_txt.caption(f"DWD-Daten abrufen: Tag {i + 1}/{n_days} ({current.date()})…")
+                day_ts = get_normalized_pv_output(lat, lon, current, current + pd.Timedelta(days=1))
+                daily_normalized.append(
+                    pd.to_numeric(day_ts, errors="coerce").fillna(0.0).reset_index(drop=True)
+                )
+            status_txt.empty()
+            normalized_full = pd.concat(daily_normalized, ignore_index=True)
+            dt_index = pd.date_range(
+                start=pd.Timestamp(date_start), periods=len(normalized_full), freq="15min"
+            )
+            for inst in selected_installations:
+                profile_kw = pd.Series(
+                    normalized_full.values * inst["capacity_kwp"], index=dt_index
+                )
+                profiles[inst["label"]] = profile_kw
+
+        st.session_state["pv_cfg_profiles"] = profiles
+        st.session_state["pv_cfg_capacity_kwp"] = capacity_kwp
+        st.success(f"Profil(e) erzeugt: {len(profiles)} Anlage(n), {n_days * 96} Zeitschritte.")
+
+    # ── Results ───────────────────────────────────────────────────────────────
+    profiles = st.session_state.get("pv_cfg_profiles")
+    if not profiles:
+        return
+
+    capacity_kwp = st.session_state.get("pv_cfg_capacity_kwp", capacity_kwp)
+
+    if len(profiles) == 1:
+        label, series = next(iter(profiles.items()))
+        st.subheader(label)
+        _profile_chart({label: series}, key="pv_res_chart_single")
+        _metrics(series, series.max() if series.max() > 0 else 1.0)
+        _csv_download({label: series}, key="pv_res_dl_single")
+
+    else:
+        # Multiple installations: tabs per installation + aggregated
+        agg = sum(profiles.values())
+        agg.name = "Gesamt"
+
+        tab_labels = list(profiles.keys()) + ["Gesamt (aggregiert)"]
+        tabs = st.tabs(tab_labels)
+
+        for tab, (label, series) in zip(tabs[:-1], profiles.items()):
+            with tab:
+                inst_cap = series.max() if series.max() > 0 else 1.0
+                _profile_chart({label: series}, key=f"pv_res_chart_{label[:30]}")
+                _metrics(series, inst_cap)
+
+        with tabs[-1]:
+            _profile_chart({"Gesamt": agg}, key="pv_res_chart_agg")
+            _metrics(agg, capacity_kwp)
+
+        all_df = dict(profiles)
+        all_df["Gesamt"] = agg
+        _csv_download(all_df, key="pv_res_dl_multi")
