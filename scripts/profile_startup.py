@@ -116,7 +116,7 @@ def run_section1() -> list[tuple[str, float, str]]:
     for lib in LIBRARY_IMPORTS:
         print(f"  timing {lib}...", end="\r", flush=True)
         ms, note = time_subprocess_import(lib)
-        net_ms = (ms - startup_ms) if ms >= 0 else ms
+        net_ms = max(0.0, ms - startup_ms) if ms >= 0 else ms
         results.append((lib, net_ms, note))
 
     print(" " * 60, end="\r")  # clear progress line
@@ -144,9 +144,10 @@ def time_page_import(module_name: str) -> tuple[float, str]:
 def run_section2() -> list[tuple[str, float, str]]:
     """Import each page module in-process and time it.
 
-    Returns list of (short_name, ms, note) sorted slowest-first.
+    Returns list of (short_name, ms, note) in natural import order.
     Cumulative sys.modules caching means the first module that pulls in
     pandapower/osmnx/etc. will appear slow; later ones will be fast.
+    Order matters because the first module to import a heavy library pays the full cost.
     """
     results = []
     for module in PAGE_MODULES:
@@ -156,7 +157,6 @@ def run_section2() -> list[tuple[str, float, str]]:
         results.append((short, ms, note))
 
     print(" " * 60, end="\r")
-    results.sort(key=lambda x: x[1], reverse=True)
     return results
 
 
