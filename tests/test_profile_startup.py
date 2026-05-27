@@ -32,3 +32,18 @@ def test_format_row_with_note():
     row = format_row("vpplib", -1, "[not installed]", max_ms=5000)
     assert "[not installed]" in row
     assert "vpplib" in row
+
+
+from scripts.profile_startup import time_subprocess_import
+
+
+def test_time_subprocess_import_known_library():
+    ms, note = time_subprocess_import("sys")
+    assert ms > 0
+    assert note == ""
+
+
+def test_time_subprocess_import_missing_library():
+    ms, note = time_subprocess_import("_nonexistent_library_xyz")
+    assert ms < 0
+    assert "[not installed]" in note
