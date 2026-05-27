@@ -62,3 +62,16 @@ def test_time_page_import_missing_module():
     ms, note = time_page_import("_nonexistent_module_xyz")
     assert ms < 0
     assert "[error:" in note
+
+
+from scripts.profile_startup import run_section3
+
+
+def test_run_section3_missing_db(tmp_path):
+    """run_section3 must return a result list even when the DB is absent."""
+    results = run_section3(db_path=tmp_path / "nonexistent.db")
+    # Should return one entry with a [DB not found] note
+    assert len(results) == 1
+    label, ms, note = results[0]
+    assert "[DB not found" in note
+    assert ms < 0

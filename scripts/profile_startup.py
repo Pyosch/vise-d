@@ -158,3 +158,47 @@ def run_section2() -> list[tuple[str, float, str]]:
     print(" " * 60, end="\r")
     results.sort(key=lambda x: x[1], reverse=True)
     return results
+
+
+def run_section3(db_path=None) -> list[tuple[str, float, str]]:
+    """Time the three MaStR location-cache loading calls.
+
+    Returns list of (label, ms, note).
+    Note indicates "CSV cache hit" or "DB query cold".
+
+    Accepts an optional db_path for testing with a non-default path.
+    """
+    try:
+        from src.config.paths import MASTR_DB_PATH
+        from src.mastr.preprocessing import (
+            get_unique_solar_locations,
+            get_unique_wind_locations,
+            get_unique_storage_locations,
+            _LOCATION_CACHE_DIR,
+        )
+    except Exception as e:
+        return [("MaStR import", -1, f"[import error: {e}]")]
+
+    resolved_db = Path(db_path) if db_path is not None else Path(MASTR_DB_PATH)
+
+    if not resolved_db.exists():
+        return [("MaStR DB", -1, f"[DB not found — skipping: {resolved_db}]")]
+
+    entries = [
+        ("solar locations",   _LOCATION_CACHE_DIR / "solar_locations.csv",   get_unique_solar_locations),
+        ("wind locations",    _LOCATION_CACHE_DIR / "wind_locations.csv",     get_unique_wind_locations),
+        ("storage locations", _LOCATION_CACHE_DIR / "storage_locations.csv",  get_unique_storage_locations),
+    ]
+
+    results = []
+    for label, csv_path, fn in entries:
+        cache_status = "CSV cache hit" if Path(csv_path).exists() else "DB query cold"
+        t0 = time.perf_counter()
+        try:
+            fn(str(resolved_db))
+            ms = (time.perf_counter() - t0) * 1000
+            results.append((label, ms, cache_status))
+        except Exception as e:
+            results.append((label, -1, f"[error: {e}]"))
+
+    return results
