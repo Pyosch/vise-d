@@ -251,44 +251,26 @@ def pv_configuration() -> None:
     if st.button("Profil generieren", type="primary", key="pv_cfg_run"):
         profiles: dict[str, pd.Series] = {}
 
-        if mode == "Standortbasierte Simulation":
-            daily: list[pd.Series] = []
-            status_txt = st.empty()
-            for i in range(n_days):
-                current = pd.Timestamp(date_start) + pd.Timedelta(days=i)
-                status_txt.caption(f"DWD-Daten abrufen: Tag {i + 1}/{n_days} ({current.date()})…")
-                day_ts = get_normalized_pv_output(lat, lon, current, current + pd.Timedelta(days=1))
-                daily.append(
-                    pd.to_numeric(day_ts, errors="coerce").fillna(0.0).reset_index(drop=True)
-                )
-            status_txt.empty()
-            normalized = pd.concat(daily, ignore_index=True)
-            dt_index = pd.date_range(
-                start=pd.Timestamp(date_start), periods=len(normalized), freq="15min"
+        with st.spinner("DWD-Daten abrufen…"):
+            raw = get_normalized_pv_output(
+                lat, lon,
+                pd.Timestamp(date_start),
+                pd.Timestamp(date_end) + pd.Timedelta(days=1),
             )
+        normalized = pd.to_numeric(raw, errors="coerce").fillna(0.0).reset_index(drop=True)
+        dt_index = pd.date_range(
+            start=pd.Timestamp(date_start), periods=len(normalized), freq="15min"
+        )
+
+        if mode == "Standortbasierte Simulation":
             profile = pd.Series(normalized.values * capacity_kwp, index=dt_index)
             profiles[f"{city_input} ({capacity_kwp:.0f} kWp)"] = profile
 
         else:  # Anlagenbasiert
-            daily_normalized: list[pd.Series] = []
-            status_txt = st.empty()
-            for i in range(n_days):
-                current = pd.Timestamp(date_start) + pd.Timedelta(days=i)
-                status_txt.caption(f"DWD-Daten abrufen: Tag {i + 1}/{n_days} ({current.date()})…")
-                day_ts = get_normalized_pv_output(lat, lon, current, current + pd.Timedelta(days=1))
-                daily_normalized.append(
-                    pd.to_numeric(day_ts, errors="coerce").fillna(0.0).reset_index(drop=True)
-                )
-            status_txt.empty()
-            normalized_full = pd.concat(daily_normalized, ignore_index=True)
-            dt_index = pd.date_range(
-                start=pd.Timestamp(date_start), periods=len(normalized_full), freq="15min"
-            )
             for inst in selected_installations:
-                profile_kw = pd.Series(
-                    normalized_full.values * inst["capacity_kwp"], index=dt_index
+                profiles[inst["label"]] = pd.Series(
+                    normalized.values * inst["capacity_kwp"], index=dt_index
                 )
-                profiles[inst["label"]] = profile_kw
 
         st.session_state["pv_cfg_profiles"] = profiles
         st.session_state["pv_cfg_capacity_kwp"] = capacity_kwp

@@ -16,11 +16,21 @@ from vpplib.environment import Environment
 
 _WIND_CURVE_PATH = Path(__file__).resolve().parent.parent.parent.parent / 'data' / 'median_windpower_curve.csv'
 
+_WIND_CURVE: pd.DataFrame | None = None
 
+
+def _get_wind_curve() -> pd.DataFrame:
+    global _WIND_CURVE
+    if _WIND_CURVE is None:
+        _WIND_CURVE = pd.read_csv(_WIND_CURVE_PATH)
+    return _WIND_CURVE
+
+
+@st.cache_data
 def get_normalized_pv_output(lat, lon, start_date, end_date):
     """
-    Create a one-day timeseries for a normalized 1kWp PV system using PVlib + DWD data.
-    Returns a pandas Series in kW at 15-minute resolution for exactly one day.
+    Timeseries for a normalized 1kWp PV system using PVlib + DWD data.
+    Returns a pandas Series in kW at 15-minute resolution for the requested date range.
     """
     tz = 'Europe/Berlin'
     day_start = pd.Timestamp(start_date)
@@ -29,7 +39,13 @@ def get_normalized_pv_output(lat, lon, start_date, end_date):
     else:
         day_start = day_start.tz_convert(tz)
     day_start = day_start.normalize()
-    day_end = day_start + pd.Timedelta(days=1)
+    day_end = pd.Timestamp(end_date)
+    if day_end.tzinfo is None:
+        day_end = day_end.tz_localize(tz)
+    else:
+        day_end = day_end.tz_convert(tz)
+    if day_end <= day_start:
+        day_end = day_start + pd.Timedelta(days=1)
 
     # --- 1. Normalized 1kWp Reference System ---
     array_kwargs = dict(
@@ -126,7 +142,7 @@ def get_normalized_wind_output(
     v_hub = wind_speed_10m * (hub_height_m / 10.0) ** hellman_exp
 
     # Apply median normalized power curve
-    curve = pd.read_csv(_WIND_CURVE_PATH)
+    curve = _get_wind_curve()
     normalized_vals = np.interp(v_hub.values, curve['wind_speed'].values, curve['value'].values)
     normalized_series = pd.Series(normalized_vals, index=v_hub.index, dtype=float)
 

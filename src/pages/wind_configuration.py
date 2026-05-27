@@ -31,9 +31,7 @@ except Exception:
 
 from src.config.paths import MASTR_DB_PATH
 from src.mastr.preprocessing import get_unique_wind_locations, prepare_wind_data
-from src.ui.components.netzmittimeseries import get_normalized_wind_output
-
-_WIND_CURVE_PATH = Path(__file__).resolve().parent.parent.parent / 'data' / 'median_windpower_curve.csv'
+from src.ui.components.netzmittimeseries import get_normalized_wind_output, _get_wind_curve
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +85,7 @@ def _compute_wind_profiles_from_data(
     if hasattr(ws.index, 'tz') and ws.index.tz is not None:
         ws.index = ws.index.tz_localize(None)
 
-    curve = pd.read_csv(_WIND_CURVE_PATH)
+    curve = _get_wind_curve()
     profiles: dict[str, pd.Series] = {}
 
     for turbine in turbines:

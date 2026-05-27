@@ -23,6 +23,20 @@ import osmnx as ox
 
 from src.config import MASTR_DB_PATH
 
+_LOCATION_CACHE_DIR = Path(MASTR_DB_PATH).parent / "mastr"
+
+
+def _load_or_build_location_cache(csv_path, query, db_path) -> list[str]:
+    csv_path = Path(csv_path)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    if csv_path.exists():
+        return pd.read_csv(csv_path)['Ort'].tolist()
+    conn = sqlite3.connect(db_path)
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    df.to_csv(csv_path, index=False)
+    return sorted(df['Ort'].tolist())
+
 
 def download_mastr_data():
     """Download MaStR database using open-mastr library."""
@@ -157,15 +171,14 @@ def prepare_solar_data(location='Essen', mastr_db_path=None):
 
 
 def get_unique_solar_locations(mastr_db_path=None):
+    if mastr_db_path is None:
+        mastr_db_path = str(MASTR_DB_PATH)
     try:
-        # Connect to the database
-        conn = sqlite3.connect(mastr_db_path)
-        # Query distinct Ort values
-        query = "SELECT DISTINCT Ort FROM solar_extended WHERE Ort IS NOT NULL"
-        df = pd.read_sql_query(query, conn)
-        conn.close()
-        # Return sorted unique locations
-        return sorted(df['Ort'].tolist())
+        return _load_or_build_location_cache(
+            _LOCATION_CACHE_DIR / "solar_locations.csv",
+            "SELECT DISTINCT Ort FROM solar_extended WHERE Ort IS NOT NULL ORDER BY Ort",
+            mastr_db_path,
+        )
     except Exception as e:
         raise Exception(f"Failed to fetch unique locations: {str(e)}")
 
@@ -227,15 +240,14 @@ def prepare_wind_data(location='Essen', mastr_db_path=None):
             raise Exception(f"Error preparing data for {location}: {str(e)}")
 
 def get_unique_wind_locations(mastr_db_path=None):
+    if mastr_db_path is None:
+        mastr_db_path = str(MASTR_DB_PATH)
     try:
-        # Connect to the database
-        conn = sqlite3.connect(mastr_db_path)
-        # Query distinct Ort values
-        query = "SELECT DISTINCT Ort FROM wind_extended WHERE Ort IS NOT NULL"
-        df = pd.read_sql_query(query, conn)
-        conn.close()
-        # Return sorted unique locations
-        return sorted(df['Ort'].tolist())
+        return _load_or_build_location_cache(
+            _LOCATION_CACHE_DIR / "wind_locations.csv",
+            "SELECT DISTINCT Ort FROM wind_extended WHERE Ort IS NOT NULL ORDER BY Ort",
+            mastr_db_path,
+        )
     except Exception as e:
         raise Exception(f"Failed to fetch unique locations: {str(e)}")
 
@@ -321,15 +333,14 @@ def prepare_storage_data(location='Essen', mastr_db_path=None):
             raise Exception(f"Error preparing data for {location}: {str(e)}")
 
 def get_unique_storage_locations(mastr_db_path=None):
+    if mastr_db_path is None:
+        mastr_db_path = str(MASTR_DB_PATH)
     try:
-        # Connect to the database
-        conn = sqlite3.connect(mastr_db_path)
-        # Query distinct Ort values
-        query = "SELECT DISTINCT Ort FROM storage_extended WHERE Ort IS NOT NULL"
-        df = pd.read_sql_query(query, conn)
-        conn.close()
-        # Return sorted unique locations
-        return sorted(df['Ort'].tolist())
+        return _load_or_build_location_cache(
+            _LOCATION_CACHE_DIR / "storage_locations.csv",
+            "SELECT DISTINCT Ort FROM storage_extended WHERE Ort IS NOT NULL ORDER BY Ort",
+            mastr_db_path,
+        )
     except Exception as e:
         raise Exception(f"Failed to fetch unique locations: {str(e)}")
 
@@ -454,3 +465,16 @@ if __name__ == '__main__':
     # gdf_wind = add_centroids(gdf_wind)
     gdf_wind, city_district = prepare_wind_data(location=location)
     # gdf_wind.explore()
+
+
+def rebuild_location_caches(mastr_db_path=None):
+    """Delete and rebuild solar/wind/storage location CSV caches from the SQLite database."""
+    if mastr_db_path is None:
+        mastr_db_path = str(MASTR_DB_PATH)
+    for name in ("solar_locations.csv", "wind_locations.csv", "storage_locations.csv"):
+        p = _LOCATION_CACHE_DIR / name
+        if p.exists():
+            p.unlink()
+    get_unique_solar_locations(mastr_db_path)
+    get_unique_wind_locations(mastr_db_path)
+    get_unique_storage_locations(mastr_db_path)

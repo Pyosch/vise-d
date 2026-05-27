@@ -58,6 +58,15 @@ with st.sidebar:
         st.cache_resource.clear()
         st.success("✅ Cache geleert!")
         st.rerun()
+    if st.button("🔄 Stadtlisten aktualisieren", help="Stadtlisten aus MaStR-Datenbank neu laden (einmalig langsam)"):
+        with st.spinner("Stadtlisten werden neu aufgebaut…"):
+            try:
+                from src.mastr.preprocessing import rebuild_location_caches
+                rebuild_location_caches()
+                st.cache_data.clear()
+                st.success("✅ Stadtlisten aktualisiert!")
+            except Exception as e:
+                st.error(f"Fehler: {e}")
 
 st.write('Willkommen beim VISE-D Dashboard! Die Seite befindet sich noch in der Entwicklung.')
 
