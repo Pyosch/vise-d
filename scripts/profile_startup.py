@@ -202,3 +202,62 @@ def run_section3(db_path=None) -> list[tuple[str, float, str]]:
             results.append((label, -1, f"[error: {e}]"))
 
     return results
+
+
+def print_section(
+    title: str,
+    note: str,
+    results: list[tuple[str, float, str]],
+) -> None:
+    """Print one profiler section with a sorted bar chart."""
+    print(f"\n--- {title} ---")
+    if note:
+        print(f"Note: {note}\n")
+    valid_ms = [ms for _, ms, _ in results if ms >= 0]
+    max_ms = max(valid_ms) if valid_ms else 1
+    for label, ms, row_note in results:
+        print(format_row(label, ms, row_note, max_ms))
+
+
+def main() -> None:
+    # Ensure stdout can handle Unicode block characters on Windows
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    print("=== VISE-D Dashboard Startup Profiler ===")
+    print(f"Python {sys.version.split()[0]} | Platform: {platform.system()} {platform.release()}")
+    print(f"Virtualenv: {sys.executable}")
+
+    print("\nSection 1: timing library imports (fresh subprocess per library)…")
+    sec1 = run_section1()
+    print_section(
+        "Section 1: Library import times (net of Python startup)",
+        "each library is imported in an isolated subprocess — times are independent",
+        sec1,
+    )
+
+    print("\nSection 2: timing page imports (in-process, cumulative)…")
+    sec2 = run_section2()
+    print_section(
+        "Section 2: Page import times",
+        "first page to import a library pays full cost; later pages see cached imports",
+        sec2,
+    )
+
+    print("\nSection 3: timing MaStR data loading…")
+    sec3 = run_section3()
+    valid_sec3 = [ms for _, ms, _ in sec3 if ms >= 0]
+    max_ms_sec3 = max(valid_sec3) if valid_sec3 else 1
+    print("\n--- Section 3: MaStR data loading ---\n")
+    for label, ms, note in sec3:
+        print(format_row(label, ms, note, max_ms_sec3))
+
+    print("\n--- Tuna flamegraph ---")
+    print("For a full import-tree visualization, run:")
+    print('  pip install tuna')
+    print(f'  {sys.executable} -X importtime -c "import streamlit; from src import pages" 2>import_time.txt')
+    print('  tuna import_time.txt')
+    print()
+
+
+if __name__ == "__main__":
+    main()
