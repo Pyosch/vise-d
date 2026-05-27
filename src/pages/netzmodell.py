@@ -1364,7 +1364,7 @@ def _section_simulation(net: pp.pandapowerNet) -> None:
 # Main page function
 # ---------------------------------------------------------------------------
 
-def netzmodell_v2():
+def netzmodell():
     st.title("Netzmodell-Szenario")
     st.caption("Entwicklungsversion — WP1–WP4")
 
