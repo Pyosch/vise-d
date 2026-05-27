@@ -634,16 +634,6 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
     # PV                                                                   #
     # ------------------------------------------------------------------ #
     with tab_pv:
-        pv_obj = st.session_state.get("pv")
-        if pv_obj is not None:
-            st.success("PV-Konfiguration erkannt — Profil kann direkt importiert werden.")
-            if st.button("Profil importieren (PV-Konfiguration)", key="nsv2_pv_import"):
-                ts = _normalize_ts(pv_obj.timeseries)
-                peak = ts.max()
-                st.session_state["nsv2_profile_pv"] = ts / peak if peak > 0 else ts
-                st.success("PV-Profil importiert und auf 1 kWp normiert.")
-            st.divider()
-
         st.markdown("**Schnellkonfiguration via DWD-Wetterdaten**")
         if not _HAS_OSMNX:
             st.warning("osmnx nicht installiert — Geocoding nicht verfügbar.")

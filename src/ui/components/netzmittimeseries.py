@@ -8,10 +8,13 @@ from src.utils.simbench_profiles import Simbench_multiplier
 import numpy as np
 import plotly.graph_objects as go
 import webbrowser
+from pathlib import Path
 
 # PVlib imports for normalized 1kWp PV model
 from pvlib import pvsystem, modelchain, location
 from vpplib.environment import Environment
+
+_WIND_CURVE_PATH = Path(__file__).resolve().parent.parent.parent.parent / 'data' / 'median_windpower_curve.csv'
 
 
 def get_normalized_pv_output(lat, lon, start_date, end_date):
@@ -89,6 +92,69 @@ def get_normalized_pv_output(lat, lon, start_date, end_date):
     pv_1kw_timeseries = pv_1kw_timeseries.reindex(target_index, fill_value=0.0)
 
     return pv_1kw_timeseries
+
+
+def get_normalized_wind_output(
+    lat: float,
+    lon: float,
+    start_date,
+    end_date,
+    hub_height_m: float = 100.0,
+    hellman_exp: float = 0.2,
+) -> pd.Series:
+    """
+    Normalized wind power output (fraction 0-1 of rated capacity) at 15-min resolution.
+    Fetches DWD wind speed at 10 m, applies Hellman correction to hub_height_m, and
+    interpolates against the median normalized power curve.
+    Multiply the result by rated_capacity_kw to get an absolute kW profile.
+    """
+    start_str = pd.Timestamp(start_date).strftime("%Y-%m-%d %H:%M:%S")
+    end_str   = pd.Timestamp(end_date).strftime("%Y-%m-%d %H:%M:%S")
+
+    env = Environment(start=start_str, end=end_str)
+    env.get_dwd_wind_data(lat=float(lat), lon=float(lon))
+
+    if env.wind_data is None or (hasattr(env.wind_data, 'empty') and env.wind_data.empty):
+        raise ValueError("Keine Winddaten für den gewählten Standort/Zeitraum gefunden.")
+
+    # wind_data MultiIndex columns: ('wind_speed', 10), ('pressure', 0), ('temperature', 2)
+    wind_speed_10m = pd.to_numeric(
+        env.wind_data[('wind_speed', 10)], errors='coerce'
+    ).fillna(0.0)
+
+    # Hellman wind profile correction to hub height
+    v_hub = wind_speed_10m * (hub_height_m / 10.0) ** hellman_exp
+
+    # Apply median normalized power curve
+    curve = pd.read_csv(_WIND_CURVE_PATH)
+    normalized_vals = np.interp(v_hub.values, curve['wind_speed'].values, curve['value'].values)
+    normalized_series = pd.Series(normalized_vals, index=v_hub.index, dtype=float)
+
+    # Build 15-min target index (timezone-naive)
+    start_ts = pd.Timestamp(start_date)
+    end_ts   = pd.Timestamp(end_date)
+    if getattr(start_ts, 'tzinfo', None) is not None:
+        start_ts = start_ts.tz_localize(None)
+    if getattr(end_ts, 'tzinfo', None) is not None:
+        end_ts = end_ts.tz_localize(None)
+
+    target_index = pd.date_range(start=start_ts, end=end_ts, freq='15min', inclusive='left')
+
+    # Strip tz from wind_data index if present so union/reindex works
+    if hasattr(normalized_series.index, 'tz') and normalized_series.index.tz is not None:
+        normalized_series.index = normalized_series.index.tz_localize(None)
+
+    normalized_15min = (
+        normalized_series
+        .reindex(normalized_series.index.union(target_index))
+        .interpolate(method='time')
+        .reindex(target_index)
+        .ffill()
+        .fillna(0.0)
+        .clip(0.0, 1.0)
+    )
+
+    return normalized_15min
 
 
 def _get_pv_config_location_data():
