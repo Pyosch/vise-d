@@ -61,4 +61,4 @@ def test_time_page_import_known_module():
 def test_time_page_import_missing_module():
     ms, note = time_page_import("_nonexistent_module_xyz")
     assert ms < 0
-    assert "[error]" in note
+    assert "[error:" in note

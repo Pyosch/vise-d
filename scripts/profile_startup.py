@@ -137,7 +137,7 @@ def time_page_import(module_name: str) -> tuple[float, str]:
     try:
         importlib.import_module(module_name)
     except Exception as e:
-        return -1, f"[error] {type(e).__name__}"
+        return -1, f"[error: {type(e).__name__}]"
     return (time.perf_counter() - t0) * 1000, ""
 
 
