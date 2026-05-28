@@ -1,7 +1,5 @@
 """Tests that src.pages does not eagerly load page modules."""
 
-import pytest
-
 
 _PAGE_FUNCTION_NAMES = [
     'research_results',
