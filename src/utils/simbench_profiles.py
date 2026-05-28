@@ -278,3 +278,29 @@ def run_simbench_load_timeseries(net, multiplier_table, base_p_mw=None):
     loading_df.index.name = "timestep"
     net.load["p_mw"] = base_p_mw
     return loading_df, base_p_mw
+
+
+# ── SimBench dtype fixer ───────────────────────────────────────────────────────
+def fix_simbench_dtypes(net):
+    """Fix all dtype issues that SimBench introduces (object/float columns that should be bool/numeric).
+
+    SimBench loads some boolean columns (e.g. 'controllable', 'in_service') as object dtype
+    and some min/max constraint columns as object instead of float.  This causes pandapower's
+    runpp / runopp to raise TypeErrors.  Call this immediately after sb.get_simbench_net().
+    """
+    for element in ['bus', 'line', 'trafo', 'trafo3w', 'load', 'sgen', 'gen',
+                    'ext_grid', 'shunt', 'ward', 'xward', 'storage', 'switch']:
+        if element not in net or net[element] is None or len(net[element]) == 0:
+            continue
+        df = net[element]
+
+        # Fix 'controllable' and 'in_service' to bool
+        for col in ['controllable', 'in_service']:
+            if col in df.columns and df[col].dtype != bool:
+                net[element][col] = df[col].fillna(False).astype(bool)
+
+        # Fix min/max constraint columns that are object type with NaN to float
+        for col in df.columns:
+            if any(col.startswith(p) for p in ['min_p', 'max_p', 'min_q', 'max_q']):
+                if df[col].dtype == 'object':
+                    net[element][col] = pd.to_numeric(df[col], errors='coerce')
