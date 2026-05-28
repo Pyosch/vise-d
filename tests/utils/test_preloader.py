@@ -2,11 +2,16 @@
 
 import sys
 import threading
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 def test_preloader_starts_one_daemon_thread():
-    """Importing src.utils.preloader must start exactly one daemon thread."""
+    """Importing src.utils.preloader must start exactly one daemon thread.
+
+    Note: sys.modules.pop causes a real background thread to start on each run.
+    The thread is a daemon and exits harmlessly with the process; it does not
+    block test completion.
+    """
     captured = []
     original_thread = threading.Thread
 
@@ -22,6 +27,7 @@ def test_preloader_starts_one_daemon_thread():
 
     assert len(captured) == 1, f"Expected 1 thread, got {len(captured)}"
     assert captured[0].daemon is True, "Preloader thread must be a daemon"
+    assert captured[0]._started.is_set(), "Thread .start() must have been called"
 
 
 def test_preloader_priority_modules_includes_heavy_libraries():
