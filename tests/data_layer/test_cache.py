@@ -278,5 +278,24 @@ class TestUpdateViolinPlot:
         )
 
 
+class TestCacheConfigLocation:
+    """CACHE_CONFIG must be importable from src.config.constants."""
+
+    def test_cache_config_importable_from_constants(self):
+        from src.config.constants import CACHE_CONFIG
+        assert isinstance(CACHE_CONFIG, dict)
+
+    def test_cache_config_constants_has_required_keys(self):
+        from src.config.constants import CACHE_CONFIG
+        for key in ('DATA_LOAD_TTL', 'DATABASE_TTL', 'VISUALIZATION_TTL', 'ENVIRONMENT_TTL'):
+            assert key in CACHE_CONFIG, f"Missing key: {key}"
+
+    def test_cache_config_constants_values_are_positive_ints(self):
+        from src.config.constants import CACHE_CONFIG
+        for key, value in CACHE_CONFIG.items():
+            assert isinstance(value, int), f"{key} must be int"
+            assert value > 0, f"{key} must be > 0"
+
+
 # Integration test markers for future use
 pytestmark = pytest.mark.unit

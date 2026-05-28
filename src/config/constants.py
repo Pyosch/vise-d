@@ -29,6 +29,15 @@ class CacheConfig:
 # Default cache configuration instance
 CACHE: Final[CacheConfig] = CacheConfig()
 
+# Legacy dict used by data_layer modules — keys must match the strings used in
+# cache.py, displays.py, and environment.py.
+CACHE_CONFIG: Final[dict] = {
+    'DATA_LOAD_TTL': 3600,
+    'DATABASE_TTL': 1800,
+    'VISUALIZATION_TTL': 600,
+    'ENVIRONMENT_TTL': 3600,
+}
+
 
 # DWD (Deutscher Wetterdienst) weather service settings
 @dataclass(frozen=True)
