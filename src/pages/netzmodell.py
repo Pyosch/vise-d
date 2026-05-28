@@ -43,6 +43,12 @@ try:
 except Exception:
     _HAS_VPPLIB = False
 
+try:
+    import simbench as sb
+    _HAS_SIMBENCH = True
+except Exception:
+    _HAS_SIMBENCH = False
+
 import plotly.express as px
 import plotly.graph_objects as go
 from pandapower.control import ConstControl
@@ -68,7 +74,7 @@ from src.mastr.simulation import (
     wind_turbine_matching,
 )
 from src.utils.vpplib_interface import assign_assets_to_buses
-from src.utils.simbench_profiles import Simbench_multiplier, Simbench_multiplier_range
+from src.utils.simbench_profiles import Simbench_multiplier, Simbench_multiplier_range, fix_simbench_dtypes
 from src.ui.components.netzmittimeseries import get_normalized_pv_output
 
 
@@ -86,6 +92,23 @@ _NETWORKS: dict[str, callable] = {
     "IEEE European LV (3-Phase)": pn.ieee_european_lv_asymmetric,
     "MV-Oberrhein": pn.mv_oberrhein,
 }
+
+if _HAS_SIMBENCH:
+    def _sb(code: str):
+        def _load():
+            net = sb.get_simbench_net(code)
+            fix_simbench_dtypes(net)
+            return net
+        return _load
+
+    _NETWORKS.update({
+        "SimBench LV Ländlich (15 Knoten)":        _sb("1-LV-rural1--0-sw"),
+        "SimBench LV Halbstädtisch (44 Knoten)":   _sb("1-LV-semiurb4--0-sw"),
+        "SimBench LV Städtisch (59 Knoten)":        _sb("1-LV-urban6--0-sw"),
+        "SimBench MV Ländlich (97 Knoten)":         _sb("1-MV-rural--0-sw"),
+        "SimBench MV Halbstädtisch (117 Knoten)":   _sb("1-MV-semiurb--0-sw"),
+        "SimBench MV Städtisch (144 Knoten)":       _sb("1-MV-urban--0-sw"),
+    })
 
 _DER_DEFAULTS = {
     "PV":       {"kw": 10.0,  "label": "PV-Anlagen",          "pen": 30},
