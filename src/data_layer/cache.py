@@ -16,22 +16,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from src.mastr.preprocessing import (
-    get_unique_solar_locations,
-    get_unique_wind_locations,
-    get_unique_storage_locations,
-    prepare_solar_data,
-    prepare_wind_data,
-    prepare_storage_data,
-)
-
-# Cache configuration with different TTL for different operation types
-CACHE_CONFIG = {
-    'DATA_LOAD_TTL': 3600,      # 1 hour for static data files
-    'DATABASE_TTL': 1800,       # 30 minutes for database queries
-    'VISUALIZATION_TTL': 600,   # 10 minutes for plots and maps
-    'ENVIRONMENT_TTL': 3600,    # 1 hour for vpplib Environment objects
-}
+from src.config.constants import CACHE_CONFIG
 
 
 @st.cache_data(ttl=CACHE_CONFIG['DATA_LOAD_TTL'])
@@ -67,6 +52,11 @@ def get_cached_unique_locations(location_type: str, mastr_db_path: str) -> List[
     Note:
         Cached for 30 minutes as MaStR data updates infrequently.
     """
+    from src.mastr.preprocessing import (
+        get_unique_solar_locations,
+        get_unique_wind_locations,
+        get_unique_storage_locations,
+    )
     try:
         if location_type == "solar":
             return get_unique_solar_locations(mastr_db_path=mastr_db_path)
@@ -100,6 +90,11 @@ def get_cached_mastr_data(
     Note:
         Cached for 30 minutes as geodataframe creation is expensive.
     """
+    from src.mastr.preprocessing import (
+        prepare_solar_data,
+        prepare_wind_data,
+        prepare_storage_data,
+    )
     try:
         if data_type == "solar":
             return prepare_solar_data(location=location, mastr_db_path=mastr_db_path)

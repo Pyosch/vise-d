@@ -11,7 +11,7 @@ __author__ = "Pyosch"
 __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 
 import streamlit as st
-from src.data_layer.cache import CACHE_CONFIG
+from src.config.constants import CACHE_CONFIG
 
 
 @st.cache_data(ttl=CACHE_CONFIG['VISUALIZATION_TTL'])

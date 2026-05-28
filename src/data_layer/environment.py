@@ -13,46 +13,37 @@ __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 
 from typing import Optional
 import streamlit as st
-from vpplib.environment import Environment
 
-from src.data_layer.cache import CACHE_CONFIG
+from src.config.constants import CACHE_CONFIG
 
 
 @st.cache_resource(ttl=CACHE_CONFIG['ENVIRONMENT_TTL'])
 def get_cached_environment(
-    start: str, 
-    end: str, 
-    lat: Optional[float] = None, 
-    lon: Optional[float] = None
-) -> Optional[Environment]:
+    start: str,
+    end: str,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+):
     """Cache expensive Environment operations.
-    
+
     Creates and caches vpplib Environment objects which contain weather data
     and are used across multiple technology simulations.
-    
+
     Args:
         start: Start date string (format: 'YYYY-MM-DD HH:MM:SS').
         end: End date string (format: 'YYYY-MM-DD HH:MM:SS').
         lat: Optional latitude for PV data fetching.
         lon: Optional longitude for PV data fetching.
-    
+
     Returns:
         Environment object with weather data. Returns None on error.
-    
+
     Note:
         Cached for 1 hour as Environment objects are large and expensive to create.
         Uses @st.cache_resource instead of @st.cache_data because Environment
         objects may not be pickleable.
-    
-    Example:
-        >>> env = get_cached_environment(
-        ...     start='2024-01-01 00:00:00',
-        ...     end='2024-12-31 23:00:00',
-        ...     lat=50.776351,
-        ...     lon=6.083862
-        ... )
-        >>> # Use env for PV, Wind, BEV simulations
     """
+    from vpplib.environment import Environment
     try:
         env = Environment(start=start, end=end)
         if lat is not None and lon is not None:

@@ -87,7 +87,7 @@ class TestLoadExampleData:
 class TestGetCachedUniqueLocations:
     """Test location caching with database mocking."""
 
-    @patch('src.data_layer.cache.get_unique_solar_locations')
+    @patch('src.mastr.preprocessing.get_unique_solar_locations')
     def test_get_cached_unique_locations_solar(self, mock_get_solar):
         """Test fetching unique solar locations."""
         # Arrange
@@ -102,7 +102,7 @@ class TestGetCachedUniqueLocations:
         assert result == expected_locations
         mock_get_solar.assert_called_once_with(mastr_db_path='/fake/path.db')
 
-    @patch('src.data_layer.cache.get_unique_wind_locations')
+    @patch('src.mastr.preprocessing.get_unique_wind_locations')
     def test_get_cached_unique_locations_wind(self, mock_get_wind):
         """Test fetching unique wind locations."""
         # Arrange
@@ -127,7 +127,7 @@ class TestGetCachedUniqueLocations:
         assert result == []
 
     @patch('src.data_layer.cache.st.error')
-    @patch('src.data_layer.cache.get_unique_solar_locations')
+    @patch('src.mastr.preprocessing.get_unique_solar_locations')
     def test_get_cached_unique_locations_exception(self, mock_get_solar, mock_st_error):
         """Test exception handling returns empty list and shows error."""
         # Arrange
@@ -146,7 +146,7 @@ class TestGetCachedUniqueLocations:
 class TestGetCachedMastrData:
     """Test MaStR data caching with mocking."""
 
-    @patch('src.data_layer.cache.prepare_solar_data')
+    @patch('src.mastr.preprocessing.prepare_solar_data')
     def test_get_cached_mastr_data_solar(self, mock_prepare_solar):
         """Test fetching solar data."""
         # Arrange

@@ -16,7 +16,7 @@ from src.data_layer.environment import get_cached_environment
 class TestGetCachedEnvironment:
     """Test Environment object caching."""
 
-    @patch('src.data_layer.environment.Environment')
+    @patch('vpplib.environment.Environment')
     def test_get_cached_environment_without_coordinates(self, mock_env_class):
         """Test Environment creation without PV data."""
         # Arrange
@@ -35,7 +35,7 @@ class TestGetCachedEnvironment:
         )
         mock_env.get_dwd_pv_data.assert_not_called()
 
-    @patch('src.data_layer.environment.Environment')
+    @patch('vpplib.environment.Environment')
     def test_get_cached_environment_with_coordinates(self, mock_env_class):
         """Test Environment creation with PV data fetching."""
         # Arrange
@@ -60,7 +60,7 @@ class TestGetCachedEnvironment:
         )
 
     @patch('src.data_layer.environment.st.error')
-    @patch('src.data_layer.environment.Environment')
+    @patch('vpplib.environment.Environment')
     def test_get_cached_environment_exception(self, mock_env_class, mock_st_error):
         """Test Environment creation exception handling."""
         # Arrange
@@ -75,7 +75,7 @@ class TestGetCachedEnvironment:
         mock_st_error.assert_called_once()
 
     @patch('src.data_layer.environment.st.error')
-    @patch('src.data_layer.environment.Environment')
+    @patch('vpplib.environment.Environment')
     def test_get_cached_environment_pv_data_fetch_error(self, mock_env_class, mock_st_error):
         """Test handling of PV data fetch errors."""
         # Arrange
