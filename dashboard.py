@@ -1,4 +1,4 @@
-"""VISE-D Dashboard - Main Application Entry Point.
+﻿"""VISE-D Dashboard - Main Application Entry Point.
 
 Virtuelles Institut Smart Energy - Smart Data
 Interactive energy system analysis dashboard for German distribution grids.
@@ -75,13 +75,6 @@ def _storage_installation_mastr():
     from src.pages.storage_installation_mastr import storage_installation_mastr
     storage_installation_mastr()
 
-def _energy_generation_solar():
-    from src.pages.energy_generation_solar import energy_generation_solar
-    energy_generation_solar()
-
-def _wind_energy_generation():
-    from src.pages.wind_energy_generation import wind_energy_generation
-    wind_energy_generation()
 
 
 # =============================================================================
@@ -116,7 +109,7 @@ with st.sidebar:
             except Exception as e:
                 st.error(f"Fehler: {e}")
 
-st.write('Willkommen beim VISE-D Dashboard! Die Seite befindet sich noch in der Entwicklung.')
+st.write('Willkommen beim VISE-D Dashboard!')
 
 # =============================================================================
 # Page Navigation
@@ -146,11 +139,11 @@ pg = st.navigation({
     "Energiesystemanalysen": [
         _page_network_scenario,
         _page_flex_configurator,
+    ],
+    "Marktstammdatenregister": [
         st.Page(_solar_installation_mastr, title="Solaranlagen"),
         st.Page(_wind_installation_mastr, title="Windanlagen"),
         st.Page(_storage_installation_mastr, title="Speicheranlagen"),
-        st.Page(_energy_generation_solar, title="Solare Energieerzeugung"),
-        st.Page(_wind_energy_generation, title="Windenergieerzeugung"),
     ],
 })
 
