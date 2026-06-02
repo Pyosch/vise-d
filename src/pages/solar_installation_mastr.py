@@ -96,6 +96,8 @@ def solar_installation_mastr() -> None:
                         opacity=0.3,
                     )
                     fig.add_trace(choropleth.data[0])
+                    # Move choropleth to index 0 so scatter dots render on top
+                    fig.data = (fig.data[-1],) + fig.data[:-1]
                 except Exception:
                     pass
 
