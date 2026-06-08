@@ -146,7 +146,7 @@ def wind_installation_mastr() -> None:
         st.error("Enddatum muss nach dem Startdatum liegen.")
         return
 
-    st.caption(f"{n_days} Tag(e) × 96 Schritte = {n_days * 96} Zeitschritte (15-min-Raster)")
+    st.caption(f"{n_days} Tag(e) x 96 Schritte = {n_days * 96} Zeitschritte (15-min-Raster)")
 
     sim_key = f"wind_sim_{location}_{date_start}_{date_end}"
     sim_result = st.session_state.get(sim_key)
@@ -227,33 +227,32 @@ def wind_installation_mastr() -> None:
             x=total_kw.index,
             y=total_kw.values,
             labels={"x": "Zeit", "y": "Leistung (kW)"},
-            title=f"Aggregierte Windeinspeisung – {location} ({sim_result['date_start']} bis {sim_result['date_end']})",
+            title=f"Aggregierte Windeinspeisung - {location} ({sim_result['date_start']} bis {sim_result['date_end']})",
         )
         fig_ts.update_layout(xaxis_title="Zeit", yaxis_title="Leistung (kW)")
         st.plotly_chart(fig_ts, use_container_width=True)
 
-        fig_cap = px.histogram(
-            gdf_sim["Nettonennleistung"],
-            nbins=20,
-            labels={"value": "Nennleistung (kW)"},
-            title="Verteilung der Windturbinenleistungen",
+        st.subheader("Zeitreihendaten herunterladen")
+        date_label = f"{sim_result['date_start']}_{sim_result['date_end']}"
+        col_dl1, col_dl2 = st.columns(2)
+        csv_agg = total_kw.rename("Leistung_kW").to_frame().to_csv().encode("utf-8")
+        col_dl1.download_button(
+            label="Aggregierte Zeitreihe (CSV)",
+            data=csv_agg,
+            file_name=f"wind_aggregiert_{location}_{date_label}.csv",
+            mime="text/csv",
         )
-        fig_cap.update_layout(yaxis_title="Anzahl Turbinen", showlegend=False)
-
-        fig_hub = px.histogram(
-            gdf_sim,
-            x="Nabenhoehe",
-            nbins=20,
-            labels={"Nabenhoehe": "Nabenhöhe (m)"},
-            title="Verteilung der Nabenhöhen",
+        df_turbines = pd.DataFrame({
+            name: wt.timeseries for name, wt in windturbines_dict.items()
+        })
+        df_turbines.insert(0, "Gesamt_kW", total_kw)
+        csv_turbines = df_turbines.to_csv().encode("utf-8")
+        col_dl2.download_button(
+            label="Alle Turbinenzeitreihen (CSV)",
+            data=csv_turbines,
+            file_name=f"wind_alle_turbinen_{location}_{date_label}.csv",
+            mime="text/csv",
         )
-        fig_hub.update_layout(yaxis_title="Anzahl Turbinen")
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.plotly_chart(fig_cap, use_container_width=True)
-        with col_b:
-            st.plotly_chart(fig_hub, use_container_width=True)
 
         if sim_result["log"]:
             with st.expander(f"⚙️ Simulationsprotokoll ({len(sim_result['log'])} Einträge)", expanded=False):

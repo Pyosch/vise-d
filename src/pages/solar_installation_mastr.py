@@ -203,6 +203,7 @@ def solar_installation_mastr() -> None:
             st.session_state[sim_key] = {
                 "total_kw": total_kw,
                 "params_df": params_df,
+                "pv_systems_agg": pv_systems_agg,
                 "start": start,
                 "end": end,
                 "log": log_handler.records.copy(),
@@ -228,34 +229,34 @@ def solar_installation_mastr() -> None:
             x=total_kw.index,
             y=total_kw.values,
             labels={"x": "Zeit", "y": "Leistung (kW)"},
-            title=f"Aggregierte Solareinspeisung – {location} ({sim_result['start'][:10]} bis {sim_result['end'][:10]})",
+            title=f"Aggregierte Solareinspeisung - {location} ({sim_result['start'][:10]} bis {sim_result['end'][:10]})",
         )
         fig_ts.update_layout(xaxis_title="Zeit", yaxis_title="Leistung (kW)")
         st.plotly_chart(fig_ts, use_container_width=True)
 
-        capacity_kw = params_df["pdc0_module_W"] / 1000
-        fig_hist = px.histogram(
-            capacity_kw,
-            nbins=30,
-            labels={"value": "Anlagenleistung (kW)"},
-            title="Verteilung der PV-Anlagenleistungen",
+        st.subheader("Zeitreihendaten herunterladen")
+        date_label = f"{sim_result['start'][:10]}_{sim_result['end'][:10]}"
+        col_dl1, col_dl2 = st.columns(2)
+        csv_agg = total_kw.rename("Leistung_kW").to_frame().to_csv().encode("utf-8")
+        col_dl1.download_button(
+            label="Aggregierte Zeitreihe (CSV)",
+            data=csv_agg,
+            file_name=f"solar_aggregiert_{location}_{date_label}.csv",
+            mime="text/csv",
         )
-        fig_hist.update_layout(yaxis_title="Anzahl Anlagen", showlegend=False)
-
-        fig_az = px.histogram(
-            params_df,
-            x="surface_azimuth",
-            nbins=36,
-            labels={"surface_azimuth": "Azimut (°)"},
-            title="Azimutverteilung der PV-Anlagen",
+        pv_agg = sim_result["pv_systems_agg"]
+        df_systems = pd.DataFrame({
+            str(k): (v.sum(axis=1) if hasattr(v, "columns") else v)
+            for k, v in pv_agg.items()
+        })
+        df_systems.insert(0, "Gesamt_kW", total_kw)
+        csv_systems = df_systems.to_csv().encode("utf-8")
+        col_dl2.download_button(
+            label="Alle Systemzeitreihen (CSV)",
+            data=csv_systems,
+            file_name=f"solar_alle_systeme_{location}_{date_label}.csv",
+            mime="text/csv",
         )
-        fig_az.update_layout(yaxis_title="Anzahl Anlagen")
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.plotly_chart(fig_hist, use_container_width=True)
-        with col_b:
-            st.plotly_chart(fig_az, use_container_width=True)
 
         if sim_result["log"]:
             with st.expander(f"⚙️ Datenkorrekturen ({len(sim_result['log'])} Einträge)", expanded=False):
