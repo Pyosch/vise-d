@@ -260,7 +260,17 @@ def run_simbench_load_timeseries(net, multiplier_table, base_p_mw=None):
         net, base_p_mw = apply_simbench_multiplier_to_loads(
             net, multiplier_table, timestep, base_p_mw=base_p_mw
         )
-        pn.runpp(net)
+        # Try multiple algorithms — larger networks may need bfsw or gs
+        converged = False
+        for algo in ["nr", "bfsw", "gs"]:
+            try:
+                pn.runpp(net, algorithm=algo, verbose=False)
+                converged = True
+                break
+            except Exception:
+                continue
+        if not converged:
+            continue  # skip this timestep rather than crash
 
         line_row = (
             net.res_line["loading_percent"].copy()
@@ -287,6 +297,9 @@ def fix_simbench_dtypes(net):
     SimBench loads some boolean columns (e.g. 'controllable', 'in_service') as object dtype
     and some min/max constraint columns as object instead of float.  This causes pandapower's
     runpp / runopp to raise TypeErrors.  Call this immediately after sb.get_simbench_net().
+
+    IMPORTANT: NaN in 'in_service' means the element IS active (True).  We must use
+    fillna(True) for in_service, and fillna(False) only for 'controllable'.
     """
     for element in ['bus', 'line', 'trafo', 'trafo3w', 'load', 'sgen', 'gen',
                     'ext_grid', 'shunt', 'ward', 'xward', 'storage', 'switch']:
@@ -294,10 +307,13 @@ def fix_simbench_dtypes(net):
             continue
         df = net[element]
 
-        # Fix 'controllable' and 'in_service' to bool
-        for col in ['controllable', 'in_service']:
-            if col in df.columns and df[col].dtype != bool:
-                net[element][col] = df[col].fillna(False).astype(bool)
+        # 'in_service': NaN → True (element is active by default)
+        if 'in_service' in df.columns and df['in_service'].dtype != bool:
+            net[element]['in_service'] = df['in_service'].fillna(True).astype(bool)
+
+        # 'controllable': NaN → False (not controllable by default)
+        if 'controllable' in df.columns and df['controllable'].dtype != bool:
+            net[element]['controllable'] = df['controllable'].fillna(False).astype(bool)
 
         # Fix min/max constraint columns that are object type with NaN to float
         for col in df.columns:

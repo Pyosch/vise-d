@@ -24,10 +24,13 @@ def fix_simbench_dtypes(net):
             continue
         df = net[element]
 
-        # Fix 'controllable' and 'in_service' to bool
-        for col in ['controllable', 'in_service']:
-            if col in df.columns and df[col].dtype != bool:
-                net[element][col] = df[col].fillna(False).astype(bool)
+        # 'in_service': NaN → True (element is active by default)
+        if 'in_service' in df.columns and df['in_service'].dtype != bool:
+            net[element]['in_service'] = df['in_service'].fillna(True).astype(bool)
+
+        # 'controllable': NaN → False (not controllable by default)
+        if 'controllable' in df.columns and df['controllable'].dtype != bool:
+            net[element]['controllable'] = df['controllable'].fillna(False).astype(bool)
 
         # Fix min/max columns that are object type with NaN to float
         for col in df.columns:

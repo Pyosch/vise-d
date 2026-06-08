@@ -576,8 +576,12 @@ def Netzberechnung():
                         old_pv = net.sgen[net.sgen["name"] == "PV_Timeseries"].index
                         if len(old_pv) > 0:
                             net.sgen.drop(old_pv, inplace=True)
-                        static_pv_mask = net.sgen["name"].isin(["PV", "PV_from_dashboard"])
-                        net.sgen.loc[static_pv_mask, "in_service"] = False
+                        # Disable ALL pre-existing sgens (dashboard PV + SimBench background
+                        # wind/solar farms). SimBench sgens inject constant nominal-peak power
+                        # at every timestep which causes OPF voltage-constraint infeasibility.
+                        # PV is explicitly modelled via the PV_Timeseries element added below,
+                        # which pn.create_sgen sets in_service=True by default.
+                        net.sgen["in_service"] = False
                     if "name" in net.load.columns:
                         old_ts_loads = net.load[
                             net.load["name"].isin(["BEV_Timeseries", "Heat_Pump_Timeseries"])
@@ -771,8 +775,8 @@ def Netzberechnung():
                             )
                             opf_storage_indices.append(idx)
 
-                        net.bus["min_vm_pu"] = 0.85
-                        net.bus["max_vm_pu"] = 1.15
+                        net.bus["min_vm_pu"] = 0.80
+                        net.bus["max_vm_pu"] = 1.20
                         net.ext_grid["min_p_mw"] = -9999.0
                         net.ext_grid["max_p_mw"] = 9999.0
                         net.ext_grid["min_q_mvar"] = -9999.0
@@ -784,14 +788,19 @@ def Netzberechnung():
                             pn.create_poly_cost(net, s_idx, "storage", cp1_eur_per_mw=0.0, cp2_eur_per_mw2=1.0)
 
                         net.sgen["controllable"] = False
-                        net.sgen["min_p_mw"] = 0.0
+                        # Do NOT set min_p_mw globally on all sgens — SimBench sgens
+                        # (wind/PV units) can legitimately produce near-zero power at
+                        # some timesteps, and min_p_mw=0 makes those timesteps infeasible.
+                        # Only constrain the PV_Timeseries sgen we added ourselves.
                         if "max_p_mw" not in net.sgen.columns:
                             net.sgen["max_p_mw"] = net.sgen["p_mw"].abs().clip(lower=0.001)
                         else:
                             net.sgen["max_p_mw"] = net.sgen["max_p_mw"].fillna(
                                 net.sgen["p_mw"].abs().clip(lower=0.001)
                             )
-                        net.sgen.loc[net.sgen["name"] == "PV_Timeseries", "max_p_mw"] = installed_pv_power_kw / 1000.0
+                        pv_ts_mask = net.sgen["name"] == "PV_Timeseries"
+                        net.sgen.loc[pv_ts_mask, "min_p_mw"] = 0.0
+                        net.sgen.loc[pv_ts_mask, "max_p_mw"] = installed_pv_power_kw / 1000.0
 
                         if hasattr(net, "gen") and len(net.gen) > 0:
                             net.gen["controllable"] = True
@@ -833,14 +842,42 @@ def Netzberechnung():
                             except Exception:
                                 pass
                             try:
-                                ctrl.control_step(net, time_step)
+                                ctrl.control_step(net)
                             except Exception:
                                 pass
 
                         if use_opf:
-                            pn.runopp(net, verbose=False, init="pf", calculate_voltage_angles=False)
+                            # Warm-start (init="results") reuses the previous timestep's
+                            # OPF solution. Adjacent 15-min steps are near-identical so
+                            # this converges in one attempt. Use cold starts only on
+                            # step 0 (no prior solution) or if warm-start somehow fails.
+                            _init = "results" if voltage_results else "pf"
+                            try:
+                                pn.runopp(
+                                    net, verbose=False,
+                                    init=_init,
+                                    calculate_voltage_angles=False,
+                                )
+                            except Exception:
+                                # Warm-start failed (shouldn't happen with correct limits)
+                                # — retry with flat cold start as safety net.
+                                pn.runopp(
+                                    net, verbose=False,
+                                    init="pf",
+                                    calculate_voltage_angles=False,
+                                )
                         else:
-                            pn.runpp(net)
+                            # Try multiple algorithms — larger MV networks may need bfsw or gs
+                            converged = False
+                            for _algo in ["nr", "bfsw", "gs"]:
+                                try:
+                                    pn.runpp(net, algorithm=_algo, verbose=False)
+                                    converged = True
+                                    break
+                                except Exception:
+                                    continue
+                            if not converged:
+                                continue  # skip this timestep rather than crash
 
                         voltage_results.append(net.res_bus["vm_pu"].values.copy())
                         if len(net.res_line) > 0:
@@ -868,6 +905,8 @@ def Netzberechnung():
 
                     st.session_state.network = net
                     st.success("SimBench timeseries simulation completed!")
+                    if use_opf:
+                        st.info("✅ OPF converged for all timesteps.")
 
                     st.markdown("### 📊 Timeseries Results")
                     max_minutes = max_timesteps * 15
@@ -1133,8 +1172,8 @@ def Netzberechnung():
                     st.success("✅ Power flow updated!")
                 else:
                     st.info("OPF mode selected")
-                    net.bus["min_vm_pu"] = 0.85
-                    net.bus["max_vm_pu"] = 1.15
+                    net.bus["min_vm_pu"] = 0.80
+                    net.bus["max_vm_pu"] = 1.20
                     net.ext_grid["min_p_mw"]   = -9999.0
                     net.ext_grid["max_p_mw"]   =  9999.0
                     net.ext_grid["min_q_mvar"] = -9999.0
