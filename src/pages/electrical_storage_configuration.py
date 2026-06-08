@@ -10,13 +10,26 @@ Created: January 2026
 __author__ = "Pyosch"
 __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 
+from datetime import date, datetime, timedelta
+
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 from vpplib import ElectricalEnergyStorage
 from vpplib.environment import Environment
 from src.ui.components import electrical_storage
-from src.ui.components.location_weather import location_weather_selector
+
+try:
+    import osmnx as ox
+    _HAS_OSMNX = True
+except Exception:
+    _HAS_OSMNX = False
+
+
+@st.cache_data
+def _geocode(city: str) -> tuple[float, float]:
+    lat, lon = ox.geocode(city)
+    return float(lat), float(lon)
 
 
 def electrical_storage_configuration():
@@ -33,20 +46,43 @@ def electrical_storage_configuration():
     from src.content.page_descriptions import render_page_description
     render_page_description("electrical_storage")
     st.markdown("Konfigurieren Sie Ihren Batteriespeicher und simulieren Sie den Betrieb mit PV-Erzeugung.")
-    
-    # Location and weather station selection
-    location_data = location_weather_selector(
-        form_key_suffix="storage_config",
-        parameters=['solar', 'temperature', 'wind', 'pressure'],
-        show_date_range=True,
-        default_lat=51.2,
-        default_lon=6.43
-    )
-    
-    if not location_data:
-        st.warning("⚠️ Bitte wählen Sie einen Standort und Zeitraum aus.")
+
+    # ── Standort ──────────────────────────────────────────────────────────────
+    st.subheader("Standort")
+    if not _HAS_OSMNX:
+        st.error("osmnx ist nicht installiert — Geocoding nicht verfügbar.")
         return
-    
+
+    city_input = st.text_input("Ort (Stadtname)", value="Köln", key="storage_cfg_city")
+    lat: float | None = None
+    lon: float | None = None
+    if city_input:
+        try:
+            lat, lon = _geocode(city_input)
+            st.caption(f"Koordinaten: {lat:.4f}°N, {lon:.4f}°E")
+        except Exception as e:
+            st.error(f"Geocoding fehlgeschlagen: {e}")
+            return
+    if lat is None or lon is None:
+        return
+
+    # ── Zeitraum ──────────────────────────────────────────────────────────────
+    st.subheader("Zeitraum")
+    default_end = date.today() - timedelta(days=1)
+    default_start = default_end - timedelta(days=6)
+    col_s, col_e = st.columns(2)
+    date_start = col_s.date_input("Von", value=default_start, key="storage_cfg_start")
+    date_end = col_e.date_input("Bis", value=default_end, key="storage_cfg_end")
+    n_days = (pd.Timestamp(date_end) - pd.Timestamp(date_start)).days + 1
+    if n_days < 1:
+        st.error("Enddatum muss nach dem Startdatum liegen.")
+        return
+    st.caption(f"{n_days} Tag(e) × 96 Schritte = {n_days * 96} Zeitschritte (15-min-Raster)")
+
+    # Für die Simulation benötigte datetime-Werte (voller Tagesbereich)
+    start_date = datetime.combine(date_start, datetime.min.time())
+    end_date = datetime.combine(date_end, datetime.max.time())
+
     st.markdown("---")
     
     # Electrical storage settings form
@@ -72,21 +108,19 @@ def electrical_storage_configuration():
                 try:
                     env = Environment(
                         timebase=15,
-                        start=location_data['start_date'].strftime("%Y-%m-%d %H:%M:%S"),
-                        end=location_data['end_date'].strftime("%Y-%m-%d %H:%M:%S"),
+                        start=start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        end=end_date.strftime("%Y-%m-%d %H:%M:%S"),
                         surpress_output_globally=False
                     )
                     station_meta = env.get_dwd_pv_data(
-                        lat=location_data['latitude'],
-                        lon=location_data['longitude'],
+                        lat=lat,
+                        lon=lon,
                     )
 
                     st.success("✅ Wetterdaten erfolgreich abgerufen!")
                     with st.expander("ℹ️ Wetterdaten-Information"):
-                        if location_data['method'] == 'station':
-                            st.write(f"**Station:** {location_data['station_id']}")
-                        st.write(f"**Koordinaten:** {location_data['latitude']:.4f}°N, {location_data['longitude']:.4f}°E")
-                        st.write(f"**Angefragt:** {location_data['start_date'].date()} bis {location_data['end_date'].date()}")
+                        st.write(f"**Koordinaten:** {lat:.4f}°N, {lon:.4f}°E")
+                        st.write(f"**Angefragt:** {start_date.date()} bis {end_date.date()}")
                         st.write(f"**Datenpunkte:** {len(env.pv_data)}")
                         if not station_meta.empty:
                             row = station_meta.iloc[0]
@@ -106,7 +140,7 @@ def electrical_storage_configuration():
                     
                     # Configure PV system
                     PhotoV = st.session_state["pv"]
-                    name = f"bus_{location_data['latitude']:.2f}_{location_data['longitude']:.2f}"
+                    name = f"bus_{lat:.2f}_{lon:.2f}"
                     PhotoV.identifier = (name + "_pv")
                     PhotoV.environment = env
                     
@@ -128,8 +162,8 @@ def electrical_storage_configuration():
                     st.success("✅ Speichersystem erfolgreich konfiguriert!")
                     
                     # Create baseload profile
-                    start_str = location_data['start_date'].strftime("%Y-%m-%d %H:%M:%S")
-                    end_str = location_data['end_date'].strftime("%Y-%m-%d %H:%M:%S")
+                    start_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
+                    end_str = end_date.strftime("%Y-%m-%d %H:%M:%S")
                     time_index = pd.date_range(start=start_str, end=end_str, freq="15min")
                     baseload = pd.DataFrame({
                         "0": [baseload_power] * len(time_index)

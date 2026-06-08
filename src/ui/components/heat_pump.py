@@ -16,7 +16,6 @@ import plotly.express as px
 
 import time
 
-import datetime
 import streamlit as st
 from st_files_connection import FilesConnection
 import os
@@ -26,24 +25,49 @@ from src.network import pp_networks
 import matplotlib.pyplot as plt
 from vpplib.environment import Environment
 
+# Defaults entsprechen dem vpplib-Beispiel (examples/demo_heat_pump.py).
+# Ramp-/Min-Zeiten sind in Zeitschritten (1 Zeitschritt = timebase = 15 min).
+_HP_DEFAULTS = {
+    "identifier": "hp1",
+    "user_profile": "None",
+    "heat_pump_type": "Air",
+    "Heat System Temperature": 60.0,  # °C
+    "el_power": 5.0,  # kW - elektrische Leistung
+    "th_power": 8.0,  # kW - thermische Leistung
+    "yearly_thermal_energy_demand": 12500.0,  # kWh/Jahr
+    "building_type": "DE_HEF33",  # SigLinDe-Gebäudeklassifikation
+    "Ramp Up Time": 1 / 15,    # Zeitschritte
+    "Ramp Down Time": 1 / 15,  # Zeitschritte
+    "Minimum Run Time": 1.0,   # Zeitschritte
+    "Minimum Stop Time": 2.0,  # Zeitschritte
+}
+
+# Auswahloptionen für den Gebäudetyp (SigLinDe / BDEW).
+_HP_BUILDING_TYPES = ["DE_HEF33", "DE_HEF34", "DE_HMF33", "DE_HMF34", "DE_GKO34"]
+
+# Numerische Felder, die als float vorliegen müssen.
+_HP_NUMERIC_KEYS = (
+    "Heat System Temperature", "el_power", "th_power", "yearly_thermal_energy_demand",
+    "Ramp Up Time", "Ramp Down Time", "Minimum Run Time", "Minimum Stop Time",
+)
+
+
 def heatpump_settings(form_key_suffix=""):
     # Der Seitentitel wird von der aufrufenden Seite gesetzt.
-    if heatpump_settings not in st.session_state:
-        st.session_state.heatpump_settings = {
-            "identifier": "hp1",
-        #    "Environment": "None",
-            "user_profile": "None",
-            "heat_pump_type": "Air",
-            "Heat System Temperature": 55.0,  # °C - typical floor heating
-            "el_power": 8.0,  # kW - electrical power
-            "th_power": 24.0,  # kW - thermal power (COP ~3)
-            "Ramp Up Time" : datetime.time(0,30),  # 30 min
-            "Ramp Down Time": datetime.time(0,30),  # 30 min
-            "Minimum Run Time": datetime.time(1,0),  # 1 hour
-            "Minimum Stop Time": datetime.time(0,30)  # 30 min
-            
-            
-        }
+    if "heatpump_settings" not in st.session_state:
+        st.session_state.heatpump_settings = dict(_HP_DEFAULTS)
+    else:
+        # Bestehende Session reparieren: fehlende Schlüssel ergänzen und
+        # veraltete Werte (z. B. datetime.time aus älteren Versionen) auf
+        # numerische Zeitschritte zurücksetzen.
+        s = st.session_state.heatpump_settings
+        for key, default in _HP_DEFAULTS.items():
+            s.setdefault(key, default)
+        for key in _HP_NUMERIC_KEYS:
+            try:
+                s[key] = float(s[key])
+            except (TypeError, ValueError):
+                s[key] = float(_HP_DEFAULTS[key])
     # Technology parameters in main content area
     with st.container():
         # Input Section
@@ -86,9 +110,9 @@ def heatpump_settings(form_key_suffix=""):
             "Vorlauftemperatur des Heizsystems (°C)",
             min_value=-50.0,
             max_value=100.0,
-            value=0.0,
+            value=float(st.session_state.heatpump_settings["Heat System Temperature"]),
             step=0.1,
-            placeholder="z. B. 20,5"
+            placeholder="z. B. 60"
         )
 
         # Number input for Electrical Power
@@ -96,7 +120,7 @@ def heatpump_settings(form_key_suffix=""):
             "Elektrische Leistung (kW)",
             min_value=0.0,
             max_value=100.0,
-            value=0.0,
+            value=float(st.session_state.heatpump_settings["el_power"]),
             step=0.1,
             placeholder="z. B. 5"
         )
@@ -105,34 +129,65 @@ def heatpump_settings(form_key_suffix=""):
                 "Thermische Leistung (kW)",
                 min_value = 0.0,
                 max_value = 100.0,
-                value = 0.0,
+                value=float(st.session_state.heatpump_settings["th_power"]),
                 step = 0.1,
-                placeholder = "z. B. 5"
+                placeholder = "z. B. 8"
             )
 
+            yearly_thermal_energy_demand = st.number_input(
+                "Jährlicher Wärmebedarf (kWh)",
+                min_value=1000.0,
+                max_value=50000.0,
+                value=float(st.session_state.heatpump_settings["yearly_thermal_energy_demand"]),
+                step=500.0,
+            )
 
-            ramp_up_time = st.time_input(
-                "Anlaufzeit eingeben (HH:MM)",
-                    value=datetime.time(0,0)
+            _bt_default = st.session_state.heatpump_settings["building_type"]
+            building_type = st.selectbox(
+                "Gebäudetyp",
+                options=_HP_BUILDING_TYPES,
+                index=_HP_BUILDING_TYPES.index(_bt_default) if _bt_default in _HP_BUILDING_TYPES else 0,
+                help=(
+                    "SigLinDe-Gebäudeklassifikation (BDEW):\n\n"
+                    "**HEF** = Einfamilienhaus · **HMF** = Mehrfamilienhaus · **GKO** = Gewerbe/Kommunal\n\n"
+                    "**33** = Altbau (vor WSchVO 1977, schlechte Dämmung)\n\n"
+                    "**34** = Neubau/modernisiert (nach WSchVO 1984, gute Dämmung)"
+                ),
+            )
 
-                )
+            _ts_help = "In Zeitschritten (1 Zeitschritt = 15 min)."
 
-            ramp_down_time = st.time_input(
-                "Abschaltzeit eingeben (HH:MM)",
-                    value=datetime.time(0,0)
+            ramp_up_time = st.number_input(
+                "Anlaufzeit (Zeitschritte)",
+                min_value=0.0,
+                value=float(st.session_state.heatpump_settings["Ramp Up Time"]),
+                step=0.1,
+                help=_ts_help,
+            )
 
-                )
+            ramp_down_time = st.number_input(
+                "Abschaltzeit (Zeitschritte)",
+                min_value=0.0,
+                value=float(st.session_state.heatpump_settings["Ramp Down Time"]),
+                step=0.1,
+                help=_ts_help,
+            )
 
-            min_run_time = st.time_input(
-                "Mindestlaufzeit eingeben (HH:MM)",
-                    value=datetime.time(0,0)
-                )
+            min_run_time = st.number_input(
+                "Mindestlaufzeit (Zeitschritte)",
+                min_value=0.0,
+                value=float(st.session_state.heatpump_settings["Minimum Run Time"]),
+                step=1.0,
+                help=_ts_help,
+            )
 
-            min_stop_time = st.time_input(
-                "Mindeststillstandszeit eingeben (HH:MM)",
-                    value=datetime.time(0,0)
-
-                )
+            min_stop_time = st.number_input(
+                "Mindeststillstandszeit (Zeitschritte)",
+                min_value=0.0,
+                value=float(st.session_state.heatpump_settings["Minimum Stop Time"]),
+                step=1.0,
+                help=_ts_help,
+            )
             
             
         
@@ -148,11 +203,13 @@ def heatpump_settings(form_key_suffix=""):
             #        "Environment": Environment,
                     "user_profile": user_profile,
                     "th_power":th_power,
+                    "yearly_thermal_energy_demand": yearly_thermal_energy_demand,
+                    "building_type": building_type,
                     "Ramp Up Time" : ramp_up_time,
                     "Ramp Down Time":ramp_down_time,
                     "Minimum Run Time": min_run_time,
-                    "Minimum Stop Time": min_stop_time  
-                
+                    "Minimum Stop Time": min_stop_time
+
             }
 
     # Display stored settings if available
@@ -166,6 +223,8 @@ def heatpump_settings(form_key_suffix=""):
             "el_power": "Elektrische Leistung (kW)",
             "user_profile": "Nutzerprofil",
             "th_power": "Thermische Leistung (kW)",
+            "yearly_thermal_energy_demand": "Jährlicher Wärmebedarf (kWh)",
+            "building_type": "Gebäudetyp",
             "Ramp Up Time": "Anlaufzeit",
             "Ramp Down Time": "Abschaltzeit",
             "Minimum Run Time": "Mindestlaufzeit",

@@ -10,6 +10,8 @@ Created: January 2026
 __author__ = "Pyosch"
 __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 
+from datetime import date, datetime, timedelta
+
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
@@ -17,7 +19,18 @@ from vpplib.heat_pump import HeatPump
 from vpplib.user_profile import UserProfile
 from vpplib.environment import Environment
 from src.ui.components import heatpump_settings
-from src.ui.components.location_weather import location_weather_selector
+
+try:
+    import osmnx as ox
+    _HAS_OSMNX = True
+except Exception:
+    _HAS_OSMNX = False
+
+
+@st.cache_data
+def _geocode(city: str) -> tuple[float, float]:
+    lat, lon = ox.geocode(city)
+    return float(lat), float(lon)
 
 
 def heatpump_configuration():
@@ -34,47 +47,55 @@ def heatpump_configuration():
     from src.content.page_descriptions import render_page_description
     render_page_description("heatpump")
     st.markdown("Konfigurieren Sie Ihre Wärmepumpe und simulieren Sie den Betrieb.")
-    
-    # Location and weather station selection
-    location_data = location_weather_selector(
-        form_key_suffix="heatpump_config",
-        parameters=['temperature'],
-        show_date_range=True,
-        default_lat=50.94,
-        default_lon=6.96
-    )
-    
-    if not location_data:
-        st.warning("⚠️ Bitte wählen Sie einen Standort und Zeitraum aus.")
+
+    # ── Standort ──────────────────────────────────────────────────────────────
+    st.subheader("Standort")
+    if not _HAS_OSMNX:
+        st.error("osmnx ist nicht installiert — Geocoding nicht verfügbar.")
         return
-    
+
+    city_input = st.text_input("Ort (Stadtname)", value="Köln", key="hp_cfg_city")
+    lat: float | None = None
+    lon: float | None = None
+    if city_input:
+        try:
+            lat, lon = _geocode(city_input)
+            st.caption(f"Koordinaten: {lat:.4f}°N, {lon:.4f}°E")
+        except Exception as e:
+            st.error(f"Geocoding fehlgeschlagen: {e}")
+            return
+    if lat is None or lon is None:
+        return
+
+    # ── Zeitraum ──────────────────────────────────────────────────────────────
+    st.subheader("Zeitraum")
+    default_end = date.today() - timedelta(days=1)
+    default_start = default_end - timedelta(days=6)
+    col_s, col_e = st.columns(2)
+    date_start = col_s.date_input("Von", value=default_start, key="hp_cfg_start")
+    date_end = col_e.date_input("Bis", value=default_end, key="hp_cfg_end")
+    n_days = (pd.Timestamp(date_end) - pd.Timestamp(date_start)).days + 1
+    if n_days < 1:
+        st.error("Enddatum muss nach dem Startdatum liegen.")
+        return
+    st.caption(f"{n_days} Tag(e) × 96 Schritte = {n_days * 96} Zeitschritte (15-min-Raster)")
+
+    # Für die Simulation benötigte datetime-Werte (voller Tagesbereich)
+    start_date = datetime.combine(date_start, datetime.min.time())
+    end_date = datetime.combine(date_end, datetime.max.time())
+
     st.markdown("---")
     
     # Heat pump settings form
     heatpump_settings(form_key_suffix="hp1")
     
+    # Jahreswärmebedarf und Gebäudetyp werden jetzt im Wärmepumpen-Formular
+    # erfasst (heatpump_settings) und aus dem session_state gelesen.
+    yearly_thermal_energy_demand = st.session_state["heatpump_settings"]["yearly_thermal_energy_demand"]
+    building_type = st.session_state["heatpump_settings"]["building_type"]
+
     # Building and thermal demand settings
     with st.expander("🏠 Gebäude und Wärmebedarf"):
-        yearly_thermal_energy_demand = st.number_input(
-            "Jährlicher Wärmebedarf (kWh)",
-            min_value=1000.0,
-            max_value=50000.0,
-            value=12500.0,
-            step=500.0,
-            key="hp_yearly_thermal_demand"
-        )
-        building_type = st.selectbox(
-            "Gebäudetyp",
-            options=["DE_HEF33", "DE_HEF34", "DE_HMF33", "DE_HMF34", "DE_GKO34"],
-            index=0,
-            help=(
-                "SigLinDe-Gebäudeklassifikation (BDEW):\n\n"
-                "**HEF** = Einfamilienhaus · **HMF** = Mehrfamilienhaus · **GKO** = Gewerbe/Kommunal\n\n"
-                "**33** = Altbau (vor WSchVO 1977, schlechte Dämmung)\n\n"
-                "**34** = Neubau/modernisiert (nach WSchVO 1984, gute Dämmung)"
-            ),
-            key="hp_building_type"
-        )
         t_0 = st.number_input(
             "Heizgrenztemperatur (°C)",
             min_value=0.0,
@@ -84,7 +105,7 @@ def heatpump_configuration():
             help="Außentemperatur, ab der geheizt wird",
             key="hp_t_0"
         )
-    
+
     with st.form(key="heatpump_simulation_form"):
         # Heat Pump simulation button
         heatpump_simulation_button = st.form_submit_button("🚀 Wärmepumpe Simulation starten")
@@ -93,22 +114,20 @@ def heatpump_configuration():
             with st.spinner("Wetterdaten werden abgerufen..."):
                 try:
                     _env_temp = Environment(
-                        start=location_data['start_date'].strftime("%Y-%m-%d %H:%M:%S"),
-                        end=location_data['end_date'].strftime("%Y-%m-%d %H:%M:%S"),
+                        start=start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        end=end_date.strftime("%Y-%m-%d %H:%M:%S"),
                     )
                     station_meta = _env_temp.get_dwd_temp_data(
-                        lat=location_data['latitude'],
-                        lon=location_data['longitude'],
+                        lat=lat,
+                        lon=lon,
                     )
                     # temp_data has column 'temperature' in °C; rename for downstream use
                     weather_data = _env_temp.temp_data.rename(columns={'temperature': 'temp_air'})
 
                     st.success("✅ Wetterdaten erfolgreich abgerufen!")
                     with st.expander("ℹ️ Wetterdaten-Information"):
-                        if location_data['method'] == 'station':
-                            st.write(f"**Station:** {location_data['station_id']}")
-                        st.write(f"**Koordinaten:** {location_data['latitude']:.4f}°N, {location_data['longitude']:.4f}°E")
-                        st.write(f"**Angefragt:** {location_data['start_date'].date()} bis {location_data['end_date'].date()}")
+                        st.write(f"**Koordinaten:** {lat:.4f}°N, {lon:.4f}°E")
+                        st.write(f"**Angefragt:** {start_date.date()} bis {end_date.date()}")
                         st.write(f"**Datenpunkte:** {len(weather_data)}")
                         if not station_meta.empty:
                             row = station_meta.iloc[0]
@@ -154,8 +173,8 @@ def heatpump_configuration():
                     # Create user profile with thermal demand
                     user_profile = UserProfile(
                         identifier=None,
-                        latitude=location_data['latitude'],
-                        longitude=location_data['longitude'],
+                        latitude=lat,
+                        longitude=lon,
                         thermal_energy_demand_yearly=yearly_thermal_energy_demand,
                         mean_temp_days=mean_temp_days,
                         mean_temp_hours=mean_temp_hours,
