@@ -31,6 +31,8 @@ def heatpump_configuration():
         None: Updates session state and displays simulation results.
     """
     st.title("🔥 Wärmepumpe Konfiguration")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("heatpump")
     st.markdown("Konfigurieren Sie Ihre Wärmepumpe und simulieren Sie den Betrieb.")
     
     # Location and weather station selection

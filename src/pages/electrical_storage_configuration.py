@@ -30,6 +30,8 @@ def electrical_storage_configuration():
         None: Updates session state and displays simulation results.
     """
     st.title("🔋 Elektrischer Speicher Konfiguration")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("electrical_storage")
     st.markdown("Konfigurieren Sie Ihren Batteriespeicher und simulieren Sie den Betrieb mit PV-Erzeugung.")
     
     # Location and weather station selection

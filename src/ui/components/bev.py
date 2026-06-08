@@ -57,76 +57,77 @@ def _ensure_bev_settings():
 
 def battery_electric_vehicle_settings(form_key_suffix=""):
     _ensure_bev_settings()
-    st.title("Battery Electric Vehicle (BEV) Settings")
+    st.header("Einstellungen Elektrofahrzeug (BEV)")
     # Form layout
     # Technology parameters in main content area
     with st.container():
         with st.form(key=f"bev_settings_form_{form_key_suffix}"):
             # Max Battery Capacity
-            st.markdown("**Max. Battery Capacity**")
+            st.markdown("**Max. Batteriekapazität**")
             max_battery_capacity = st.number_input(
-                "Enter max battery capacity (kWh)",
+                "Maximale Batteriekapazität eingeben (kWh)",
                 min_value=0.0,
                 value=float(st.session_state["bev_settings"]["max_battery_capacity"]),
-                placeholder="e.g. 100 kWh",
+                placeholder="z. B. 100 kWh",
                 key="max_battery_capacity"
             )
 
             # Min Battery Capacity
-            st.markdown("**Min. Battery Capacity**")
+            st.markdown("**Min. Batteriekapazität**")
             min_battery_capacity = st.number_input(
-                "Enter min battery capacity (kWh)",
+                "Minimale Batteriekapazität eingeben (kWh)",
                 min_value=0.0,
                 value=float(st.session_state["bev_settings"]["min_battery_capacity"]),
-                placeholder="e.g. 15 kWh",
+                placeholder="z. B. 15 kWh",
                 key="min_battery_capacity"
             )
 
             # Battery Usage
-            st.markdown("**Battery Usage**")
+            st.markdown("**Batterienutzung**")
             battery_usage = st.number_input(
-                "Enter battery usage",
+                "Batterienutzung eingeben (kWh/Tag)",
                 min_value=0.0,
                 value=float(st.session_state["bev_settings"]["battery_usage"]),
-                placeholder="e.g. ???",
+                placeholder="z. B. 50",
                 key="battery_usage"
             )
-            st.markdown("*Note: Battery usage definition may need clarification.*")
+            st.markdown("*Hinweis: Der tägliche Energieverbrauch der Fahrt (Entladung).*")
 
             # Charging Power
-            st.markdown("**Charging Power**")
+            st.markdown("**Ladeleistung**")
             charging_power = st.number_input(
-                "Enter charging power (kW)",
+                "Ladeleistung eingeben (kW)",
                 min_value=0.0,
                 value=float(st.session_state["bev_settings"]["charging_power"]),
-                placeholder="e.g. 11 kW",
+                placeholder="z. B. 11 kW",
                 key="charging_power"
             )
 
             # Charging Efficiency
-            st.markdown("**Charging Efficiency**")
+            st.markdown("**Ladewirkungsgrad**")
             charging_efficiency = st.number_input(
-                "Enter charging efficiency (%)",
+                "Ladewirkungsgrad eingeben (%)",
                 min_value=0.0,
                 max_value=100.0,
                 value=float(st.session_state["bev_settings"]["charging_efficiency"] * 100),
-                placeholder="e.g. 90%",
+                placeholder="z. B. 90 %",
                 key="charging_efficiency"
             )
-            
-            st.markdown("**load_degradation_begin**")
+
+            st.markdown("**Beginn der Ladeleistungsreduktion**")
             load_degradation_begin = st.number_input(
-            "Enter load degradation begin",
+            "Beginn der Ladeleistungsreduktion eingeben (SoC-Anteil 0–1)",
                 min_value=0.0,
                 value=float(st.session_state["bev_settings"]["load_degradation_begin"]),
-                placeholder="e.g. ???",
+                placeholder="z. B. 0,8",
                 key="load_degradation_begin"
             )
-            
-            st.markdown("**user_profile**")
+
+            st.markdown("**Nutzerprofil**")
             user_profile = st.selectbox(
-                "Select user profile",
+                "Nutzerprofil auswählen",
                 options=["None", "Profile 1", "Profile 2"],
+                format_func=lambda x: {"None": "Kein", "Profile 1": "Profil 1", "Profile 2": "Profil 2"}.get(x, x),
                 index=0 if st.session_state["bev_settings"]["user_profile"] == "None" else 1 if st.session_state["bev_settings"]["user_profile"] == "Profile 1" else 2,
                 key="user_profile"
             )
@@ -139,36 +140,36 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
         #        key="environment"
         #    )
             
-            st.markdown("**Start Time**")
+            st.markdown("**Startzeit**")
             start_time = st.time_input(
-                "Enter Start Time HH:MM:SS",
+                "Startzeit eingeben (HH:MM:SS)",
                 value=st.session_state["bev_settings"]["start_time"],
-                help="When the vehicle is plugged in and charging can begin (e.g., arriving home)"
-                
+                help="Zeitpunkt, ab dem das Fahrzeug angeschlossen ist und geladen werden kann (z. B. Ankunft zu Hause)"
+
             )
-            
-            st.markdown("**End Time**")
+
+            st.markdown("**Endzeit**")
             end_time = st.time_input(
-                "Enter End Time HH:MM:SS",
+                "Endzeit eingeben (HH:MM:SS)",
                 value=st.session_state["bev_settings"]["end_time"],
-                help="When the vehicle must be fully charged (e.g., leaving for work)"
-                
+                help="Zeitpunkt, zu dem das Fahrzeug vollständig geladen sein muss (z. B. Abfahrt zur Arbeit)"
+
             )
-            
-            st.markdown("**Timebase**")
+
+            st.markdown("**Zeitbasis**")
             timebase = st.number_input(
-                "Enter Timebase (minutes)",
+                "Zeitbasis eingeben (Minuten)",
                 min_value=1,
                 max_value=60,
                 value=15,
                 step=1,
                 key="timebase"
             )
-            
-            
+
+
 
             # Submit button
-            submit_button = st.form_submit_button("Submit Settings")
+            submit_button = st.form_submit_button("Einstellungen speichern")
 
         # Handle form submission
         if submit_button:
@@ -208,7 +209,7 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
             #     charge_efficiency=charging_efficiency / 100
             # )
            
-            st.success("BEV settings updated successfully!")
+            st.success("BEV-Einstellungen erfolgreich aktualisiert!")
             # Display the updated settings for user confirmation
     #    st.json(st.session_state.bev_settings)
 
@@ -219,18 +220,18 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
 
  # Create DataFrame for table
     data = {
-    "Metric": ["Max Battery Capacity", "Min Battery Capacity", "Battery Usage", "Charging Power", "Charging Efficiency", "Load Degradation Begin", "User Profile","start_time","end_time","timebase"],
-    "Value": [max_battery_capacity, min_battery_capacity, battery_usage, charging_power, charging_efficiency, load_degradation_begin, user_profile,start_time,end_time,timebase],
-    "Unit": ["kWh", "kWh", "kWh", "kW", "%", "kWh", "","HH:MM:SS", "HH:MM:SS", "minutes"]
+    "Größe": ["Max. Batteriekapazität", "Min. Batteriekapazität", "Batterienutzung", "Ladeleistung", "Ladewirkungsgrad", "Beginn Ladeleistungsreduktion", "Nutzerprofil","Startzeit","Endzeit","Zeitbasis"],
+    "Wert": [max_battery_capacity, min_battery_capacity, battery_usage, charging_power, charging_efficiency, load_degradation_begin, user_profile,start_time,end_time,timebase],
+    "Einheit": ["kWh", "kWh", "kWh/Tag", "kW", "%", "", "","HH:MM:SS", "HH:MM:SS", "Minuten"]
 }
     df = pd.DataFrame(data)
 
     # Display table
-    st.subheader("Current BEV Settings")
+    st.subheader("Aktuelle BEV-Einstellungen")
     st.dataframe(
     df.style.format(
         {
-            "Value": lambda x: "{:.1f}".format(x) if isinstance(x, (int, float)) else x
+            "Wert": lambda x: "{:.1f}".format(x) if isinstance(x, (int, float)) else x
         }
     ).set_properties(**{
         'text-align': 'left',

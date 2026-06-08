@@ -1379,6 +1379,8 @@ def _section_simulation(net: pp.pandapowerNet) -> None:
 
 def netzmodell():
     st.title("Netzmodell-Szenario")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("netzmodell")
     st.caption("Entwicklungsversion — WP1–WP4")
 
     # ------------------------------------------------------------------ #

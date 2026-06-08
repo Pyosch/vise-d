@@ -51,12 +51,16 @@ def bev_settings():
     Returns:
         None: The function does not return any value. It updates the session state and displays data in the Streamlit app.
     """
+    st.title("🚗 E-Mobilität")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("bev_settings")
+
     # Display BEV configuration form
     battery_electric_vehicle_settings(form_key_suffix="bev1")
     
     with st.form(key="bev_simulation_form_1"):
         # BEV simulation button
-        bev_simulation_button = st.form_submit_button("Simulate BEV")
+        bev_simulation_button = st.form_submit_button("BEV simulieren")
         
         if bev_simulation_button:
             start = "2024-06-01 00:00:00"
@@ -78,15 +82,15 @@ def bev_settings():
             )
         
             st.session_state["bev"].prepare_time_series()
-            st.write("**Time Series Data (First 5 Rows):**")
+            st.write("**Zeitreihendaten (erste 5 Zeilen):**")
             st.dataframe(st.session_state["bev"].timeseries)  # Display the timeseries data for debugging
 
             # Create a Matplotlib figure
             fig, ax = plt.subplots(figsize=(16, 9))
             st.session_state["bev"].timeseries.plot(ax=ax)  # Plot the timeseries on the provided axes
-            ax.set_title("BEV Time Series")
-            ax.set_xlabel("Time")
-            ax.set_ylabel("Value (kW)")
+            ax.set_title("BEV-Zeitreihe")
+            ax.set_xlabel("Zeit")
+            ax.set_ylabel("Wert (kW)")
             plt.tight_layout()
 
             # Display the plot in Streamlit

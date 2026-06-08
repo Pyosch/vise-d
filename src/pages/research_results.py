@@ -27,6 +27,8 @@ def research_results():
     """
     st.write('## Integration von E-Fahrzeugen in Verteilnetze - Untersuchung der Auswirkungen \
         verschiedener DSO-Eingriffsstrategien auf optimiertes Laden')
+    from src.content.page_descriptions import render_page_description
+    render_page_description("research_results")
     st.write('### Kurzfassung')
     st.write(
         'Die Einführung von Elektrofahrzeugen (EVs) und die Einführung variabler Stromtarife erhöhen die \

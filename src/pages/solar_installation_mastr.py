@@ -41,6 +41,8 @@ class _StreamlitLogHandler(logging.Handler):
 def solar_installation_mastr() -> None:
     """Display solar installations and simulate energy generation from MaStR data."""
     st.title("☀️ Solaranlagen")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("solar_mastr")
 
     try:
         with st.spinner("Standorte werden geladen…"):

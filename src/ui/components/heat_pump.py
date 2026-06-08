@@ -27,9 +27,7 @@ import matplotlib.pyplot as plt
 from vpplib.environment import Environment
 
 def heatpump_settings(form_key_suffix=""):
-    # Set page configuration
-    # Title
-    st.title("Heat Pump Configuration")
+    # Der Seitentitel wird von der aufrufenden Seite gesetzt.
     if heatpump_settings not in st.session_state:
         st.session_state.heatpump_settings = {
             "identifier": "hp1",
@@ -49,11 +47,12 @@ def heatpump_settings(form_key_suffix=""):
     # Technology parameters in main content area
     with st.container():
         # Input Section
-            st.header("Enter Heat Pump Settings")
+            st.header("Wärmepumpen-Einstellungen")
 
             identifier = st.selectbox(
-            "Select Identifier",
+            "Bezeichner auswählen",
             options=["None", "hp1", "hp2"],
+            format_func=lambda x: "Kein" if x == "None" else x,
             index=0 if st.session_state.heatpump_settings["identifier"] == "None" else 1 if st.session_state.heatpump_settings["identifier"] == "hp1" else 2,
             key="identifier"
             )
@@ -66,11 +65,12 @@ def heatpump_settings(form_key_suffix=""):
             # )
             
             user_profile = st.selectbox(
-                "user Profile",
+                "Nutzerprofil",
                 options = ["None","Profile1","Profile2"],
+                format_func=lambda x: {"None": "Kein", "Profile1": "Profil 1", "Profile2": "Profil 2"}.get(x, x),
                 index = 0 if st.session_state.heatpump_settings["user_profile"]=="None" else 1 if st.session_state.heatpump_settings["user_profile"]=="Profile1" else 2,
                 key = "user_profile"
-            ) 
+            )
 
         # Dropdown for Heat Pump Type
             _hp_type_label = st.selectbox(
@@ -83,62 +83,62 @@ def heatpump_settings(form_key_suffix=""):
 
         # Number input for Heat System Temperature
             system_temperature = st.number_input(
-            "Heat System Temperature (°C)",
+            "Vorlauftemperatur des Heizsystems (°C)",
             min_value=-50.0,
             max_value=100.0,
             value=0.0,
             step=0.1,
-            placeholder="e.g. 20.5"
+            placeholder="z. B. 20,5"
         )
 
         # Number input for Electrical Power
             el_power = st.number_input(
-            "el_power (kW)",
+            "Elektrische Leistung (kW)",
             min_value=0.0,
             max_value=100.0,
             value=0.0,
             step=0.1,
-            placeholder="e.g. 5"
+            placeholder="z. B. 5"
         )
-            
+
             th_power = st.number_input(
-                "th_power (KW)",
+                "Thermische Leistung (kW)",
                 min_value = 0.0,
                 max_value = 100.0,
                 value = 0.0,
                 step = 0.1,
-                placeholder = "e.g. 5"
+                placeholder = "z. B. 5"
             )
-            
-            
+
+
             ramp_up_time = st.time_input(
-                "Enter ramp up time (HH:MM)",
+                "Anlaufzeit eingeben (HH:MM)",
                     value=datetime.time(0,0)
-                    
+
                 )
-                
+
             ramp_down_time = st.time_input(
-                "Enter ramp down time (HH:MM)",
+                "Abschaltzeit eingeben (HH:MM)",
                     value=datetime.time(0,0)
-                    
+
                 )
-            
+
             min_run_time = st.time_input(
-                "Enter run time (HH:MM)",
+                "Mindestlaufzeit eingeben (HH:MM)",
                     value=datetime.time(0,0)
                 )
-            
+
             min_stop_time = st.time_input(
-                "Enter stop time (HH:MM)",
+                "Mindeststillstandszeit eingeben (HH:MM)",
                     value=datetime.time(0,0)
-                    
+
                 )
             
             
         
 
     # Submit button
-            if st.button("Submit Settings",key="submit_heatpump_settings"):
+            if st.button("Einstellungen speichern",key="submit_heatpump_settings"):
             # Store settings in session state
                 st.session_state.heatpump_settings = {
                     "identifier": identifier,
@@ -157,19 +157,33 @@ def heatpump_settings(form_key_suffix=""):
 
     # Display stored settings if available
     if "heatpump_settings" in st.session_state:
-        st.header("Current Heat Pump Settings")
+        st.header("Aktuelle Wärmepumpen-Einstellungen")
+        # Anzeige-Labels für die gespeicherten Schlüssel (Schlüssel selbst bleiben unverändert).
+        _labels = {
+            "identifier": "Bezeichner",
+            "heat_pump_type": "Wärmepumpentyp",
+            "Heat System Temperature": "Vorlauftemperatur (°C)",
+            "el_power": "Elektrische Leistung (kW)",
+            "user_profile": "Nutzerprofil",
+            "th_power": "Thermische Leistung (kW)",
+            "Ramp Up Time": "Anlaufzeit",
+            "Ramp Down Time": "Abschaltzeit",
+            "Minimum Run Time": "Mindestlaufzeit",
+            "Minimum Stop Time": "Mindeststillstandszeit",
+        }
+        _values = {"Air": "Luft", "Ground": "Erde", "None": "Kein"}
         # Create a DataFrame for the table
         settings_df = pd.DataFrame([
-            {"Setting": key, "Value": value}
+            {"Einstellung": _labels.get(key, key), "Wert": _values.get(value, value)}
             for key, value in st.session_state.heatpump_settings.items()
         ])
-        
+
         # Style the DataFrame for better presentation
         st.dataframe(
             settings_df,
             use_container_width=True,
             column_config={
-                "Setting": st.column_config.TextColumn("Setting", width="medium"),
-                "Value": st.column_config.TextColumn("Value", width="large")
+                "Einstellung": st.column_config.TextColumn("Einstellung", width="medium"),
+                "Wert": st.column_config.TextColumn("Wert", width="large")
             }
         )

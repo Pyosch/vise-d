@@ -49,6 +49,8 @@ def _shiftable_kwh_per_hh(flex_df: pd.DataFrame) -> dict[str, float]:
 
 def flexibility_configurator():
     st.title("Flexibilitätskonfigurator")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("flexibility")
     st.write(
         "Konfigurieren Sie den Haushaltsmix und die Flexibilitätsquote für ein Netzgebiet."
     )

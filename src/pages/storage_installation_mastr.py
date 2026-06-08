@@ -19,19 +19,21 @@ from src.config import MASTR_DB_PATH
 
 def storage_installation_mastr() -> None:
     """Display and visualize storage installations from MaStR database."""
-    st.title("Storage Installations Dashboard")
-    
+    st.title("🔌 Speicheranlagen")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("storage_mastr")
+
     # Fetch unique locations for dropdown
     unique_locations = get_unique_storage_locations(mastr_db_path=str(MASTR_DB_PATH))
 
     # Dropdown for location selection
-    location = st.selectbox("Select city", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
+    location = st.selectbox("Stadt", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
 
     # Button to trigger visualization
-    if st.button("Visualize"):
+    if st.button("Anlagen anzeigen"):
         if location:
             # Get data from mastr_main
-            with st.spinner("Loading data..."):
+            with st.spinner("Daten werden geladen…"):
                 gdf_storage, city_district = prepare_storage_data(location=location, mastr_db_path=str(MASTR_DB_PATH))
 
             # Create scatter map
@@ -55,7 +57,7 @@ def storage_installation_mastr() -> None:
                 locations=city_district.index,
                 color=None,
                 opacity=0.3,
-                labels={location: 'City District'},
+                labels={location: 'Stadtteil'},
             )
 
             # Add choropleth trace to the figure
@@ -73,7 +75,7 @@ def storage_installation_mastr() -> None:
             st.plotly_chart(fig, use_container_width=True)
             
             # Display the filtered data as a DataFrame and Pie Chart side by side
-            st.subheader("Plotted Storage Installations")
+            st.subheader("Dargestellte Speicheranlagen")
             
             # Display DataFrame
             st.dataframe(
@@ -85,7 +87,7 @@ def storage_installation_mastr() -> None:
             pie_fig = px.pie(
                     values=tech_counts.values,
                     names=tech_counts.index,
-                    title="Distribution by Technology",
+                    title="Verteilung nach Betriebsstatus",
                     hole=0.3  # Optional: Make it a donut chart for aesthetics
                 )
             pie_fig.update_layout(
@@ -94,7 +96,7 @@ def storage_installation_mastr() -> None:
                 )
             st.plotly_chart(pie_fig, use_container_width=True)
             
-            st.subheader("Bar Graph for Storage Installations")
+            st.subheader("Balkendiagramm der Speicheranlagen")
             # Define bins and sort them
             bins = [0, 50, 200, 1000, gdf_storage['Nettonennleistung'].max()]
             bins = sorted(bins)  # Ensure increasing order for pd.cut internally
@@ -106,11 +108,11 @@ def storage_installation_mastr() -> None:
             # Plot bar chart using value counts
             capacity_fig = px.bar(
                 gdf_storage['Capacity_Range'].value_counts(),
-                labels={'index': 'Capacity Range', 'value': 'Number of Installations'},
-                title="Storage Installations by Net Capacity Range"
+                labels={'index': 'Leistungsklasse', 'value': 'Anzahl Anlagen'},
+                title="Speicheranlagen nach Nettoleistungsklasse"
             )
 
             st.plotly_chart(capacity_fig, use_container_width=True)
 
         else:
-            st.warning("Please enter a city name.")
+            st.warning("Bitte eine Stadt auswählen.")

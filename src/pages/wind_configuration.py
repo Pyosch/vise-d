@@ -168,6 +168,8 @@ def _csv_download(profiles: dict[str, pd.Series], key: str) -> None:
 
 def wind_configuration(key_suffix: str = "wind1") -> None:
     st.title("Windkraft-Konfiguration")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("wind")
 
     # ── Mode ────────────────────────────────────────────────────────────────
     mode = st.radio(

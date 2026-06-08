@@ -28,7 +28,7 @@ try:
     from utils.error_handling import handle_data_processing_errors, log_user_action
 except ImportError:
     # Fallback if utils are not available
-    st.warning("⚠️ Advanced validation features not available")
+    st.warning("⚠️ Erweiterte Validierungsfunktionen nicht verfügbar")
     
     class InputValidator:
         @staticmethod
@@ -66,89 +66,89 @@ def electrical_storage(form_key_suffix=""):
             "max_c": 1.0  # 1C - charge/discharge in 1 hour
             
         }
-    st.title("Electrical_Storage")
-    
+    # Der Seitentitel wird von der aufrufenden Seite gesetzt.
+
     # Technology parameters in main content area
     with st.container():
-        st.header("Enter Electrical Storage settings")
-        
-        st.markdown("**Charging Efficiency**")
+        st.header("Einstellungen Elektrischer Speicher")
+
+        st.markdown("**Ladewirkungsgrad**")
         charging_efficiency = st.number_input(
-                "Enter charging efficiency (%)",
+                "Ladewirkungsgrad eingeben (%)",
                 min_value=0.0,
                 max_value=100.0,
                 value=float(st.session_state.electrical_storage["Charge Efficiency"] * 100),
-                placeholder="e.g. 90%",
+                placeholder="z. B. 90 %",
                 key="charging_efficiency"
             )
-        st.markdown("**Discharging Efficiency**")
+        st.markdown("**Entladewirkungsgrad**")
         discharging_efficiency = st.number_input(
-                "Enter discharging efficiency (%)",
+                "Entladewirkungsgrad eingeben (%)",
                 min_value=0.0,
                 max_value=100.0,
                 value=float(st.session_state.electrical_storage["Discharge Efficiency"] * 100),
-                placeholder="e.g. 90%",
+                placeholder="z. B. 90 %",
                 key="discharging_efficiency"
             )
-        
-        st.markdown("**Max Power**")
+
+        st.markdown("**Max. Leistung**")
         max_power = st.number_input(
-                "Enter max power (kW)",
+                "Maximale Leistung eingeben (kW)",
                 min_value=0.0,
                 value=float(st.session_state.electrical_storage["Max Power"]),
-                placeholder="e.g. 100 kW",
+                placeholder="z. B. 100 kW",
                 key="max_power",
-                help="Maximum power rating for charging/discharging. Typical range: 1-1000 kW"
+                help="Maximale Lade-/Entladeleistung. Typischer Bereich: 1–1000 kW"
             )
-        
-        st.markdown("**Max Capacity**")
+
+        st.markdown("**Max. Kapazität**")
         max_capacity = st.number_input(
-        "Enter max capacity (kWh)",
+        "Maximale Kapazität eingeben (kWh)",
         min_value=0.0,
         value=float(st.session_state.electrical_storage["Max Capacity"]),
-        placeholder="e.g. 100 kWh",
+        placeholder="z. B. 100 kWh",
         key="max_capacity",
-        help="Maximum energy storage capacity. Typical range: 1-10000 kWh"
+        help="Maximale Speicherkapazität. Typischer Bereich: 1–10000 kWh"
         )
 
-        st.markdown("**Max Charge Rate (C-Rate)**")
+        st.markdown("**Max. Laderate (C-Rate)**")
         max_c = st.number_input(
-        "Enter max charge rate (C-rate)",
+        "Maximale Laderate eingeben (C-Rate)",
         min_value=0.0,
         max_value=5.0,
         value=float(st.session_state.electrical_storage.get("max_c", 0.5)),
-        placeholder="e.g. 0.5",
+        placeholder="z. B. 0,5",
         key="max_c",
-        help="C-rate: 1C means full charge/discharge in 1 hour. Typical range: 0.1-2.0"
+        help="C-Rate: 1C bedeutet vollständige Ladung/Entladung in 1 Stunde. Typischer Bereich: 0,1–2,0"
         )
         
         # Real-time validation
         st.markdown("---")
-        st.markdown("**📋 Input Validation**")
-        
+        st.markdown("**📋 Eingabevalidierung**")
+
         # Validate all inputs
         validation_results = []
         validation_results.extend([
-            InputValidator.validate_efficiency(charging_efficiency, "Charging Efficiency"),
-            InputValidator.validate_efficiency(discharging_efficiency, "Discharging Efficiency"),
-            InputValidator.validate_power_rating(max_power, "Max Power", max_reasonable=5000),
-            InputValidator.validate_positive_number(max_capacity, "Max Capacity", allow_zero=False),
-            InputValidator.validate_numeric_range(max_c, 0.01, 5.0, "Max Charge Rate (C-rate)")
+            InputValidator.validate_efficiency(charging_efficiency, "Ladewirkungsgrad"),
+            InputValidator.validate_efficiency(discharging_efficiency, "Entladewirkungsgrad"),
+            InputValidator.validate_power_rating(max_power, "Max. Leistung", max_reasonable=5000),
+            InputValidator.validate_positive_number(max_capacity, "Max. Kapazität", allow_zero=False),
+            InputValidator.validate_numeric_range(max_c, 0.01, 5.0, "Max. Laderate (C-Rate)")
         ])
         
         # Additional custom validations
         if max_power > 0 and max_capacity > 0:
             power_to_capacity_ratio = max_power / max_capacity
             if power_to_capacity_ratio > 2.0:
-                validation_results.append((True, f"⚠️ High power-to-capacity ratio ({power_to_capacity_ratio:.2f}). This indicates a high-power, short-duration storage system."))
+                validation_results.append((True, f"⚠️ Hohes Leistungs-Kapazitäts-Verhältnis ({power_to_capacity_ratio:.2f}). Dies deutet auf einen Hochleistungsspeicher mit kurzer Dauer hin."))
             elif power_to_capacity_ratio < 0.1:
-                validation_results.append((True, f"⚠️ Low power-to-capacity ratio ({power_to_capacity_ratio:.2f}). This indicates a low-power, long-duration storage system."))
+                validation_results.append((True, f"⚠️ Niedriges Leistungs-Kapazitäts-Verhältnis ({power_to_capacity_ratio:.2f}). Dies deutet auf einen Speicher mit geringer Leistung und langer Dauer hin."))
         
         # Display validation results
         all_inputs_valid = display_validation_results(validation_results, show_success=False)
         
         # Submit button with validation
-        if st.button("Submit Settings", key="submit_electrical_storage_settings"):
+        if st.button("Einstellungen speichern", key="submit_electrical_storage_settings"):
             if all_inputs_valid:
                 # Log user action
                 log_user_action("electrical_storage_settings_submitted", {
@@ -167,111 +167,111 @@ def electrical_storage(form_key_suffix=""):
                      "Max Capacity": max_capacity,
                      "max_c": max_c
                      }
-                st.success("✅ Electrical Storage settings updated successfully!")
-                
+                st.success("✅ Einstellungen des elektrischen Speichers erfolgreich aktualisiert!")
+
                 # Show calculated metrics
-                with st.expander("📊 **Calculated Storage Metrics**"):
-                    st.metric("Round-trip Efficiency", f"{(charging_efficiency * discharging_efficiency / 100):.1f}%")
+                with st.expander("📊 **Berechnete Speicher-Kennzahlen**"):
+                    st.metric("Gesamtwirkungsgrad (Zyklus)", f"{(charging_efficiency * discharging_efficiency / 100):.1f}%")
                     if max_capacity > 0:
-                        st.metric("Power-to-Energy Ratio", f"{max_power/max_capacity:.2f} kW/kWh")
-                        st.metric("Full Charge Time at Max Power", f"{max_capacity/max_power:.1f} hours")
-                    
+                        st.metric("Leistungs-Energie-Verhältnis", f"{max_power/max_capacity:.2f} kW/kWh")
+                        st.metric("Volle Ladezeit bei max. Leistung", f"{max_capacity/max_power:.1f} Stunden")
+
             else:
-                st.error("❌ Please correct the validation errors above before submitting.")
-        
+                st.error("❌ Bitte korrigieren Sie die oben genannten Fehler, bevor Sie speichern.")
+
         # Show input tips
-        with st.expander("💡 **Input Guidelines**"):
+        with st.expander("💡 **Eingabehinweise**"):
             st.markdown("""
-            **Charging/Discharging Efficiency**: 
-            - Lithium-ion batteries: 90-98%
-            - Lead-acid batteries: 80-90%
-            - Flow batteries: 70-85%
-            
-            **Max Power Rating**:
-            - Residential systems: 1-20 kW
-            - Commercial systems: 20-500 kW
-            - Utility-scale systems: 500+ kW
-            
-            **Max Capacity**:
-            - Residential systems: 5-100 kWh
-            - Commercial systems: 100-10,000 kWh
-            - Utility-scale systems: 10+ MWh
-            
-            **C-Rate Guidelines**:
-            - 0.1C: Slow charging (10 hours to full)
-            - 0.5C: Standard charging (2 hours to full)
-            - 1C: Fast charging (1 hour to full)
-            - 2C+: Rapid charging (< 30 minutes to full)
+            **Lade-/Entladewirkungsgrad**:
+            - Lithium-Ionen-Batterien: 90–98 %
+            - Blei-Säure-Batterien: 80–90 %
+            - Flow-Batterien: 70–85 %
+
+            **Maximale Leistung**:
+            - Wohngebäude: 1–20 kW
+            - Gewerbe: 20–500 kW
+            - Großspeicher: 500+ kW
+
+            **Maximale Kapazität**:
+            - Wohngebäude: 5–100 kWh
+            - Gewerbe: 100–10.000 kWh
+            - Großspeicher: 10+ MWh
+
+            **Hinweise zur C-Rate**:
+            - 0,1C: langsames Laden (10 Stunden bis voll)
+            - 0,5C: Standardladung (2 Stunden bis voll)
+            - 1C: schnelles Laden (1 Stunde bis voll)
+            - 2C+: Schnellladung (< 30 Minuten bis voll)
             """)
     
     # Display stored settings with improved formatting
     if "electrical_storage" in st.session_state:
         st.markdown("---")
-        st.header("📊 Current Electrical Storage Configuration")
-        
+        st.header("📊 Aktuelle Konfiguration des elektrischen Speichers")
+
         # Create enhanced display
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.metric(
-                "Charging Efficiency", 
+                "Ladewirkungsgrad",
                 f"{st.session_state.electrical_storage['Charge Efficiency']*100:.1f}%",
-                help="Energy efficiency when charging the battery"
+                help="Energetischer Wirkungsgrad beim Laden der Batterie"
             )
             st.metric(
-                "Max Power", 
+                "Max. Leistung",
                 f"{st.session_state.electrical_storage['Max Power']:.1f} kW",
-                help="Maximum power for charging/discharging"
+                help="Maximale Leistung für Laden/Entladen"
             )
             st.metric(
-                "C-Rate", 
+                "C-Rate",
                 f"{st.session_state.electrical_storage['max_c']:.2f}",
-                help="Maximum charge/discharge rate"
+                help="Maximale Lade-/Entladerate"
             )
-        
+
         with col2:
             st.metric(
-                "Discharging Efficiency", 
+                "Entladewirkungsgrad",
                 f"{st.session_state.electrical_storage['Discharge Efficiency']*100:.1f}%",
-                help="Energy efficiency when discharging the battery"
+                help="Energetischer Wirkungsgrad beim Entladen der Batterie"
             )
             st.metric(
-                "Max Capacity", 
+                "Max. Kapazität",
                 f"{st.session_state.electrical_storage['Max Capacity']:.1f} kWh",
-                help="Maximum energy storage capacity"
+                help="Maximale Speicherkapazität"
             )
-            
+
             # Calculate and display round-trip efficiency
-            round_trip_eff = (st.session_state.electrical_storage['Charge Efficiency'] * 
+            round_trip_eff = (st.session_state.electrical_storage['Charge Efficiency'] *
                              st.session_state.electrical_storage['Discharge Efficiency'] * 100)
             st.metric(
-                "Round-trip Efficiency", 
+                "Gesamtwirkungsgrad (Zyklus)",
                 f"{round_trip_eff:.1f}%",
-                help="Overall efficiency for charge-discharge cycle"
+                help="Gesamtwirkungsgrad über einen Lade-Entlade-Zyklus"
             )
 
         # Create DataFrame for table
         data = {
-            "Metric": [
-                "Charge Efficiency",
-                "Discharge Efficiency",
-                "Max Power",
-                "Max Capacity",
-                "max_c"
+            "Größe": [
+                "Ladewirkungsgrad",
+                "Entladewirkungsgrad",
+                "Max. Leistung",
+                "Max. Kapazität",
+                "Max. Laderate (C-Rate)"
             ],
-            "Value": [
+            "Wert": [
                 st.session_state.electrical_storage["Charge Efficiency"],
                 st.session_state.electrical_storage["Discharge Efficiency"],
                 st.session_state.electrical_storage["Max Power"],
                 st.session_state.electrical_storage["Max Capacity"],
                 st.session_state.electrical_storage["max_c"]
             ],
-            "Unit": [",", ",", "kW", "kWh","."]
+            "Einheit": ["", "", "kW", "kWh", ""]
         }
         df = pd.DataFrame(data)
 
         # Display table
-        st.subheader("Electrical Storage Settings Table")
+        st.subheader("Tabelle der Speichereinstellungen")
         styled_df = df.style.set_properties(**{
             'text-align': 'left',
             'font-size': '14px',

@@ -44,119 +44,121 @@ def thermal_storage_settings() -> None:
             "timebase_minutes": 15  # 15 minutes (consistent with other components)
     
         }
-    st.title("Thermal Storage Configuarations")
-    
+    st.title("🌡️ Thermischer Speicher")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("thermal_storage")
+
     with st.container():
-        st.header("Thermal Storage Settings")
-        
-        st.markdown("**Target Temperature**")
+        st.header("Einstellungen Thermischer Speicher")
+
+        st.markdown("**Zieltemperatur**")
         target_temperature = st.number_input(
-                "Enter target temperature (°C)",
+                "Zieltemperatur eingeben (°C)",
                 min_value=0.0,
                 value=float(st.session_state["thermal_storage_settings"]["target temperature"]),
-                placeholder="e.g. 20 °C",
+                placeholder="z. B. 20 °C",
                 key="target_temperature"
             )
-        
-        st.markdown("**Minimum Temperature**")
+
+        st.markdown("**Minimale Temperatur**")
         minimum_temperature = st.number_input(
-                "Enter minimum temperature (°C)",
+                "Minimale Temperatur eingeben (°C)",
                 min_value=0.0,
                 value=float(st.session_state["thermal_storage_settings"]["minimum temperature"]),
-                placeholder="e.g. 15 °C",
+                placeholder="z. B. 15 °C",
                 key="minimum_temperature"
             )
-        
-        st.markdown("**Hysteresis**")
+
+        st.markdown("**Hysterese**")
         hysteresis = st.number_input(
-                "Enter hysteresis (°C)",
+                "Hysterese eingeben (°C)",
                 min_value=0.0,
                 value=float(st.session_state["thermal_storage_settings"]["hysteresis"]),
-                placeholder="e.g. 5 °C",
+                placeholder="z. B. 5 °C",
                 key="hysteresis"
             )
-        
-        st.markdown("**Current Temperature**")
+
+        st.markdown("**Aktuelle Temperatur**")
         current_temperature = st.number_input(
-            "Enter current temperature (°C)",
+            "Aktuelle Temperatur eingeben (°C)",
             min_value=0.0,
             value = float(target_temperature - hysteresis),
-            placeholder="e.g. 20 °C",
+            placeholder="z. B. 20 °C",
             key="current_temperature"
         )
 
-        st.markdown("**Mass**")
+        st.markdown("**Masse**")
         mass = st.number_input(
-                "Enter mass (kg)",
+                "Masse eingeben (kg)",
                 min_value=0.0,
                 value=float(st.session_state["thermal_storage_settings"]["mass"]),
-                placeholder="e.g. 100 kg",
+                placeholder="z. B. 100 kg",
                 key="mass"
             )
-        
-        st.markdown("**Specific Heat Capacity**")
+
+        st.markdown("**Spezifische Wärmekapazität**")
         cp = st.number_input(
-                "Enter specific heat capacity (kJ/kg°C)",
+                "Spezifische Wärmekapazität eingeben (kJ/kg°C)",
                 min_value=0.0,
                 value=float(st.session_state["thermal_storage_settings"]["cp"]),
-                placeholder="e.g. 4.18 kJ/kg°C",
+                placeholder="z. B. 4,18 kJ/kg°C",
                 key="cp"
             )
-        st.markdown("**State of Charge**")
+        st.markdown("**Ladezustand**")
         
         # Calculate initial state of charge in joules and convert to kWh
         initial_state_of_charge = mass * cp * (current_temperature + 273.15) / 3.6e6   # J to kWh
         state_of_charge = st.number_input(
-        "Enter state of charge (kWh)",
+        "Ladezustand eingeben (kWh)",
         min_value=0.0,
         value=initial_state_of_charge,
-        placeholder="e.g. 100 kWh",
+        placeholder="z. B. 100 kWh",
         key="state_of_charge"
         )
-        st.markdown("**Thermal Energy Loss per Day**")
+        st.markdown("**Thermischer Energieverlust pro Tag**")
         thermal_energy_loss_per_day = st.number_input(
-                "Enter thermal energy loss per day (kWh)",
+                "Thermischen Energieverlust pro Tag eingeben (kWh)",
                 min_value=0.0,
                 value=float(st.session_state["thermal_storage_settings"]["thermal energy loss per day"]),
-                placeholder="e.g. 10 kWh",
+                placeholder="z. B. 10 kWh",
                 key="thermal_energy_loss_per_day"
             )
-        
-        
-        st.markdown("**Start Time**")
+
+
+        st.markdown("**Startzeit**")
         start_time = st.number_input(
-                "Enter start time (HH:MM)",
+                "Startzeit eingeben (HH:MM)",
                 value=0,
-                placeholder="e.g. 08:00",
+                placeholder="z. B. 08:00",
                 key="start_time"
             )
-        
-        st.markdown("**End Time**")
+
+        st.markdown("**Endzeit**")
         end_time = st.number_input(
-                "Enter end time (HH:MM)",
+                "Endzeit eingeben (HH:MM)",
                 value=0,
-                placeholder="e.g. 18:00",
+                placeholder="z. B. 18:00",
                 key="end_time"
             )
-        
-        st.markdown("**Frequency**")
+
+        st.markdown("**Frequenz**")
         frequency = st.number_input(
-                "Enter frequency (Hz)",
+                "Frequenz eingeben (Hz)",
                 min_value=0.0,
                 value=float(st.session_state["thermal_storage_settings"]["frequency"]),
-                placeholder="e.g. 50 Hz",
+                placeholder="z. B. 50 Hz",
                 key="frequency"
             )
-        
-        st.markdown("**Timebase Minutes**")
+
+        st.markdown("**Zeitbasis (Minuten)**")
         timebase_minutes = st.number_input(
-                "Enter timebase minutes",
+                "Zeitbasis eingeben (Minuten)",
                 min_value=0.0,
                 value=float(st.session_state["thermal_storage_settings"]["timebase_minutes"]),
-                placeholder="e.g. 15 minutes",
+                placeholder="z. B. 15 Minuten",
                 key="timebase_minutes"
             )
-        if st.button("Submit Settings", key="submit_thermal_storage_settings"):
+        if st.button("Einstellungen speichern", key="submit_thermal_storage_settings"):
             st.session_state["thermal_storage_settings"] = {
                 "target temperature": target_temperature,
                 "minimum temperature": minimum_temperature,
@@ -171,27 +173,27 @@ def thermal_storage_settings() -> None:
                 "frequency": frequency,
                 "timebase_minutes": timebase_minutes
             }
-            st.success("Thermal Storage settings updated successfully!")
+            st.success("Einstellungen des thermischen Speichers erfolgreich aktualisiert!")
     
     # Display stored settings table
     if "thermal_storage_settings" in st.session_state:
         # Create DataFrame for table
         data = {
-            "Metric": [
-                "Target Temperature",
-                "Minimum Temperature",
-                "Current Temperature",
-                "Hysteresis",
-                "Mass",
-                "Specific Heat Capacity",
-                "Thermal Energy Loss per Day",
-                "State of Charge",
-                "Start Time",
-                "End Time",
-                "Frequency",
-                "Timebase Minutes"
+            "Größe": [
+                "Zieltemperatur",
+                "Minimale Temperatur",
+                "Aktuelle Temperatur",
+                "Hysterese",
+                "Masse",
+                "Spezifische Wärmekapazität",
+                "Thermischer Energieverlust pro Tag",
+                "Ladezustand",
+                "Startzeit",
+                "Endzeit",
+                "Frequenz",
+                "Zeitbasis (Minuten)"
             ],
-            "Value": [
+            "Wert": [
                 st.session_state["thermal_storage_settings"]["target temperature"],
                 st.session_state["thermal_storage_settings"]["minimum temperature"],
                 st.session_state["thermal_storage_settings"]["Current Temperature"],
@@ -210,14 +212,14 @@ def thermal_storage_settings() -> None:
         
         df = pd.DataFrame(data)
         # Define numeric metrics for formatting
-        numeric_metrics = ["Target Temperature", "Minimum Temperature", "Current Temperature", "Hysteresis", "Mass", "Specific Heat Capacity", "Thermal Energy Loss per Day", "State of Charge"]
-        # Pre-format the 'Value' column
-        df['Value'] = df.apply(
-            lambda row: f"{float(row['Value']):.1f}" if row['Metric'] in numeric_metrics else str(row['Value']),
+        numeric_metrics = ["Zieltemperatur", "Minimale Temperatur", "Aktuelle Temperatur", "Hysterese", "Masse", "Spezifische Wärmekapazität", "Thermischer Energieverlust pro Tag", "Ladezustand"]
+        # Pre-format the 'Wert' column
+        df['Wert'] = df.apply(
+            lambda row: f"{float(row['Wert']):.1f}" if row['Größe'] in numeric_metrics else str(row['Wert']),
             axis=1
         )
         # Display table
-        st.subheader("Thermal Storage Settings Table")
+        st.subheader("Tabelle der Speichereinstellungen")
         styled_df = df.style.set_properties(**{
             'text-align': 'left',
             'font-size': '14px',
@@ -232,7 +234,7 @@ def thermal_storage_settings() -> None:
     
     # Simulation section (placed after settings table)
     with st.form(key="thermal_storage_simulation_form"):
-        thermal_simulation_button = st.form_submit_button("Simulate Thermal Storage")
+        thermal_simulation_button = st.form_submit_button("Thermischen Speicher simulieren")
         
         if thermal_simulation_button:
             start = "2024-06-01 00:00:00"
@@ -307,7 +309,7 @@ def thermal_storage_settings() -> None:
             st.session_state["thermal_storage"].prepare_time_series()
             
             # Simulate timestep-by-timestep (following vpplib example pattern)
-            st.info("⏳ Simulating thermal storage operation over 1 week...")
+            st.info("⏳ Betrieb des thermischen Speichers über 1 Woche wird simuliert…")
             progress_bar = st.progress(0)
             
             # Get time index from thermal storage (which should be a DataFrame)
@@ -326,13 +328,13 @@ def thermal_storage_settings() -> None:
                     progress_bar.progress(idx / total_steps)
             
             progress_bar.progress(1.0)
-            st.success("✅ Simulation completed!")
-            
+            st.success("✅ Simulation abgeschlossen!")
+
             # Display results
-            st.write("**Thermal Storage Temperature (First 10 timesteps):**")
+            st.write("**Temperatur des thermischen Speichers (erste 10 Zeitschritte):**")
             st.dataframe(st.session_state["thermal_storage"].timeseries.head(10))
-            
-            st.write("**Heating Rod Electrical Demand (First 10 timesteps):**")
+
+            st.write("**Elektrischer Bedarf des Heizstabs (erste 10 Zeitschritte):**")
             if hasattr(heating_rod.timeseries, 'el_demand'):
                 st.dataframe(heating_rod.timeseries[['el_demand']].head(10))
             else:
@@ -341,13 +343,13 @@ def thermal_storage_settings() -> None:
             # Plot thermal storage temperature
             fig_temp, ax_temp = plt.subplots(figsize=(16, 6))
             st.session_state["thermal_storage"].timeseries.plot(ax=ax_temp, color='red')
-            ax_temp.axhline(y=st.session_state["thermal_storage_settings"]["target temperature"], 
-                           color='green', linestyle='--', label='Target Temperature')
-            ax_temp.axhline(y=st.session_state["thermal_storage_settings"]["minimum temperature"], 
-                           color='blue', linestyle='--', label='Minimum Temperature')
-            ax_temp.set_title("Thermal Storage Temperature Over Time")
-            ax_temp.set_xlabel("Time")
-            ax_temp.set_ylabel("Temperature (°C)")
+            ax_temp.axhline(y=st.session_state["thermal_storage_settings"]["target temperature"],
+                           color='green', linestyle='--', label='Zieltemperatur')
+            ax_temp.axhline(y=st.session_state["thermal_storage_settings"]["minimum temperature"],
+                           color='blue', linestyle='--', label='Minimale Temperatur')
+            ax_temp.set_title("Temperaturverlauf des thermischen Speichers")
+            ax_temp.set_xlabel("Zeit")
+            ax_temp.set_ylabel("Temperatur (°C)")
             ax_temp.legend()
             ax_temp.grid(True, alpha=0.3)
             plt.tight_layout()
@@ -359,9 +361,9 @@ def thermal_storage_settings() -> None:
                 heating_rod.timeseries['el_demand'].plot(ax=ax_demand, color='orange')
             else:
                 heating_rod.timeseries.plot(ax=ax_demand, color='orange')
-            ax_demand.set_title("Heating Rod Electrical Demand")
-            ax_demand.set_xlabel("Time")
-            ax_demand.set_ylabel("Electrical Power (kW)")
+            ax_demand.set_title("Elektrischer Bedarf des Heizstabs")
+            ax_demand.set_xlabel("Zeit")
+            ax_demand.set_ylabel("Elektrische Leistung (kW)")
             ax_demand.grid(True, alpha=0.3)
             plt.tight_layout()
             st.pyplot(fig_demand)

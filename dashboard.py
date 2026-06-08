@@ -23,6 +23,10 @@ from src.config import MASTR_DB_PATH
 # loads at dashboard startup.
 # =============================================================================
 
+def _startseite():
+    from src.pages.startseite import startseite
+    startseite()
+
 def _research_results():
     from src.pages.research_results import research_results
     research_results()
@@ -109,41 +113,58 @@ with st.sidebar:
             except Exception as e:
                 st.error(f"Fehler: {e}")
 
-st.write('Willkommen beim VISE-D Dashboard!')
-
 # =============================================================================
 # Page Navigation
 # =============================================================================
 
-# Build page objects for pages that need cross-page navigation references.
-_page_network_scenario = st.Page(_netzmodell, title="Netzmodell-Szenario")
-_page_flex_configurator = st.Page(_flexibility_configurator, title="Flexibilitätskonfigurator")
+# Build all page objects once, keyed by the same identifiers used in
+# src/content/page_descriptions.py. The start page references these objects via
+# st.page_link, and other pages use them for st.switch_page() navigation.
+_page_startseite = st.Page(_startseite, title="Startseite", icon="🏠", default=True)
 
-# Store references so other pages can call st.switch_page() with a Page object.
-st.session_state["_page_network_scenario"] = _page_network_scenario
-st.session_state["_page_flex_configurator"] = _page_flex_configurator
+pages = {
+    "research_results": st.Page(_research_results, title="Integration von E-Fahrzeugen in Verteilnetze"),
+    "mv_fallstudie": st.Page(_mv_fallstudie, title="Fallstudie: MS-Netz Validierung"),
+    "bev_settings": st.Page(_bev_settings, title="E-Mobilität"),
+    "heatpump": st.Page(_heatpump_configuration, title="Wärmepumpe"),
+    "pv": st.Page(_pv_configuration, title="Photovoltaik"),
+    "wind": st.Page(_wind_configuration, title="Windenergie"),
+    "electrical_storage": st.Page(_electrical_storage_configuration, title="Elektrischer Speicher"),
+    "thermal_storage": st.Page(_thermal_storage_settings, title="Thermischer Speicher"),
+    "netzmodell": st.Page(_netzmodell, title="Netzmodell-Szenario"),
+    "flexibility": st.Page(_flexibility_configurator, title="Flexibilitätskonfigurator"),
+    "solar_mastr": st.Page(_solar_installation_mastr, title="Solaranlagen"),
+    "wind_mastr": st.Page(_wind_installation_mastr, title="Windanlagen"),
+    "storage_mastr": st.Page(_storage_installation_mastr, title="Speicheranlagen"),
+}
+
+# Store references so other pages can call st.switch_page() / st.page_link.
+st.session_state["_pages"] = pages
+st.session_state["_page_network_scenario"] = pages["netzmodell"]
+st.session_state["_page_flex_configurator"] = pages["flexibility"]
 
 pg = st.navigation({
+    "Übersicht": [_page_startseite],
     "Forschungsergebnisse": [
-        st.Page(_research_results, title="Integration von E-Fahrzeugen in Verteilnetze"),
-        st.Page(_mv_fallstudie, title="Fallstudie: MS-Netz Validierung"),
+        pages["research_results"],
+        pages["mv_fallstudie"],
     ],
     "Lastprofilgeneratoren": [
-        st.Page(_bev_settings, title="E-Mobilität"),
-        st.Page(_heatpump_configuration, title="Wärmepumpe"),
-        st.Page(_pv_configuration, title="Photovoltaik"),
-        st.Page(_wind_configuration, title="Windenergie"),
-        st.Page(_electrical_storage_configuration, title="Elektrischer Speicher"),
-        st.Page(_thermal_storage_settings, title="Thermischer Speicher"),
+        pages["bev_settings"],
+        pages["heatpump"],
+        pages["pv"],
+        pages["wind"],
+        pages["electrical_storage"],
+        pages["thermal_storage"],
     ],
     "Energiesystemanalysen": [
-        _page_network_scenario,
-        _page_flex_configurator,
+        pages["netzmodell"],
+        pages["flexibility"],
     ],
     "Marktstammdatenregister": [
-        st.Page(_solar_installation_mastr, title="Solaranlagen"),
-        st.Page(_wind_installation_mastr, title="Windanlagen"),
-        st.Page(_storage_installation_mastr, title="Speicheranlagen"),
+        pages["solar_mastr"],
+        pages["wind_mastr"],
+        pages["storage_mastr"],
     ],
 })
 

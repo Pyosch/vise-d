@@ -117,6 +117,8 @@ def _csv_download(profiles: dict[str, pd.Series], key: str) -> None:
 
 def pv_configuration() -> None:
     st.title("PV-Konfiguration")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("pv")
 
     # ── Mode ────────────────────────────────────────────────────────────────
     mode = st.radio(

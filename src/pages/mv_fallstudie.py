@@ -659,6 +659,8 @@ def _station_drilldown(periods: list[_PeriodData]) -> None:
 def mv_fallstudie() -> None:
     """MV grid case study: Shapefile → pandapower → Measurement Validation."""
     st.title("Fallstudie: Mittelspannungsnetz-Validierung")
+    from src.content.page_descriptions import render_page_description
+    render_page_description("mv_fallstudie")
     st.write(
         "Diese Seite demonstriert die Methodik zur Validierung eines aus GIS-Daten "
         "erzeugten Mittelspannungs-Netzmodells gegen reale Messdaten. "
