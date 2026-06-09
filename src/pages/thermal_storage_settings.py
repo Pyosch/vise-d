@@ -419,10 +419,11 @@ def thermal_storage_settings() -> None:
             )
             st.session_state["thermal_storage"] = tes
 
-            # WICHTIG: kein prepare_time_series() — sonst liefert
-            # observations_for_timestamp nur den Bedarf statt der vollen Leistung
-            # (el_power*cop), und der Speicher wird nie nachgeladen. Alle Komponenten
-            # werden auf den Bedarfs-Index ausgerichtet (vermeidet tz-/Lücken-Fehler).
+            # Über den Bedarfs-Index iterieren (nicht über generator.timeseries.index):
+            # Beim Resampling der stündlichen DWD-Temperaturen auf das Zeitschritt-
+            # Raster endet der Wärmebedarf ggf. einige Schritte vor dem env-Raster.
+            # Der Bedarfs-Index ist damit maßgeblich; beide Zeitreihen werden darauf
+            # ausgerichtet, sodass operate_storage jeden Wert findet (kein KeyError).
             sim_index = thermal_demand_series.index
             generator.timeseries = pd.DataFrame(
                 columns=["thermal_energy_output", "cop", "el_demand"], index=sim_index
