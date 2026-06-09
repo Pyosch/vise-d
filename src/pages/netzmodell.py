@@ -76,6 +76,7 @@ from src.mastr.simulation import (
 from src.utils.vpplib_interface import assign_assets_to_buses
 from src.utils.simbench_profiles import Simbench_multiplier, Simbench_multiplier_range, fix_simbench_dtypes
 from src.ui.components.netzmittimeseries import get_normalized_pv_output
+from src.utils import flex_baseload as fb
 
 
 # ---------------------------------------------------------------------------
@@ -635,6 +636,193 @@ def _normalize_ts(ts) -> pd.Series:
     return pd.to_numeric(ts, errors="coerce").fillna(0.0).iloc[:96].reset_index(drop=True)
 
 
+# Load-name pattern identifying DER (non-base) loads.
+_DER_NAME_PATTERN = "EV|HP|Wärme|Szenario|Gezielt"
+
+
+def _horizon_n_steps() -> int:
+    """Canonical simulation horizon in 15-min steps, driven by Section 2's range."""
+    ts = st.session_state.get("nsv2_time_start")
+    te = st.session_state.get("nsv2_time_end", ts)
+    if ts and te:
+        n_days = (pd.Timestamp(te) - pd.Timestamp(ts)).days + 1
+        return max(1, n_days) * 96
+    return 96
+
+
+def _base_load_ids(net: pp.pandapowerNet) -> list[int]:
+    """Load indices treated as conventional base load (not EV/HP/scenario DER)."""
+    if len(net.load) == 0:
+        return []
+    mask = ~net.load["name"].str.contains(_DER_NAME_PATTERN, na=False, case=False)
+    return net.load[mask].index.tolist()
+
+
+def _render_basislast_simbench(net, time_start, time_end, n_days) -> None:
+    """SimBench normalised load-profile multipliers (relative shapes per load)."""
+    st.markdown("**SimBench-Normlastprofile**")
+    st.caption(
+        "Automatisch aus dem SimBench-Datensatz erzeugt. "
+        "Klassifizierung nach Lastname (Haushalt, Gewerbe, Industrie, Landwirtschaft)."
+    )
+    if time_start and time_end:
+        st.caption(f"Zeitraum aus Abschnitt 2: {time_start} – {time_end} ({n_days} Tag(e))")
+
+    if st.button("Basislastprofil erzeugen", key="nsv2_bl_gen") \
+            or "nsv2_profile_base" not in st.session_state:
+        if len(net.load) == 0:
+            st.info("Keine Lastknoten im Netz — Basislastprofil nicht erforderlich.")
+        else:
+            with st.spinner(f"SimBench-Profile laden ({n_days} Tag(e))…"):
+                try:
+                    if time_start and time_end:
+                        start_day = (
+                            pd.Timestamp(time_start).date()
+                            - datetime(2020, 1, 1).date()
+                        ).days % 365
+                        multiplier_df = Simbench_multiplier_range(
+                            net, start_day_index=start_day, n_days=n_days
+                        )
+                    else:
+                        multiplier_df = Simbench_multiplier(net, day_index=0)
+                    st.session_state["nsv2_profile_base"] = multiplier_df
+                    st.success(
+                        f"Profile erzeugt: {len(multiplier_df.columns)} Lastknoten, "
+                        f"{len(multiplier_df)} Schritte ({n_days} Tag(e))."
+                    )
+                except Exception as e:
+                    st.error(f"SimBench-Profile konnten nicht geladen werden: {e}")
+
+    if "nsv2_profile_base" in st.session_state:
+        base_df = st.session_state["nsv2_profile_base"]
+        _profile_chart(base_df.mean(axis=1), "Mittlerer Multiplikator", "nsv2_chart_bl")
+        st.caption(f"Mittelwert über {len(base_df.columns)} Lastknoten")
+
+
+def _render_basislast_flex(net, time_start, time_end, n_days) -> None:
+    """Device-level household base load (EV & heat pump handled separately)."""
+    st.markdown("**Flexibilitäts-Haushaltsmodell** *(gerätescharf, EV & Wärmepumpe separat)*")
+    base_ids = _base_load_ids(net)
+    if not base_ids:
+        st.info("Keine konventionellen Basislasten im Netz.")
+        return
+    if time_start is None:
+        st.warning("Bitte zuerst den Zeitraum in Abschnitt 2 festlegen.")
+        return
+
+    season = fb.get_season_for_date(time_start)
+    st.caption(
+        f"Zeitraum: {time_start} – {time_end} ({n_days} Tag(e)) · "
+        f"Saison aus Datum: **{fb.season_label(season)}**"
+    )
+    st.caption(f"{len(base_ids)} konventionelle Basislast(en) erkannt.")
+
+    classes = fb.available_classes(season)
+    allowed = st.multiselect(
+        "Erlaubte Haushaltsklassen", options=classes, default=classes,
+        format_func=fb.class_display_name, key="nsv2_flex_allowed",
+    )
+    if not allowed:
+        st.warning("Bitte mindestens eine Klasse auswählen.")
+        return
+
+    mode = st.radio(
+        "Zuweisung der Klassen", ["Zufällig (Seed)", "Manuell pro Last"],
+        horizontal=True, key="nsv2_flex_mode",
+    )
+    manual: dict[int, str] | None = None
+    seed = 42
+    if mode == "Zufällig (Seed)":
+        seed = st.number_input("Seed", min_value=0, value=42, step=1, key="nsv2_flex_seed")
+    else:
+        manual = {}
+        with st.expander(f"Klasse je Last ({len(base_ids)})", expanded=False):
+            for lid in base_ids:
+                lbl = (str(net.load.at[lid, "name"])
+                       if "name" in net.load.columns else f"Last {lid}")
+                manual[lid] = st.selectbox(
+                    f"{lid} — {lbl}", options=allowed,
+                    format_func=fb.class_display_name, key=f"nsv2_flex_cls_{lid}",
+                )
+
+    alpha = fb.verschiebung_slider(key="nsv2_flex_alpha_slider", default_pct=100)
+    st.session_state["nsv2_flex_alpha"] = alpha
+
+    if st.button("Flex-Basislast erzeugen", key="nsv2_flex_gen", type="primary"):
+        assignment = fb.assign_classes(base_ids, allowed, seed=int(seed), manual=manual)
+        st.session_state["nsv2_flex_assignment"] = assignment
+        st.session_state["nsv2_base_source"] = "flex"
+        st.success(
+            f"Flex-Basislast konfiguriert: {len(assignment)} Last(en), "
+            f"Saison {fb.season_label(season)}."
+        )
+
+    assignment = st.session_state.get("nsv2_flex_assignment")
+    if assignment:
+        n_steps = _horizon_n_steps()
+        nameplates = {
+            lid: float(net.load.at[lid, "p_mw"]) * 1000.0
+            for lid in assignment if lid in net.load.index
+        }
+        baselines, shifteds, counts = fb.build_load_curves(
+            nameplates, assignment, time_start, n_steps
+        )
+        if baselines:
+            agg_base = np.sum(list(baselines.values()), axis=0)
+            agg_shift = np.sum(list(shifteds.values()), axis=0)
+            agg_flex = fb.interpolate(agg_base, agg_shift, alpha)
+
+            x = pd.date_range(start=pd.Timestamp(time_start), periods=n_steps, freq="15min")
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=x, y=agg_base, name="Ohne Verschiebung",
+                                     line=dict(color="#2563eb", width=1.5)))
+            fig.add_trace(go.Scatter(
+                x=x, y=agg_flex, name=f"Mit Verschiebung ({alpha*100:.0f} %)",
+                line=dict(color="#16a34a", width=1.5, dash="dash")))
+            fig.update_layout(
+                title="Aggregierte Netz-Basislast (Haushaltsmodell)",
+                xaxis_title="Zeit", yaxis_title="Leistung (kW)",
+                height=300, margin=dict(l=0, r=0, t=40, b=0),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02),
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig, use_container_width=True, key="nsv2_chart_flexbl")
+
+            table = pd.DataFrame({
+                "Last": list(assignment.keys()),
+                "Klasse": [fb.class_display_name(c) for c in assignment.values()],
+                "Haushalte": [counts.get(lid, 0) for lid in assignment.keys()],
+            })
+            with st.expander("Klassen-Zuweisung je Last", expanded=False):
+                st.dataframe(table, use_container_width=True, hide_index=True)
+
+
+def _render_basislast_tab(net: pp.pandapowerNet) -> None:
+    """Basislast tab: choose SimBench profiles or the device-level household model."""
+    time_start = st.session_state.get("nsv2_time_start")
+    time_end = st.session_state.get("nsv2_time_end", time_start)
+    n_days = (
+        (pd.Timestamp(time_end) - pd.Timestamp(time_start)).days + 1
+        if time_start and time_end else 1
+    )
+
+    source_opts = ["SimBench-Normlastprofile", "Flexibilitäts-Haushaltsmodell"]
+    stored = st.session_state.get("nsv2_base_source_ui", source_opts[0])
+    idx = source_opts.index(stored) if stored in source_opts else 0
+    source_ui = st.radio(
+        "Basislast-Quelle", options=source_opts, index=idx, horizontal=True,
+        key="nsv2_base_source_radio",
+    )
+    st.session_state["nsv2_base_source_ui"] = source_ui
+
+    if source_ui == source_opts[0]:
+        st.session_state["nsv2_base_source"] = "simbench"
+        _render_basislast_simbench(net, time_start, time_end, n_days)
+    else:
+        st.session_state["nsv2_base_source"] = "flex"
+        _render_basislast_flex(net, time_start, time_end, n_days)
+
+
 def _section_profile_generation(net: pp.pandapowerNet) -> None:
     st.subheader("3.5 Profil-Generierung")
     st.caption(
@@ -1039,43 +1227,7 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
     # Basislast                                                             #
     # ------------------------------------------------------------------ #
     with tab_bl:
-        st.markdown("**SimBench-Normlastprofile**")
-        st.caption(
-            "Automatisch aus dem SimBench-Datensatz erzeugt. "
-            "Klassifizierung nach Lastname (Haushalt, Gewerbe, Industrie, Landwirtschaft)."
-        )
-        if time_start and time_end:
-            st.caption(f"Zeitraum aus Abschnitt 2: {time_start} – {time_end} ({n_days} Tag(e))")
-
-        if st.button("Basislastprofil erzeugen", key="nsv2_bl_gen") \
-                or "nsv2_profile_base" not in st.session_state:
-            if len(net.load) == 0:
-                st.info("Keine Lastknoten im Netz — Basislastprofil nicht erforderlich.")
-            else:
-                with st.spinner(f"SimBench-Profile laden ({n_days} Tag(e))…"):
-                    try:
-                        if time_start and time_end:
-                            start_day = (
-                                pd.Timestamp(time_start).date()
-                                - datetime(2020, 1, 1).date()
-                            ).days % 365
-                            multiplier_df = Simbench_multiplier_range(
-                                net, start_day_index=start_day, n_days=n_days
-                            )
-                        else:
-                            multiplier_df = Simbench_multiplier(net, day_index=0)
-                        st.session_state["nsv2_profile_base"] = multiplier_df
-                        st.success(
-                            f"Profile erzeugt: {len(multiplier_df.columns)} Lastknoten, "
-                            f"{len(multiplier_df)} Schritte ({n_days} Tag(e))."
-                        )
-                    except Exception as e:
-                        st.error(f"SimBench-Profile konnten nicht geladen werden: {e}")
-
-        if "nsv2_profile_base" in st.session_state:
-            base_df = st.session_state["nsv2_profile_base"]
-            _profile_chart(base_df.mean(axis=1), "Mittlerer Multiplikator", "nsv2_chart_bl")
-            st.caption(f"Mittelwert über {len(base_df.columns)} Lastknoten")
+        _render_basislast_tab(net)
 
 
 # ---------------------------------------------------------------------------
@@ -1090,13 +1242,18 @@ def _tile_to(series: pd.Series, n: int) -> np.ndarray:
 
 
 def _build_sim_profiles(
-    net: pp.pandapowerNet, n_steps: int
+    net: pp.pandapowerNet, n_steps: int, variant: str = "baseline"
 ) -> dict[str, pd.DataFrame]:
     """Build integer-indexed MW DataFrames for all DER elements.
 
     Columns = pandapower element indices (int), values = MW.
     Single-day (96-step) profiles are tiled to fill n_steps.
     Elements with no matching profile are omitted; pandapower uses their static p_mw.
+
+    ``variant`` selects the flexibility scenario:
+    ``"baseline"`` = no shifting; ``"flex"`` = household base load, EV and heat
+    pump shifted by the configured Verschiebungsgrad (alpha). PV / storage /
+    MaStR feed-in are identical in both variants.
     """
     pv_profile  = st.session_state.get("nsv2_profile_pv")
     ev_profile  = st.session_state.get("nsv2_profile_ev")
@@ -1104,6 +1261,11 @@ def _build_sim_profiles(
     st_profile  = st.session_state.get("nsv2_profile_storage")
     base_mult   = st.session_state.get("nsv2_profile_base")
     mastr_ts    = st.session_state.get("nsv2_mastr_sgen_ts", {})
+
+    base_source = st.session_state.get("nsv2_base_source", "simbench")
+    flex_assignment = st.session_state.get("nsv2_flex_assignment")
+    alpha = float(st.session_state.get("nsv2_flex_alpha", 1.0))
+    is_flex = variant == "flex"
 
     sgen_df    = pd.DataFrame(index=range(n_steps))
     load_df    = pd.DataFrame(index=range(n_steps))
@@ -1124,23 +1286,41 @@ def _build_sim_profiles(
             arr = _tile_to(pd.Series(np.asarray(ts_kw.values, dtype=float)), n_steps)
             sgen_df[sgen_idx] = arr / 1000.0
 
-    # EV loads
+    # EV loads — shiftable within their 10 h window in the flex variant
     if ev_profile is not None and len(net.load) > 0:
         ev_arr = _tile_to(ev_profile, n_steps)
+        if is_flex:
+            ev_arr = fb.shift_device_profile(ev_arr, "EV", alpha)
         ev_mask = net.load["name"].str.contains("EV", na=False, case=False)
         for idx in net.load[ev_mask].index:
             load_df[idx] = ev_arr / 1000.0
 
-    # HP loads
+    # HP loads — shiftable within their 4 h window in the flex variant
     if hp_profile is not None and len(net.load) > 0:
         hp_arr = _tile_to(hp_profile, n_steps)
+        if is_flex:
+            hp_arr = fb.shift_device_profile(hp_arr, "HP", alpha)
         hp_mask = net.load["name"].str.contains("HP|Wärme", na=False, case=False)
         for idx in net.load[hp_mask].index:
             load_df[idx] = hp_arr / 1000.0
 
-    # Base loads (all loads not EV/HP)
-    if base_mult is not None and len(net.load) > 0:
-        der_pattern = "EV|HP|Wärme|Szenario|Gezielt"
+    # Base loads (all loads not EV/HP/scenario DER)
+    if base_source == "flex" and flex_assignment and len(net.load) > 0:
+        # Device-level household model: absolute per-load curves (kW), peak-
+        # calibrated to nameplate. baseline vs flex differ by the wet-appliance shift.
+        start_date = st.session_state.get("nsv2_time_start")
+        nameplates = {
+            lid: float(net.load.at[lid, "p_mw"]) * 1000.0
+            for lid in flex_assignment if lid in net.load.index
+        }
+        baselines, shifteds, _ = fb.build_load_curves(
+            nameplates, flex_assignment, start_date, n_steps
+        )
+        for idx, base_curve in baselines.items():
+            curve = fb.interpolate(base_curve, shifteds[idx], alpha) if is_flex else base_curve
+            load_df[idx] = np.asarray(curve, dtype=float) / 1000.0
+    elif base_mult is not None and len(net.load) > 0:
+        der_pattern = _DER_NAME_PATTERN
         base_mask = ~net.load["name"].str.contains(der_pattern, na=False, case=False)
         for idx in net.load[base_mask].index:
             if idx in base_mult.columns:
@@ -1313,64 +1493,196 @@ def _render_sim_results(
             st.dataframe(disp.head(20).style.format("{:.1f}"), height=200)
 
 
+def _render_comparison_results(vb, lb, vf, lf, dt_index, alpha) -> None:
+    """Minimal first-iteration comparison: no-shift vs flex-shift scenarios."""
+    x = [str(t) for t in dt_index]
+    flex_label = f"Mit Verschiebung ({alpha * 100:.0f} %)"
+
+    def _vstats(v):
+        vmn, vmx = v.min(axis=1), v.max(axis=1)
+        return vmn, vmx, int(((vmn < 0.95) | (vmx > 1.05)).sum())
+
+    vb_min, vb_max, vb_viol = _vstats(vb)
+    vf_min, vf_max, vf_viol = _vstats(vf)
+    lb_max = lb.max(axis=1) if not lb.empty else pd.Series(dtype=float)
+    lf_max = lf.max(axis=1) if not lf.empty else pd.Series(dtype=float)
+    lb_over = int((lb > 100).any(axis=1).sum()) if not lb.empty else 0
+    lf_over = int((lf > 100).any(axis=1).sum()) if not lf.empty else 0
+
+    st.markdown("#### Gegenüberstellung")
+    metrics = pd.DataFrame(
+        {
+            "Ohne Verschiebung": [
+                f"{vb_min.min():.4f}", f"{vb_max.max():.4f}", vb_viol,
+                f"{(lb_max.max() if len(lb_max) else float('nan')):.1f}", lb_over,
+            ],
+            flex_label: [
+                f"{vf_min.min():.4f}", f"{vf_max.max():.4f}", vf_viol,
+                f"{(lf_max.max() if len(lf_max) else float('nan')):.1f}", lf_over,
+            ],
+        },
+        index=[
+            "Min. Spannung (p.u.)", "Max. Spannung (p.u.)",
+            "Schritte außerhalb 0.95–1.05", "Max. Leitungsauslastung (%)",
+            "Schritte > 100 %",
+        ],
+    )
+    st.dataframe(metrics, use_container_width=True)
+
+    c1, c2 = st.columns(2)
+    c1.metric("Δ Spannungsverletzungen", vf_viol - vb_viol, delta_color="inverse")
+    if len(lb_max) and len(lf_max):
+        c2.metric("Δ Max. Auslastung", f"{lf_max.max() - lb_max.max():.1f} %",
+                  delta_color="inverse")
+
+    tab_v, tab_l = st.tabs(["⚡ Spannungsband", "📈 Leitungsauslastung"])
+    with tab_v:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=x, y=vb_max.values, name="Max U – ohne",
+                                 line=dict(color="#93c5fd")))
+        fig.add_trace(go.Scatter(x=x, y=vb_min.values, name="Min U – ohne",
+                                 line=dict(color="#1d4ed8")))
+        fig.add_trace(go.Scatter(x=x, y=vf_max.values, name="Max U – mit",
+                                 line=dict(color="#86efac", dash="dash")))
+        fig.add_trace(go.Scatter(x=x, y=vf_min.values, name="Min U – mit",
+                                 line=dict(color="#15803d", dash="dash")))
+        fig.add_hline(y=1.05, line_dash="dot", line_color="gray")
+        fig.add_hline(y=0.95, line_dash="dot", line_color="gray")
+        fig.update_layout(title="Spannungsband: ohne vs. mit Verschiebung", height=380,
+                          xaxis_title="Zeit", yaxis_title="Spannung (p.u.)",
+                          hovermode="x unified")
+        st.plotly_chart(fig, use_container_width=True, key="nsv2_cmp_voltage")
+    with tab_l:
+        if lb.empty and lf.empty:
+            st.info("Keine Leitungsdaten vorhanden.")
+        else:
+            fig = go.Figure()
+            if len(lb_max):
+                fig.add_trace(go.Scatter(x=x, y=lb_max.values, name="Max Auslastung – ohne",
+                                         line=dict(color="#1d4ed8")))
+            if len(lf_max):
+                fig.add_trace(go.Scatter(x=x, y=lf_max.values, name="Max Auslastung – mit",
+                                         line=dict(color="#15803d", dash="dash")))
+            fig.add_hline(y=100, line_dash="dot", line_color="#ef4444",
+                          annotation_text="100 %")
+            fig.update_layout(title="Max. Leitungsauslastung über die Zeit", height=350,
+                              xaxis_title="Zeit", yaxis_title="Auslastung (%)",
+                              hovermode="x unified")
+            st.plotly_chart(fig, use_container_width=True, key="nsv2_cmp_loading")
+    st.caption("Erste Iteration der Vergleichsdarstellung — wird noch verfeinert.")
+
+
 def _section_simulation(net: pp.pandapowerNet) -> None:
+    n_steps = _horizon_n_steps()
+    base_source = st.session_state.get("nsv2_base_source", "simbench")
+    flex_assignment = st.session_state.get("nsv2_flex_assignment")
+    alpha = float(st.session_state.get("nsv2_flex_alpha", 1.0))
+
+    has_ev = st.session_state.get("nsv2_profile_ev") is not None
+    has_hp = st.session_state.get("nsv2_profile_hp") is not None
+    flex_base = base_source == "flex" and bool(flex_assignment)
+    flex_available = flex_base or has_ev or has_hp
+
     # Profile status
     profiles_info = {
-        "PV":       ("nsv2_profile_pv",      "kW/kWp"),
-        "EV":       ("nsv2_profile_ev",       "kW"),
-        "Wärmepumpe": ("nsv2_profile_hp",     "kW"),
-        "Speicher": ("nsv2_profile_storage",  "kW"),
-        "Basislast":("nsv2_profile_base",     "Multiplikatoren"),
+        "PV":         ("nsv2_profile_pv",      "kW/kWp"),
+        "EV":         ("nsv2_profile_ev",      "kW"),
+        "Wärmepumpe": ("nsv2_profile_hp",      "kW"),
+        "Speicher":   ("nsv2_profile_storage", "kW"),
     }
     with st.expander("Profil-Status", expanded=True):
-        pv_prof = st.session_state.get("nsv2_profile_pv")
-        n_steps = len(pv_prof) if pv_prof is not None else 96
         for label, (key, unit) in profiles_info.items():
             val = st.session_state.get(key)
             if val is None:
                 st.caption(f"⚠️ {label}: nicht gesetzt → Elemente bleiben statisch")
-            elif isinstance(val, pd.DataFrame):
-                st.caption(f"✅ {label}: {len(val)} Schritte × {len(val.columns)} Lastknoten ({unit})")
             else:
                 steps = len(val)
-                tiled = f" → wird auf {n_steps} Schritte geachst" if steps < n_steps else ""
+                tiled = f" → wird auf {n_steps} Schritte gestreckt" if steps != n_steps else ""
                 st.caption(f"✅ {label}: {steps} Schritte ({unit}){tiled}")
+        if flex_base:
+            st.caption(
+                f"✅ Basislast: Flexibilitäts-Haushaltsmodell, "
+                f"{len(flex_assignment)} Last(en) (gerätescharf verschiebbar)"
+            )
+        elif base_source == "simbench" and st.session_state.get("nsv2_profile_base") is not None:
+            bdf = st.session_state["nsv2_profile_base"]
+            st.caption(f"✅ Basislast: SimBench-Normlastprofile, {len(bdf.columns)} Lastknoten")
+        else:
+            st.caption("⚠️ Basislast: nicht gesetzt → Lasten bleiben statisch")
 
-    # Simulation parameters
     time_start = st.session_state.get("nsv2_time_start")
     dt_index = (
         pd.date_range(str(time_start), periods=n_steps, freq="15min")
         if time_start else pd.RangeIndex(n_steps)
     )
     st.caption(
-        f"Simulationsschritte: {n_steps} "
-        f"({n_steps * 0.25:.0f} Stunden, 15-min-Raster)"
+        f"Simulationsschritte: {n_steps} ({n_steps * 0.25:.0f} Stunden, 15-min-Raster)"
     )
 
-    if st.button("Zeitreihensimulation starten", type="primary", key="nsv2_sim_run"):
-        net_copy = copy.deepcopy(net)
-        profiles = _build_sim_profiles(net_copy, n_steps)
-        progress_bar = st.progress(0)
-        with st.spinner("Simulation läuft…"):
-            voltage_df, loading_df = _run_timeseries_pf(
-                net_copy, n_steps, profiles, progress_bar
-            )
-        voltage_df.index = dt_index
-        if not loading_df.empty:
-            loading_df.index = dt_index[: len(loading_df)]
-        st.session_state.update({
-            "nsv2_results_voltage": voltage_df,
-            "nsv2_results_loading": loading_df,
-            "nsv2_results_dt_index": dt_index,
-        })
-        st.success(f"Simulation abgeschlossen ({n_steps} Schritte).")
-
-    if "nsv2_results_voltage" in st.session_state:
-        _render_sim_results(
-            st.session_state["nsv2_results_voltage"],
-            st.session_state["nsv2_results_loading"],
-            st.session_state.get("nsv2_results_dt_index", pd.RangeIndex(n_steps)),
+    if flex_available:
+        st.info(
+            f"Flexibilität aktiv → Vergleich **ohne** vs. **mit Verschiebung** "
+            f"(Verschiebungsgrad {alpha * 100:.0f} %). Es werden zwei Läufe gerechnet."
         )
+        if st.button("Zeitreihensimulation starten (Vergleich)", type="primary",
+                     key="nsv2_sim_run"):
+            results: dict[str, tuple] = {}
+            progress_bar = st.progress(0)
+            with st.spinner("Simulation läuft (2 Szenarien)…"):
+                for variant in ("baseline", "flex"):
+                    net_copy = copy.deepcopy(net)
+                    profiles = _build_sim_profiles(net_copy, n_steps, variant=variant)
+                    v_df, l_df = _run_timeseries_pf(net_copy, n_steps, profiles, progress_bar)
+                    v_df.index = dt_index
+                    if not l_df.empty:
+                        l_df.index = dt_index[: len(l_df)]
+                    results[variant] = (v_df, l_df)
+            st.session_state.update({
+                "nsv2_cmp_voltage_base": results["baseline"][0],
+                "nsv2_cmp_loading_base": results["baseline"][1],
+                "nsv2_cmp_voltage_flex": results["flex"][0],
+                "nsv2_cmp_loading_flex": results["flex"][1],
+                "nsv2_cmp_dt_index": dt_index,
+                "nsv2_cmp_alpha": alpha,
+            })
+            st.session_state.pop("nsv2_results_voltage", None)
+            st.success(f"Vergleich abgeschlossen ({n_steps} Schritte × 2 Szenarien).")
+
+        if "nsv2_cmp_voltage_base" in st.session_state:
+            _render_comparison_results(
+                st.session_state["nsv2_cmp_voltage_base"],
+                st.session_state["nsv2_cmp_loading_base"],
+                st.session_state["nsv2_cmp_voltage_flex"],
+                st.session_state["nsv2_cmp_loading_flex"],
+                st.session_state.get("nsv2_cmp_dt_index", dt_index),
+                st.session_state.get("nsv2_cmp_alpha", alpha),
+            )
+    else:
+        if st.button("Zeitreihensimulation starten", type="primary", key="nsv2_sim_run"):
+            net_copy = copy.deepcopy(net)
+            profiles = _build_sim_profiles(net_copy, n_steps)
+            progress_bar = st.progress(0)
+            with st.spinner("Simulation läuft…"):
+                voltage_df, loading_df = _run_timeseries_pf(
+                    net_copy, n_steps, profiles, progress_bar
+                )
+            voltage_df.index = dt_index
+            if not loading_df.empty:
+                loading_df.index = dt_index[: len(loading_df)]
+            st.session_state.update({
+                "nsv2_results_voltage": voltage_df,
+                "nsv2_results_loading": loading_df,
+                "nsv2_results_dt_index": dt_index,
+            })
+            st.session_state.pop("nsv2_cmp_voltage_base", None)
+            st.success(f"Simulation abgeschlossen ({n_steps} Schritte).")
+
+        if "nsv2_results_voltage" in st.session_state:
+            _render_sim_results(
+                st.session_state["nsv2_results_voltage"],
+                st.session_state["nsv2_results_loading"],
+                st.session_state.get("nsv2_results_dt_index", pd.RangeIndex(n_steps)),
+            )
 
 
 # ---------------------------------------------------------------------------
