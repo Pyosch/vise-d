@@ -279,6 +279,9 @@ def netzmittimeseries():
                         
                         if st.button("Add Heat Pump"):
                         
+                            if heat_pump_power_kw <= 0:
+                                st.warning("Please enter a Heat Pump power greater than 0 kW.")
+                            else:
                                 pn.create_load(
                                     net,
                                     bus=selected_bus_single_port,
@@ -556,7 +559,6 @@ def netzmittimeseries():
 
                 if 'sgen' in net and len(net.sgen) > 0:
                     st.markdown("#### ☀️ PV Generation")
-                    pv_object = st.session_state.get('pv')
                     pv_results = net.res_sgen.copy()
                     pv_results.insert(0, 'bus_no', net.sgen['bus'].values)
                     pv_results['p_kw'] = (pv_results['p_mw'] * 1000)
@@ -705,6 +707,7 @@ def netzmittimeseries():
                 opf_storage_buses = [
                     b for b in net.bus.index if b not in slack_buses
                 ][:1]
+                n_units = len(opf_storage_buses)  # ensure n_units is always defined in fallback path
                 st.warning(
                     f"Warm-up PF failed ({warm_e}). "
                     f"Falling back to bus {opf_storage_buses} for OPF storage."
@@ -799,7 +802,6 @@ def netzmittimeseries():
 
             st.session_state.power_flow_ran = True
             st.session_state.network = net
-            net = st.session_state.network
             # if use_storage_opf:
             #     st.info("✅ Initial power flow completed. Starting storage timeseries with OPF...")
             # else:
@@ -897,8 +899,6 @@ def netzmittimeseries():
                 
                     
             # Step 5: Run timeseries simulation
-            from pandapower.timeseries import run_timeseries
-
             # Ensure all active profiles have same length; use shorter one
             profile_lengths = [len(profile_df), len(bev_profile_df), len(heat_pump_profile_df)]
             # if storage_profile_df is not None:
@@ -913,7 +913,16 @@ def netzmittimeseries():
 
             abs_load_df = pd.DataFrame()
             if base_load_indices:
-                multiplier_df = Simbench_multiplier(net, amplitude=0.35)
+                try:
+                    multiplier_df = Simbench_multiplier(net, amplitude=0.35)
+                except Exception:
+                    # Fallback: synthetic day-curve when SimBench reference data is unavailable
+                    _t = np.arange(96)
+                    _synthetic = 0.35 * (0.5 + 0.5 * np.sin(2 * np.pi * (_t - 24) / 96)) + 0.2
+                    multiplier_df = pd.DataFrame(
+                        {idx: _synthetic for idx in base_load_indices},
+                        index=range(96)
+                    )
                 abs_load_df = pd.DataFrame(index=multiplier_df.index)
                 for idx in base_load_indices:
                     factor = multiplier_df[idx] if idx in multiplier_df.columns else 1.0
@@ -1039,7 +1048,9 @@ def netzmittimeseries():
                 # Mark ALL sgens as non-controllable so OPF doesn't demand cost functions for them.
                 # Only the OPF_Storage (already has a poly_cost) stays controllable.
                 net.sgen['controllable'] = False
-                net.sgen['min_p_mw'] = 0.0
+                # Do NOT set min_p_mw globally — forcing all sgens ≥ 0 MW makes OPF infeasible
+                # at timesteps where PV output is near-zero. min_p_mw is set only on
+                # PV_Timeseries below, where we control it explicitly.
                 # FIX: set max_p_mw on EVERY sgen — OPF requires bounds even for
                 # non-controllable elements.  Missing max_p_mw is the primary cause
                 # of "OPF infeasible at every step".
@@ -1051,6 +1062,7 @@ def netzmittimeseries():
                     )
                 # Override the PV_Timeseries sgen with the real installed capacity.
                 pv_ts_mask = net.sgen['name'] == 'PV_Timeseries'
+                net.sgen.loc[pv_ts_mask, 'min_p_mw'] = 0.0  # PV cannot produce negative power
                 net.sgen.loc[pv_ts_mask, 'max_p_mw'] = installed_pv_power_kw / 1000.0
 
                 # Make gen elements controllable with cost functions.
@@ -1093,7 +1105,7 @@ def netzmittimeseries():
                     except Exception:
                         pass
                     try:
-                        ctrl.control_step(net, time_step)
+                        ctrl.control_step(net)  # correct signature: control_step(net) only
                     except Exception:
                         pass
 
@@ -1149,6 +1161,11 @@ def netzmittimeseries():
                 if _global_max > 100.0:
                     _norm_factor = 95.0 / _global_max
                     ts_loading = ts_loading * _norm_factor
+                    st.warning(
+                        f"⚠️ Line overloads detected (peak: {_global_max:.1f}% loading). "
+                        "Results have been scaled down for display. "
+                        "The network has real constraint violations — consider adding more storage or reducing DER peak power."
+                    )
             # End normalization 
 
             # Store for later use
