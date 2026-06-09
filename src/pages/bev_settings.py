@@ -90,8 +90,7 @@ def bev_settings():
             )
 
             # Fahrtzeiten: Abfahrt = Endzeit (Auto verlässt das Haus),
-            # Ankunft = Startzeit (Anstecken). Doppelte Einträge, da vpplib
-            # intern random.randrange(0, len-1) nutzt (stürzt bei Länge 1 ab).
+            # Ankunft = Startzeit (Anstecken).
             departure = settings["end_time"].strftime("%H:%M:%S")
             arrival = settings["start_time"].strftime("%H:%M:%S")
 
@@ -106,10 +105,10 @@ def bev_settings():
                 charging_power=settings["charging_power"],
                 load_degradation_begin=settings["load_degradation_begin"],
                 charge_efficiency=settings["charging_efficiency"],
-                week_trip_start=[departure, departure],
-                week_trip_end=[arrival, arrival],
-                weekend_trip_start=[departure, departure],
-                weekend_trip_end=[arrival, arrival],
+                week_trip_start=[departure],
+                week_trip_end=[arrival],
+                weekend_trip_start=[departure],
+                weekend_trip_end=[arrival],
             )
         
             st.session_state["bev"].prepare_time_series()
