@@ -31,14 +31,13 @@ from vpplib.environment import Environment
 
 
 DEFAULT_BEV_SETTINGS = {
+    "identifier": "bev_1",
     "max_battery_capacity": 75.0,
     "min_battery_capacity": 15.0,
     "battery_usage": 50.0,
     "charging_power": 11.0,
     "charging_efficiency": 0.95,
     "load_degradation_begin": 0.8,
-    "user_profile": "None",
-    "selected_environment": "None",
     "start_time": datetime.time(18, 0, 0),
     "end_time": datetime.time(7, 0, 0),
     "timebase": 15,
@@ -62,6 +61,14 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
     # Technology parameters in main content area
     with st.container():
         with st.form(key=f"bev_settings_form_{form_key_suffix}"):
+            st.markdown("**Bezeichner**")
+            identifier = st.text_input(
+                "Bezeichner",
+                value=str(st.session_state["bev_settings"]["identifier"]),
+                label_visibility="collapsed",
+                key="bev_identifier",
+            )
+
             # Max Battery Capacity
             st.markdown("**Max. Batteriekapazität**")
             max_battery_capacity = st.number_input(
@@ -123,23 +130,6 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
                 key="load_degradation_begin"
             )
 
-            st.markdown("**Nutzerprofil**")
-            user_profile = st.selectbox(
-                "Nutzerprofil auswählen",
-                options=["None", "Profile 1", "Profile 2"],
-                format_func=lambda x: {"None": "Kein", "Profile 1": "Profil 1", "Profile 2": "Profil 2"}.get(x, x),
-                index=0 if st.session_state["bev_settings"]["user_profile"] == "None" else 1 if st.session_state["bev_settings"]["user_profile"] == "Profile 1" else 2,
-                key="user_profile"
-            )
-            
-        #    st.markdown("**environment**")
-        #    selected_environment = st.selectbox(
-        #        "Select environment",
-        #        options=["None", "Environment 1", "Environment 2"],
-        #        index=0 if st.session_state.bev_settings["selected_environment"] == "None" else 1 if st.session_state.bev_settings["selected_environment"] == "Environment 1" else 2,
-        #        key="environment"
-        #    )
-            
             st.markdown("**Startzeit**")
             start_time = st.time_input(
                 "Startzeit eingeben (HH:MM:SS)",
@@ -176,15 +166,13 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
             
         # Update session state with new settings
             st.session_state["bev_settings"] = {
+                "identifier": identifier,
                 "max_battery_capacity": max_battery_capacity,
                 "min_battery_capacity": min_battery_capacity,
                 "battery_usage": battery_usage,
                 "charging_power": charging_power,
                 "charging_efficiency": charging_efficiency / 100,
                 "load_degradation_begin":load_degradation_begin,
-                "user_profile": user_profile,
-                "selected_environment": st.session_state["bev_settings"].get("selected_environment", "None"),
-                #   "environment": selected_environment,
                 "start_time": start_time,
                 "end_time": end_time,
                 "timebase": timebase
@@ -220,9 +208,9 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
 
  # Create DataFrame for table
     data = {
-    "Größe": ["Max. Batteriekapazität", "Min. Batteriekapazität", "Batterienutzung", "Ladeleistung", "Ladewirkungsgrad", "Beginn Ladeleistungsreduktion", "Nutzerprofil","Startzeit","Endzeit","Zeitbasis"],
-    "Wert": [max_battery_capacity, min_battery_capacity, battery_usage, charging_power, charging_efficiency, load_degradation_begin, user_profile,start_time,end_time,timebase],
-    "Einheit": ["kWh", "kWh", "kWh/Tag", "kW", "%", "", "","HH:MM:SS", "HH:MM:SS", "Minuten"]
+    "Größe": ["Bezeichner", "Max. Batteriekapazität", "Min. Batteriekapazität", "Batterienutzung", "Ladeleistung", "Ladewirkungsgrad", "Beginn Ladeleistungsreduktion","Startzeit","Endzeit","Zeitbasis"],
+    "Wert": [identifier, max_battery_capacity, min_battery_capacity, battery_usage, charging_power, charging_efficiency, load_degradation_begin,start_time,end_time,timebase],
+    "Einheit": ["", "kWh", "kWh", "kWh/Tag", "kW", "%", "","HH:MM:SS", "HH:MM:SS", "Minuten"]
 }
     df = pd.DataFrame(data)
 
