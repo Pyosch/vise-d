@@ -185,6 +185,47 @@ def _load_cim_net(uploaded_files, cgmes_version: str) -> pp.pandapowerNet:
         return _pp_from_cim(file_list=paths, cgmes_version=cgmes_version)
 
 
+@st.cache_data
+def _pandapower_xlsx_template() -> bytes:
+    """Erzeugt eine vorformatierte pandapower-Excel-Vorlage zum Download.
+
+    Enthält ein minimales Beispielnetz (Slack, 10-kV-Knoten, zwei Trafo-Schalter
+    MV-/LV-seitig, Trafo 10/0,4 kV, zwei 0,4-kV-Knoten, eine Last, eine PV),
+    damit alle Element-Tabellen mit korrekten Spalten und std_types vorhanden
+    sind. Ein komplett leeres Netz würde diese Tabellen nicht in die Datei
+    schreiben. Nutzer können das Beispiel befüllen/erweitern und wieder hochladen.
+    """
+    net = pp.create_empty_network()
+    b_hv = pp.create_bus(net, vn_kv=10.0, name="10-kV-Knoten")
+    b_lv1 = pp.create_bus(net, vn_kv=0.4, name="0,4-kV-Knoten 1")
+    b_lv2 = pp.create_bus(net, vn_kv=0.4, name="0,4-kV-Knoten 2")
+    pp.create_ext_grid(net, bus=b_hv, vm_pu=1.0, name="Slack")
+    trafo = pp.create_transformer(
+        net, hv_bus=b_hv, lv_bus=b_lv1,
+        std_type="0.4 MVA 10/0.4 kV", name="Trafo 10/0,4 kV",
+    )
+    # Trafo-Schalter beidseitig (MV/LV) — Excel-tauglich, im Gegensatz zu Fuses
+    pp.create_switch(net, bus=b_hv, element=trafo, et="t", closed=True,
+                     name="Schalter MV-seitig")
+    pp.create_switch(net, bus=b_lv1, element=trafo, et="t", closed=True,
+                     name="Schalter LV-seitig")
+    pp.create_line(
+        net, from_bus=b_lv1, to_bus=b_lv2, length_km=0.1,
+        std_type="NAYY 4x50 SE", name="Leitung 1",
+    )
+    pp.create_load(net, bus=b_lv2, p_mw=0.1, q_mvar=0.05, name="Last 1")
+    pp.create_sgen(net, bus=b_lv1, p_mw=0.05, name="PV 1")
+
+    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        pp.to_excel(net, tmp_path)
+        with open(tmp_path, "rb") as fh:
+            return fh.read()
+    finally:
+        os.unlink(tmp_path)
+
+
 # ---------------------------------------------------------------------------
 # Helper functions — DER placement
 # ---------------------------------------------------------------------------
@@ -1786,6 +1827,17 @@ def netzmodell():
         )
 
         if upload_fmt == "pandapower (JSON/Excel)":
+            st.download_button(
+                "Excel-Vorlage herunterladen",
+                data=_pandapower_xlsx_template(),
+                file_name="pandapower_netz_vorlage.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                help=(
+                    "Vorformatierte .xlsx mit einem minimalen Beispielnetz "
+                    "(Knoten, Leitung, Last, PV). Befüllen/erweitern und wieder hochladen."
+                ),
+                key="nsv2_xlsx_template",
+            )
             uploaded = st.file_uploader(
                 "Pandapower-Netz hochladen (.json oder .xlsx)",
                 type=["json", "xlsx"],
