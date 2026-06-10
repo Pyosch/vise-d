@@ -18,7 +18,49 @@ _SEASON_MAP = {
     "Übergang": "transition",
     "Sommer": "summer",
 }
-_TOP_CLASSES_N = 4  # show this many classes outside the expander
+def _household_mix_editor(classes: list[str]) -> dict[str, int]:
+    """Grouped number-table editor for the household mix.
+
+    Renders one expander per working situation, each holding a data_editor with
+    an editable ``Anzahl`` column plus read-only Haushaltsgröße / Automatisierung
+    columns (the latter carries the automation-level tooltip on its header).
+    Returns ``{class_key: count}`` for all classes (default 0). Counts persist in
+    session state across reruns.
+    """
+    stored = st.session_state.get("flex_cfg_counts", {})
+    counts: dict[str, int] = {}
+
+    for work_label, group in fb.group_classes_by_work(classes):
+        with st.expander(f"{work_label} ({len(group)} Klassen)", expanded=False):
+            comps = {c: fb.class_components_de(c) for c in group}
+            df = pd.DataFrame(
+                {
+                    "Anzahl": [int(stored.get(c, 0)) for c in group],
+                    "Haushaltsgröße": [comps[c][1] or "?" for c in group],
+                    "Automatisierung": [comps[c][2] or "?" for c in group],
+                },
+                index=group,
+            )
+            edited = st.data_editor(
+                df,
+                hide_index=True,
+                use_container_width=True,
+                key=f"flex_cfg_tbl_{work_label}",
+                column_config={
+                    "Anzahl": st.column_config.NumberColumn(
+                        "Anzahl", min_value=0, step=1
+                    ),
+                    "Haushaltsgröße": st.column_config.TextColumn(disabled=True),
+                    "Automatisierung": st.column_config.TextColumn(
+                        disabled=True, help=fb.AUTOMATION_COLUMN_HELP_DE
+                    ),
+                },
+            )
+            for c in group:
+                counts[c] = int(edited.at[c, "Anzahl"] or 0)
+
+    st.session_state["flex_cfg_counts"] = counts
+    return counts
 
 
 def flexibility_configurator():
@@ -47,33 +89,8 @@ def flexibility_configurator():
     # 2. Household mix                                                     #
     # ------------------------------------------------------------------ #
     st.subheader("Haushaltsverteilung")
-    counts: dict[str, int] = {}
-
-    top_classes = classes[:_TOP_CLASSES_N]
-    other_classes = classes[_TOP_CLASSES_N:]
-
-    cols = st.columns(2)
-    for i, cls in enumerate(top_classes):
-        with cols[i % 2]:
-            counts[cls] = st.number_input(
-                fb.class_display_name(cls),
-                min_value=0,
-                value=10,
-                step=1,
-                key=f"hh_{cls}",
-            )
-
-    with st.expander(f"Weitere Klassen ({len(other_classes)})"):
-        other_cols = st.columns(2)
-        for i, cls in enumerate(other_classes):
-            with other_cols[i % 2]:
-                counts[cls] = st.number_input(
-                    fb.class_display_name(cls),
-                    min_value=0,
-                    value=0,
-                    step=1,
-                    key=f"hh_{cls}",
-                )
+    st.caption("Anzahl Haushalte je Typologie-Klasse eingeben (gruppiert nach Arbeitsweise).")
+    counts = _household_mix_editor(classes)
 
     total_households = sum(counts.values())
     st.caption(f"Haushalte gesamt: **{total_households}**")
