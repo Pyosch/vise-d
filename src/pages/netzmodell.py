@@ -35,6 +35,12 @@ except Exception:
     _HAS_PLOTLY_NET = False
 
 try:
+    from pandapower.converter import from_cim as _pp_from_cim
+    _HAS_CIM = True
+except Exception:
+    _HAS_CIM = False
+
+try:
     from vpplib.environment import Environment
     from vpplib.battery_electric_vehicle import BatteryElectricVehicle
     from vpplib.heat_pump import HeatPump
@@ -164,6 +170,19 @@ def _show_network(net: pp.pandapowerNet) -> None:
             st.dataframe(net.bus, use_container_width=True)
     else:
         st.dataframe(net.bus, use_container_width=True)
+
+
+def _load_cim_net(uploaded_files, cgmes_version: str) -> pp.pandapowerNet:
+    """Schreibt hochgeladene CIM/CGMES-Dateien (XML/RDF/ZIP) in ein Temp-Verzeichnis
+    und konvertiert sie via pandapower from_cim in ein pandapower-Netz."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        paths = []
+        for uf in uploaded_files:
+            p = os.path.join(tmpdir, uf.name)
+            with open(p, "wb") as fh:
+                fh.write(uf.getvalue())
+            paths.append(p)
+        return _pp_from_cim(file_list=paths, cgmes_version=cgmes_version)
 
 
 # ---------------------------------------------------------------------------
@@ -1761,46 +1780,96 @@ def netzmodell():
     else:
         st.session_state["nsv2_net_source"] = "upload"
 
-        uploaded = st.file_uploader(
-            "Pandapower-Netz hochladen (.json oder .xlsx)",
-            type=["json", "xlsx"],
-            key="nsv2_file_upload",
+        _fmt_opts = ["pandapower (JSON/Excel)", "CIM/CGMES"]
+        upload_fmt = st.radio(
+            "Format", options=_fmt_opts, horizontal=True, key="nsv2_upload_fmt"
         )
 
-        if uploaded is None:
-            if "nsv2_net" in st.session_state and st.session_state.get("nsv2_net_source") == "upload":
-                net = st.session_state["nsv2_net"]
-                st.caption(
-                    f"Zuletzt geladenes Netz: {st.session_state.get('nsv2_net_name', 'Unbekannt')}"
-                )
-            else:
-                st.info(
-                    "Bitte eine Netzdatei hochladen "
-                    "(pandapower JSON- oder Excel-Export via `pp.to_json()` / `pp.to_excel()`)."
-                )
-        else:
-            try:
-                if uploaded.name.endswith(".json"):
-                    net = pp.from_json_string(uploaded.getvalue().decode("utf-8"))
-                else:
-                    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
-                        tmp.write(uploaded.getvalue())
-                        tmp_path = tmp.name
-                    try:
-                        net = pp.from_excel(tmp_path)
-                    finally:
-                        os.unlink(tmp_path)
+        if upload_fmt == "pandapower (JSON/Excel)":
+            uploaded = st.file_uploader(
+                "Pandapower-Netz hochladen (.json oder .xlsx)",
+                type=["json", "xlsx"],
+                key="nsv2_file_upload",
+            )
 
-                st.session_state["nsv2_net"] = net
-                st.session_state["nsv2_net_name"] = uploaded.name
-                st.session_state["nsv2_net_source"] = "upload"
-                st.session_state.pop("nsv2_mastr_sgen_ts", None)
-                st.success(
-                    f"Netz geladen: {len(net.bus)} Knoten, {len(net.line)} Leitungen"
+            if uploaded is None:
+                if "nsv2_net" in st.session_state and st.session_state.get("nsv2_net_source") == "upload":
+                    net = st.session_state["nsv2_net"]
+                    st.caption(
+                        f"Zuletzt geladenes Netz: {st.session_state.get('nsv2_net_name', 'Unbekannt')}"
+                    )
+                else:
+                    st.info(
+                        "Bitte eine Netzdatei hochladen "
+                        "(pandapower JSON- oder Excel-Export via `pp.to_json()` / `pp.to_excel()`)."
+                    )
+            else:
+                try:
+                    if uploaded.name.endswith(".json"):
+                        net = pp.from_json_string(uploaded.getvalue().decode("utf-8"))
+                    else:
+                        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+                            tmp.write(uploaded.getvalue())
+                            tmp_path = tmp.name
+                        try:
+                            net = pp.from_excel(tmp_path)
+                        finally:
+                            os.unlink(tmp_path)
+
+                    st.session_state["nsv2_net"] = net
+                    st.session_state["nsv2_net_name"] = uploaded.name
+                    st.session_state["nsv2_net_source"] = "upload"
+                    st.session_state.pop("nsv2_mastr_sgen_ts", None)
+                    st.success(
+                        f"Netz geladen: {len(net.bus)} Knoten, {len(net.line)} Leitungen"
+                    )
+                except Exception as e:
+                    st.error(f"Datei konnte nicht als pandapower-Netz geladen werden: {e}")
+                    return
+
+        else:  # CIM/CGMES
+            if not _HAS_CIM:
+                st.error(
+                    "CIM/CGMES-Converter nicht verfügbar (pandapower.converter.cim fehlt)."
                 )
-            except Exception as e:
-                st.error(f"Datei konnte nicht als pandapower-Netz geladen werden: {e}")
                 return
+
+            cgmes_version = st.selectbox(
+                "CGMES-Version", options=["2.4.15", "3.0"], key="nsv2_cgmes_version"
+            )
+            cim_files = st.file_uploader(
+                "CIM/CGMES-Dateien hochladen (.xml/.rdf-Profile EQ/SSH/TP/SV oder ein .zip-Bundle)",
+                type=["xml", "rdf", "zip"],
+                accept_multiple_files=True,
+                key="nsv2_cim_upload",
+            )
+
+            if not cim_files:
+                if "nsv2_net" in st.session_state and st.session_state.get("nsv2_net_source") == "upload":
+                    net = st.session_state["nsv2_net"]
+                    st.caption(
+                        f"Zuletzt geladenes Netz: {st.session_state.get('nsv2_net_name', 'Unbekannt')}"
+                    )
+                else:
+                    st.info(
+                        "Bitte CIM/CGMES-Profil-Dateien (EQ/SSH/TP/SV) oder ein "
+                        "ZIP-Bundle hochladen."
+                    )
+            else:
+                try:
+                    with st.spinner("CIM-Netz wird konvertiert …"):
+                        net = _load_cim_net(cim_files, cgmes_version)
+
+                    st.session_state["nsv2_net"] = net
+                    st.session_state["nsv2_net_name"] = ", ".join(f.name for f in cim_files)
+                    st.session_state["nsv2_net_source"] = "upload"
+                    st.session_state.pop("nsv2_mastr_sgen_ts", None)
+                    st.success(
+                        f"CIM-Netz geladen: {len(net.bus)} Knoten, {len(net.line)} Leitungen"
+                    )
+                except Exception as e:
+                    st.error(f"CIM/CGMES-Datei konnte nicht konvertiert werden: {e}")
+                    return
 
     if net is not None:
         _show_network(net)
