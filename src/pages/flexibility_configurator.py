@@ -6,18 +6,14 @@ model (same precomputed curves the network page uses), and passes them to the
 network scenario page via session state.
 """
 
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
 from src.utils import flex_baseload as fb
-
-_SEASON_MAP = {
-    "Winter": "winter",
-    "Übergang": "transition",
-    "Sommer": "summer",
-}
 def _household_mix_editor(classes: list[str]) -> dict[str, int]:
     """Grouped number-table editor for the household mix.
 
@@ -74,15 +70,20 @@ def flexibility_configurator():
     )
 
     # ------------------------------------------------------------------ #
-    # 1. Season selection                                                  #
+    # 1. Time range → season (mirrors the Netzmodell page)                 #
     # ------------------------------------------------------------------ #
-    season_label = st.radio(
-        "Jahreszeit",
-        options=list(_SEASON_MAP.keys()),
-        horizontal=True,
-        index=1,
+    st.subheader("Zeitraum")
+    col_start, col_end = st.columns(2)
+    default_end = datetime.today().date() - timedelta(days=1)
+    default_start = default_end - timedelta(days=6)
+    time_start = col_start.date_input("Von", value=default_start, key="flex_cfg_date_start")
+    time_end = col_end.date_input("Bis", value=default_end, key="flex_cfg_date_end")
+
+    season_key = fb.get_season_for_date(time_start)
+    st.caption(
+        f"Jahreszeit aus Startdatum abgeleitet: **{fb.season_label(season_key)}** "
+        "· das Lastprofil zeigt eine repräsentative Woche dieser Jahreszeit."
     )
-    season_key = _SEASON_MAP[season_label]
     classes = fb.available_classes(season_key)
 
     # ------------------------------------------------------------------ #
