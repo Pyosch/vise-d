@@ -759,6 +759,62 @@ def _render_basislast_simbench(net, time_start, time_end, n_days) -> None:
         st.caption(f"Mittelwert über {len(base_df.columns)} Lastknoten")
 
 
+def _select_allowed_classes(classes: list[str]) -> list[str]:
+    """Grouped checkbox-table selector for the household typology classes.
+
+    Renders one expander per working situation, each holding a data_editor with
+    a checkbox column plus read-only Haushaltsgröße / Automatisierung columns
+    (the latter carries the automation-level tooltip on its header). Returns the
+    sorted list of selected class keys — same format the multiselect produced.
+    """
+    if "nsv2_flex_selected" not in st.session_state:
+        st.session_state["nsv2_flex_selected"] = set(classes)
+    selected = {c for c in st.session_state["nsv2_flex_selected"] if c in classes}
+
+    c_all, c_none, _ = st.columns([1, 1, 6])
+    if c_all.button("Alle", key="nsv2_flex_all"):
+        st.session_state["nsv2_flex_selected"] = set(classes)
+        st.session_state["nsv2_flex_ver"] = st.session_state.get("nsv2_flex_ver", 0) + 1
+        st.rerun()
+    if c_none.button("Keine", key="nsv2_flex_none"):
+        st.session_state["nsv2_flex_selected"] = set()
+        st.session_state["nsv2_flex_ver"] = st.session_state.get("nsv2_flex_ver", 0) + 1
+        st.rerun()
+
+    ver = st.session_state.get("nsv2_flex_ver", 0)
+    new_selected: set[str] = set()
+
+    for work_label, group in fb.group_classes_by_work(classes):
+        with st.expander(f"{work_label} ({len(group)} Klassen)", expanded=False):
+            comps = {c: fb.class_components_de(c) for c in group}
+            df = pd.DataFrame(
+                {
+                    "Aktiv": [c in selected for c in group],
+                    "Haushaltsgröße": [comps[c][1] or "?" for c in group],
+                    "Automatisierung": [comps[c][2] or "?" for c in group],
+                },
+                index=group,
+            )
+            edited = st.data_editor(
+                df,
+                hide_index=True,
+                use_container_width=True,
+                key=f"nsv2_flex_tbl_{work_label}_{ver}",
+                column_config={
+                    "Aktiv": st.column_config.CheckboxColumn("✓"),
+                    "Haushaltsgröße": st.column_config.TextColumn(disabled=True),
+                    "Automatisierung": st.column_config.TextColumn(
+                        disabled=True, help=fb.AUTOMATION_COLUMN_HELP_DE
+                    ),
+                },
+            )
+            new_selected.update(edited.index[edited["Aktiv"].astype(bool)].tolist())
+
+    st.session_state["nsv2_flex_selected"] = new_selected
+    st.caption(f"{len(new_selected)} von {len(classes)} Klassen ausgewählt")
+    return sorted(new_selected)
+
+
 def _render_basislast_flex(net, time_start, time_end, n_days) -> None:
     """Device-level household base load (EV & heat pump handled separately)."""
     st.markdown("**Flexibilitäts-Haushaltsmodell** *(gerätescharf, EV & Wärmepumpe separat)*")
@@ -778,10 +834,8 @@ def _render_basislast_flex(net, time_start, time_end, n_days) -> None:
     st.caption(f"{len(base_ids)} konventionelle Basislast(en) erkannt.")
 
     classes = fb.available_classes(season)
-    allowed = st.multiselect(
-        "Erlaubte Haushaltsklassen", options=classes, default=classes,
-        format_func=fb.class_display_name, key="nsv2_flex_allowed",
-    )
+    st.markdown("**Erlaubte Haushaltsklassen**")
+    allowed = _select_allowed_classes(classes)
     if not allowed:
         st.warning("Bitte mindestens eine Klasse auswählen.")
         return

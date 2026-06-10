@@ -103,13 +103,32 @@ _CLASS_AUTOMATION_DE = {
     "manual": "manuell",
 }
 
+# Plain-German explanations of the four automation levels, ordered by load-shift
+# potential (cf. ``AUTOMATION_FACTOR_MAP`` in the flexibility model: manuell 0.25
+# → teilautomatisiert 0.50 → zeitprogrammierbar 0.75 → automatisiert 1.00).
+_AUTOMATION_HELP_DE = {
+    "manuell": "Geräte werden von Hand bedient; Lastverschiebung nur durch "
+               "aktives Eingreifen (geringstes Potenzial).",
+    "teilautomatisiert": "Teils automatische Steuerung einzelner Geräte; "
+                         "mittleres Verschiebepotenzial.",
+    "zeitprogrammierbar": "Geräte mit Start-/Programmvorwahl (Wasch-/Spülmaschine "
+                          "…); gut planbare Verschiebung.",
+    "automatisiert": "Vollautomatische Laststeuerung (Smart Home); Geräte "
+                     "verschieben selbsttätig (höchstes Potenzial).",
+}
 
-def class_display_name(cls: str) -> str:
-    """Human-readable German label for a household typology-class key.
+# Ready-made tooltip text (markdown) for the "Automatisierung" table column head.
+AUTOMATION_COLUMN_HELP_DE = (
+    "**Automatisierungsgrad** – bestimmt das Lastverschiebe-Potenzial:\n\n"
+    + "\n\n".join(f"- **{lvl}** – {desc}" for lvl, desc in _AUTOMATION_HELP_DE.items())
+)
 
-    Recognised keys are translated component-wise to
-    ``"<Arbeitsweise>, <Haushaltsgröße>, <Automatisierungsgrad>"``. Unknown keys
-    fall back to a simple title-cased rendering of the raw key.
+
+def class_components_de(cls: str) -> tuple[str | None, str | None, str | None]:
+    """Split a typology-class key into its three German components.
+
+    Returns ``(Arbeitsweise, Haushaltsgröße, Automatisierungsgrad)``; any
+    component that cannot be recognised is ``None``. The raw key is unchanged.
     """
     rest = cls
     work = size = automation = None
@@ -127,11 +146,44 @@ def class_display_name(cls: str) -> str:
             break
 
     size = _CLASS_SIZE_DE.get(rest)
+    return work, size, automation
 
-    parts = [p for p in (work, size, automation) if p]
+
+def class_display_name(cls: str) -> str:
+    """Human-readable German label for a household typology-class key.
+
+    Recognised keys are translated component-wise to
+    ``"<Arbeitsweise>, <Haushaltsgröße>, <Automatisierungsgrad>"``. Unknown keys
+    fall back to a simple title-cased rendering of the raw key.
+    """
+    work, size, automation = class_components_de(cls)
     if work and size and automation:
-        return ", ".join(parts)
+        return ", ".join([work, size, automation])
     return cls.replace("_", " ").title()
+
+
+# Display order of the working-situation groups (commute intensity descending).
+_WORK_DISPLAY_ORDER = ("office", "hybrid", "homeoffice")
+
+
+def group_classes_by_work(classes: list[str]) -> list[tuple[str, list[str]]]:
+    """Group class keys by working situation for the UI selector.
+
+    Returns ``[(Arbeitsweise_DE, [class_keys]), ...]`` in canonical display
+    order, omitting empty groups. Keys with an unrecognised working-situation
+    prefix are collected under ``"Sonstige"``.
+    """
+    groups: list[tuple[str, list[str]]] = []
+    matched: set[str] = set()
+    for token in _WORK_DISPLAY_ORDER:
+        members = sorted(c for c in classes if c.startswith(token + "_"))
+        if members:
+            groups.append((_CLASS_WORK_DE[token], members))
+            matched.update(members)
+    rest = sorted(c for c in classes if c not in matched)
+    if rest:
+        groups.append(("Sonstige", rest))
+    return groups
 
 
 def household_curves(cls: str, season: str) -> tuple[np.ndarray, np.ndarray]:
