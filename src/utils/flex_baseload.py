@@ -80,7 +80,57 @@ def available_classes(season: str = "transition") -> list[str]:
     return sorted({c.split("__")[0] for c in df.columns if "__" in c})
 
 
+# German labels for the household typology-class tokens. The class keys are
+# composed as ``<work>_<size>_<automation>`` (e.g.
+# ``homeoffice_small_family_semi_automated``); only the display is translated,
+# the underlying keys stay unchanged (CSV lookup, assignment, etc.).
+_CLASS_WORK_DE = {
+    "homeoffice": "Homeoffice",
+    "hybrid": "Hybrid",
+    "office": "Büro",
+}
+_CLASS_SIZE_DE = {
+    "single": "Single",
+    "small_family": "kleine Familie",
+    "large_family": "große Familie",
+}
+# Ordered so that the more specific ``semi_automated`` is matched before the
+# ``automated`` suffix it contains.
+_CLASS_AUTOMATION_DE = {
+    "semi_automated": "teilautomatisiert",
+    "time_programmable": "zeitprogrammierbar",
+    "automated": "automatisiert",
+    "manual": "manuell",
+}
+
+
 def class_display_name(cls: str) -> str:
+    """Human-readable German label for a household typology-class key.
+
+    Recognised keys are translated component-wise to
+    ``"<Arbeitsweise>, <Haushaltsgröße>, <Automatisierungsgrad>"``. Unknown keys
+    fall back to a simple title-cased rendering of the raw key.
+    """
+    rest = cls
+    work = size = automation = None
+
+    for token, label in _CLASS_WORK_DE.items():
+        if rest.startswith(token + "_"):
+            work = label
+            rest = rest[len(token) + 1:]
+            break
+
+    for token, label in _CLASS_AUTOMATION_DE.items():
+        if rest.endswith(token):
+            automation = label
+            rest = rest[: -len(token)].rstrip("_")
+            break
+
+    size = _CLASS_SIZE_DE.get(rest)
+
+    parts = [p for p in (work, size, automation) if p]
+    if work and size and automation:
+        return ", ".join(parts)
     return cls.replace("_", " ").title()
 
 
