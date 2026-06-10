@@ -94,18 +94,6 @@ PAGE_DESCRIPTIONS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 PAGE_OVERVIEW: dict[str, list[tuple[str, str]]] = {
-    "Forschungsergebnisse": [
-        ("research_results", "Integration von E-Fahrzeugen in Verteilnetze"),
-        ("mv_fallstudie", "Fallstudie: MS-Netz Validierung"),
-    ],
-    "Lastprofilgeneratoren": [
-        ("bev_settings", "E-Mobilität"),
-        ("heatpump", "Wärmepumpe"),
-        ("pv", "Photovoltaik"),
-        ("wind", "Windenergie"),
-        ("electrical_storage", "Elektrischer Speicher"),
-        ("thermal_storage", "Thermischer Speicher"),
-    ],
     "Energiesystemanalysen": [
         ("netzmodell", "Netzmodell-Szenario"),
         ("flexibility", "Flexibilitätskonfigurator"),
@@ -114,6 +102,18 @@ PAGE_OVERVIEW: dict[str, list[tuple[str, str]]] = {
         ("solar_mastr", "Solaranlagen"),
         ("wind_mastr", "Windanlagen"),
         ("storage_mastr", "Speicheranlagen"),
+    ],
+    "Forschungsergebnisse": [
+        ("research_results", "Integration von E-Fahrzeugen in Verteilnetze"),
+        # ("mv_fallstudie", "Fallstudie: MS-Netz Validierung"),
+    ],
+    "Lastprofilgeneratoren": [
+        ("bev_settings", "E-Mobilität"),
+        ("heatpump", "Wärmepumpe"),
+        ("pv", "Photovoltaik"),
+        ("wind", "Windenergie"),
+        ("electrical_storage", "Elektrischer Speicher"),
+        ("thermal_storage", "Thermischer Speicher"),
     ],
 }
 

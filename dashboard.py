@@ -124,7 +124,7 @@ _page_startseite = st.Page(_startseite, title="Startseite", icon="🏠", default
 
 pages = {
     "research_results": st.Page(_research_results, title="Integration von E-Fahrzeugen in Verteilnetze"),
-    "mv_fallstudie": st.Page(_mv_fallstudie, title="Fallstudie: MS-Netz Validierung"),
+    # "mv_fallstudie": st.Page(_mv_fallstudie, title="Fallstudie: MS-Netz Validierung"),
     "bev_settings": st.Page(_bev_settings, title="E-Mobilität"),
     "heatpump": st.Page(_heatpump_configuration, title="Wärmepumpe"),
     "pv": st.Page(_pv_configuration, title="Photovoltaik"),
@@ -145,18 +145,6 @@ st.session_state["_page_flex_configurator"] = pages["flexibility"]
 
 pg = st.navigation({
     "Übersicht": [_page_startseite],
-    "Forschungsergebnisse": [
-        pages["research_results"],
-        pages["mv_fallstudie"],
-    ],
-    "Lastprofilgeneratoren": [
-        pages["bev_settings"],
-        pages["heatpump"],
-        pages["pv"],
-        pages["wind"],
-        pages["electrical_storage"],
-        pages["thermal_storage"],
-    ],
     "Energiesystemanalysen": [
         pages["netzmodell"],
         pages["flexibility"],
@@ -165,6 +153,18 @@ pg = st.navigation({
         pages["solar_mastr"],
         pages["wind_mastr"],
         pages["storage_mastr"],
+    ],
+    "Forschungsergebnisse": [
+        pages["research_results"],
+        # pages["mv_fallstudie"],
+    ],
+    "Lastprofilgeneratoren": [
+        pages["bev_settings"],
+        pages["heatpump"],
+        pages["pv"],
+        pages["wind"],
+        pages["electrical_storage"],
+        pages["thermal_storage"],
     ],
 })
 
