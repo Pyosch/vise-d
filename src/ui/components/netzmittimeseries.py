@@ -27,10 +27,19 @@ def _get_wind_curve() -> pd.DataFrame:
 
 
 @st.cache_data
-def get_normalized_pv_output(lat, lon, start_date, end_date):
+def get_normalized_pv_output(lat, lon, start_date, end_date,
+                             surface_tilt=30.0, surface_azimuth=180.0):
     """
     Timeseries for a normalized 1kWp PV system using PVlib + DWD data.
     Returns a pandas Series in kW at 15-minute resolution for the requested date range.
+
+    Parameters
+    ----------
+    surface_tilt : float
+        Module tilt from horizontal in degrees (0 = flat, 90 = vertical). Default 30.
+    surface_azimuth : float
+        Module azimuth in degrees (pvlib convention: 90 = East, 180 = South,
+        270 = West). Default 180 (South).
     """
     tz = 'Europe/Berlin'
     day_start = pd.Timestamp(start_date)
@@ -52,7 +61,7 @@ def get_normalized_pv_output(lat, lon, start_date, end_date):
         module_parameters=dict(pdc0=1000, gamma_pdc=-0.004),
         temperature_model_parameters=dict(a=-3.56, b=-0.075, deltaT=3)
     )
-    arrays = [pvsystem.Array(pvsystem.FixedMount(30, 180), **array_kwargs)]
+    arrays = [pvsystem.Array(pvsystem.FixedMount(surface_tilt, surface_azimuth), **array_kwargs)]
 
     loc = location.Location(lat, lon, tz=tz)
     system = pvsystem.PVSystem(arrays=arrays, inverter_parameters=dict(pdc0=1000))

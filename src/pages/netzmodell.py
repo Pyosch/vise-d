@@ -317,6 +317,31 @@ def _geocode(location: str) -> tuple[float, float]:
     return float(lat), float(lon)
 
 
+def _reset_der_state() -> None:
+    """Remove all DER-related session state.
+
+    Called whenever a different network is loaded (or the network is reset) so
+    that no DER timeseries or MaStR selection state survive the switch — the
+    freshly loaded ``net`` already carries no sgen/load/storage DER.
+    """
+    for key in (
+        "nsv2_mastr_sgen_ts",
+        "nsv2_mastr_gdf_solar",
+        "nsv2_mastr_gdf_wind",
+        "nsv2_mastr_list_loc",
+        "nsv2_mastr_sel",
+        "nsv2_mastr_filter",
+        "nsv2_mastr_filter_prev",
+    ):
+        st.session_state.pop(key, None)
+
+
+def _azimuth_label(deg: float) -> str:
+    """Map a pvlib azimuth (0=N, 90=E, 180=S, 270=W) to an 8-point compass label."""
+    dirs = ["Nord", "Nordost", "Ost", "Südost", "Süd", "Südwest", "West", "Nordwest"]
+    return dirs[int((deg % 360) / 45 + 0.5) % 8]
+
+
 # ---------------------------------------------------------------------------
 # DER overview expander
 # ---------------------------------------------------------------------------
@@ -444,7 +469,7 @@ def _tab_szenario(net: pp.pandapowerNet) -> None:
 # Tab 2: Gezielt (Name-Search)
 # ---------------------------------------------------------------------------
 
-def _tab_gezielt(net: pp.pandapowerNet) -> None:
+def _tab_targeted(net: pp.pandapowerNet) -> None:
     der_type = st.selectbox(
         "DER-Typ",
         ["PV", "EV", "Wärmepumpe", "Batteriespeicher"],
@@ -501,6 +526,37 @@ def _tab_gezielt(net: pp.pandapowerNet) -> None:
 # Tab 3: MaStR-Anlagen
 # ---------------------------------------------------------------------------
 
+def _mastr_selection_table(gdf_solar, gdf_wind):
+    """Build a unified selection table for the loaded MaStR plant lists.
+
+    Returns the display DataFrame (one row per plant) and a position-aligned
+    list of ``(tech, EinheitMastrNummer)`` tuples to map selected rows back to
+    the underlying gdf rows.
+    """
+    cols = ["Technologie", "Name", "Leistung (kW)", "Inbetriebnahme", "MaStR-Nr"]
+    frames = []
+    mapping: list[tuple[str, str]] = []
+    for gdf, tech_label in ((gdf_solar, "PV"), (gdf_wind, "Wind")):
+        if gdf is None or len(gdf) == 0:
+            continue
+        nrs = gdf["EinheitMastrNummer"].astype(str)
+        sub = pd.DataFrame({
+            "Technologie": tech_label,
+            "Name": (gdf["NameStromerzeugungseinheit"].astype(str).values
+                     if "NameStromerzeugungseinheit" in gdf.columns else ""),
+            "Leistung (kW)": (pd.to_numeric(gdf["Bruttoleistung"], errors="coerce").values
+                              if "Bruttoleistung" in gdf.columns else np.nan),
+            "Inbetriebnahme": (gdf["Inbetriebnahmedatum"].astype(str).values
+                               if "Inbetriebnahmedatum" in gdf.columns else ""),
+            "MaStR-Nr": nrs.values,
+        })
+        frames.append(sub)
+        mapping.extend((tech_label, nr) for nr in nrs.tolist())
+    if not frames:
+        return pd.DataFrame(columns=cols), mapping
+    return pd.concat(frames, ignore_index=True)[cols], mapping
+
+
 def _tab_mastr(net: pp.pandapowerNet) -> None:
     if not _HAS_OSMNX:
         st.error("osmnx ist nicht installiert — MaStR-Geocoding nicht verfügbar.")
@@ -534,132 +590,219 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
     start_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
     end_str = end_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    if not tech:
-        st.info("Bitte mindestens eine Technologie auswählen.")
-        return
-
-    if st.button("MaStR-Anlagen laden", type="primary", key="nsv2_mastr_load"):
+    # --- Schritt 1: Anlagenliste laden (nur DB-Query, keine Simulation) -----
+    list_loaded = (
+        st.session_state.get("nsv2_mastr_list_loc") == location
+        and (
+            st.session_state.get("nsv2_mastr_gdf_solar") is not None
+            or st.session_state.get("nsv2_mastr_gdf_wind") is not None
+        )
+    )
+    load_label = "Anlagenliste neu laden" if list_loaded else "Anlagenliste laden"
+    if st.button(load_label, type="primary", key="nsv2_mastr_load", disabled=not tech):
         log_handler = _StreamlitLogHandler()
         log_handler.setFormatter(
             logging.Formatter("%(asctime)s  %(message)s", datefmt="%H:%M:%S")
         )
         root_logger = logging.getLogger()
         root_logger.addHandler(log_handler)
-
-        sgen_timeseries: dict[int, pd.Series] = {}
-        pv_count = 0
-        wind_count = 0
-
         try:
-            with st.status("MaStR-Anlagen werden geladen…", expanded=True) as status:
-
-                st.write(f"Geocoding: {location}…")
-                try:
-                    lat, lon = _geocode(location)
-                except Exception as e:
-                    st.error(f"Geocoding fehlgeschlagen: {e}")
-                    return
-
+            with st.status("MaStR-Anlagenliste wird geladen…", expanded=True) as status:
                 if "PV" in tech:
-                    st.write("DWD-Wetterdaten abrufen (PV)…")
-                    try:
-                        pv_env = get_cached_environment(start_str, end_str, lat, lon)
-                        if pv_env is None:
-                            st.error("PV-Umgebung konnte nicht erstellt werden.")
-                            return
-                    except Exception as e:
-                        st.error(f"Fehler beim PV-Wetterdatenabruf: {e}")
-                        return
-
                     st.write(f"MaStR-Solardaten laden ({location})…")
                     try:
                         gdf_solar, _ = prepare_solar_data(location, str(MASTR_DB_PATH))
                         gdf_solar = revise_power_values(gdf_solar)
-                        pv_count = len(gdf_solar)
-                        st.write(f"  → {pv_count} PV-Anlagen gefunden.")
+                        st.session_state["nsv2_mastr_gdf_solar"] = gdf_solar
+                        st.write(f"  → {len(gdf_solar)} PV-Anlagen gefunden.")
                     except Exception as e:
                         st.warning(f"PV-Daten konnten nicht geladen werden: {e}")
-                        gdf_solar = None
-
-                    if gdf_solar is not None and not gdf_solar.empty:
-                        st.write("PV-Anlagen den Netzknoten zuweisen…")
-                        pv_bus_assignments = assign_assets_to_buses(net, gdf_solar)
-
-                        st.write("PV-Parameter laden / berechnen…")
-                        params_df = load_or_build_pv_params(
-                            gdf_solar, PV_PARAMS_DIR / f"params_{location.lower()}.csv"
-                        )
-
-                        st.write(f"PV-Zeitreihen simulieren ({len(params_df)} Anlagen)…")
-                        pv_systems = build_pvsystems_from_params(params_df, pv_env)
-                        prepare_pv_time_series_mastr(pv_systems)
-                        pv_agg = aggregate_pv_time_series(pv_systems)
-
-                        st.write("PV-Einspeiser ins Netz eintragen…")
-                        for mastr_nr, ts in pv_agg.items():
-                            bus_idx = pv_bus_assignments.get(mastr_nr)
-                            if bus_idx is None:
-                                continue
-                            ts_s = ts.iloc[:, 0] if isinstance(ts, pd.DataFrame) else ts
-                            peak_mw = float(ts_s.max()) / 1000.0
-                            sgen_idx = pp.create_sgen(
-                                net, bus=bus_idx, p_mw=max(peak_mw, 0.001),
-                                name=f"PV_{mastr_nr}", type="PV", in_service=True,
-                            )
-                            sgen_timeseries[sgen_idx] = ts_s
+                        st.session_state.pop("nsv2_mastr_gdf_solar", None)
+                else:
+                    st.session_state.pop("nsv2_mastr_gdf_solar", None)
 
                 if "Wind" in tech:
-                    st.write("DWD-Wetterdaten abrufen (Wind)…")
-                    try:
-                        wind_env = Environment(start=start_str, end=end_str)
-                        wind_env.get_dwd_wind_data(lat=lat, lon=lon)
-                    except Exception as e:
-                        st.error(f"Fehler beim Wind-Wetterdatenabruf: {e}")
-                        return
-
                     st.write(f"MaStR-Winddaten laden ({location})…")
                     try:
                         gdf_wind, _ = prepare_wind_data(location, str(MASTR_DB_PATH))
-                        wind_count = len(gdf_wind)
-                        st.write(f"  → {wind_count} Windkraftanlagen gefunden.")
+                        st.session_state["nsv2_mastr_gdf_wind"] = gdf_wind
+                        st.write(f"  → {len(gdf_wind)} Windkraftanlagen gefunden.")
                     except Exception as e:
                         st.warning(f"Winddaten konnten nicht geladen werden: {e}")
-                        gdf_wind = None
+                        st.session_state.pop("nsv2_mastr_gdf_wind", None)
+                else:
+                    st.session_state.pop("nsv2_mastr_gdf_wind", None)
 
-                    if gdf_wind is not None and not gdf_wind.empty:
-                        st.write("Windturbinen-Matching und Zeitreihensimulation…")
-                        gdf_wind = wind_turbine_matching(gdf_wind)
-                        wind_bus_assignments = assign_assets_to_buses(net, gdf_wind)
-                        wind_dict = init_windturbines_mastr(gdf_wind, wind_env)
-                        prepare_wind_time_series_mastr(wind_dict)
-                        wind_agg = aggregate_wind_time_series(wind_dict)
-
-                        if wind_bus_assignments:
-                            dominant_bus = Counter(wind_bus_assignments.values()).most_common(1)[0][0]
-                            wind_ts = wind_agg.iloc[:, 0] if isinstance(wind_agg, pd.DataFrame) else wind_agg
-                            peak_wind_mw = float(wind_ts.max()) / 1000.0
-                            wind_sgen_idx = pp.create_sgen(
-                                net, bus=dominant_bus, p_mw=max(peak_wind_mw, 0.001),
-                                name="Wind_aggregiert", type="WKA", in_service=True,
-                            )
-                            sgen_timeseries[wind_sgen_idx] = wind_ts
-                            st.write("Wind-Einspeiser (aggregiert) eingetragen.")
-
-                st.session_state["nsv2_net"] = net
-                st.session_state["nsv2_mastr_sgen_ts"] = sgen_timeseries
-                status.update(label="✅ MaStR-Anlagen geladen!", state="complete", expanded=False)
-
+                st.session_state["nsv2_mastr_list_loc"] = location
+                st.session_state.pop("nsv2_mastr_sel", None)  # stale Auswahl verwerfen
+                status.update(
+                    label="✅ Anlagenliste geladen", state="complete", expanded=False
+                )
         finally:
             root_logger.removeHandler(log_handler)
-
-        m1, m2 = st.columns(2)
-        m1.metric("PV-Anlagen", pv_count)
-        m2.metric("Windkraftanlagen", wind_count)
 
         if log_handler.records:
             with st.expander(f"Datenkorrektur-Log ({len(log_handler.records)} Einträge)"):
                 for msg in log_handler.records:
                     st.text(msg)
+
+    if not tech:
+        st.caption("Bitte mindestens eine Technologie auswählen, um die Liste zu laden.")
+
+    # --- Schritt 2: Anlagen auswählen und Netzknoten zuweisen ---------------
+    if st.session_state.get("nsv2_mastr_list_loc") != location:
+        st.info("Bitte zuerst die Anlagenliste für den gewählten Ort laden.")
+        return
+
+    gdf_solar = st.session_state.get("nsv2_mastr_gdf_solar")
+    gdf_wind = st.session_state.get("nsv2_mastr_gdf_wind")
+    display_df, mapping = _mastr_selection_table(gdf_solar, gdf_wind)
+    if display_df.empty:
+        st.info("Keine Anlagen in der geladenen Liste.")
+        return
+
+    total_count = len(display_df)
+    search_plants = st.text_input(
+        "Anlagen filtern (Name oder MaStR-Nr.)", key="nsv2_mastr_filter"
+    )
+    if search_plants:
+        s = search_plants.strip()
+        mask = (
+            display_df["Name"].str.contains(s, case=False, na=False)
+            | display_df["MaStR-Nr"].str.contains(s, case=False, na=False)
+        )
+        keep = [i for i, hit in enumerate(mask.tolist()) if hit]
+        display_df = display_df.iloc[keep].reset_index(drop=True)
+        mapping = [mapping[i] for i in keep]
+
+    # Zeilenauswahl ist positionsbasiert → bei geänderter Filterung verwerfen,
+    # damit markierte Zeilen nicht auf andere Anlagen verrutschen.
+    if st.session_state.get("nsv2_mastr_filter_prev") != search_plants:
+        st.session_state["nsv2_mastr_filter_prev"] = search_plants
+        st.session_state.pop("nsv2_mastr_sel", None)
+
+    st.markdown(
+        f"**Anlagen auswählen** (Mehrfachauswahl möglich · "
+        f"{len(display_df)}/{total_count})"
+    )
+    if display_df.empty:
+        st.caption("Keine Treffer — Filter anpassen.")
+    event = st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True,
+        on_select="rerun",
+        selection_mode="multi-row",
+        key="nsv2_mastr_sel",
+        column_config={"Leistung (kW)": st.column_config.NumberColumn(format="%.1f")},
+    )
+    selected_rows = list(getattr(getattr(event, "selection", None), "rows", []) or [])
+
+    # Zielknoten wählen (Muster wie im Tab "Gezielt"; Default = erster Knoten)
+    bus_df = _bus_labels(net)
+    search = st.text_input("Knotenname / -index (Filter)", key="nsv2_mastr_bus_search")
+    if search:
+        bus_df = bus_df[bus_df["label"].str.contains(search, case=False, na=False)]
+    if bus_df.empty:
+        st.warning("Keine Knoten gefunden — Filter anpassen.")
+        return
+    selected_label = st.selectbox(
+        f"Zielknoten ({len(bus_df)} verfügbar)",
+        bus_df["label"].tolist(),
+        key="nsv2_mastr_bus",
+    )
+    selected_bus = int(selected_label.split(" — ")[0].strip())
+
+    sel_pv = [mapping[r][1] for r in selected_rows if mapping[r][0] == "PV"]
+    sel_wind = [mapping[r][1] for r in selected_rows if mapping[r][0] == "Wind"]
+
+    if st.button(
+        f"Ausgewählte Anlagen hinzufügen ({len(selected_rows)})",
+        type="primary",
+        key="nsv2_mastr_add",
+        disabled=len(selected_rows) == 0,
+    ):
+        log_handler = _StreamlitLogHandler()
+        log_handler.setFormatter(
+            logging.Formatter("%(asctime)s  %(message)s", datefmt="%H:%M:%S")
+        )
+        root_logger = logging.getLogger()
+        root_logger.addHandler(log_handler)
+        added = 0
+        try:
+            with st.status("Ausgewählte Anlagen werden simuliert…", expanded=True) as status:
+                st.write(f"Geocoding: {location}…")
+                lat, lon = _geocode(location)
+
+                # je Anlage eine eigene Zeitreihe — vorhandene Einträge erhalten
+                sgen_ts = dict(st.session_state.get("nsv2_mastr_sgen_ts", {}))
+
+                if sel_pv:
+                    st.write("DWD-Wetterdaten abrufen (PV)…")
+                    pv_env = get_cached_environment(start_str, end_str, lat, lon)
+                    if pv_env is None:
+                        st.error("PV-Umgebung konnte nicht erstellt werden.")
+                        return
+                    subset = gdf_solar[
+                        gdf_solar["EinheitMastrNummer"].astype(str).isin(sel_pv)
+                    ]
+                    st.write(f"PV-Parameter & Zeitreihen ({len(subset)} Anlagen)…")
+                    params_df = load_or_build_pv_params(
+                        subset, PV_PARAMS_DIR / f"params_{location.lower()}.csv"
+                    )
+                    pv_systems = build_pvsystems_from_params(params_df, pv_env)
+                    prepare_pv_time_series_mastr(pv_systems)
+                    pv_agg = aggregate_pv_time_series(pv_systems)
+                    for mastr_nr, ts in pv_agg.items():
+                        ts_s = ts.iloc[:, 0] if isinstance(ts, pd.DataFrame) else ts
+                        peak_mw = float(ts_s.max()) / 1000.0
+                        sgen_idx = pp.create_sgen(
+                            net, bus=selected_bus, p_mw=max(peak_mw, 0.001),
+                            name=f"PV_{mastr_nr}", type="PV", in_service=True,
+                        )
+                        sgen_ts[sgen_idx] = ts_s  # eigene Zeitreihe je sgen
+                        added += 1
+
+                if sel_wind:
+                    st.write("DWD-Wetterdaten abrufen (Wind)…")
+                    wind_env = Environment(start=start_str, end=end_str)
+                    wind_env.get_dwd_wind_data(lat=lat, lon=lon)
+                    subset = gdf_wind[
+                        gdf_wind["EinheitMastrNummer"].astype(str).isin(sel_wind)
+                    ]
+                    st.write(f"Windturbinen-Matching & Zeitreihen ({len(subset)} Anlagen)…")
+                    subset = wind_turbine_matching(subset)
+                    wind_dict = init_windturbines_mastr(subset, wind_env)
+                    prepare_wind_time_series_mastr(wind_dict)
+                    for mastr_nr, wp in wind_dict.items():
+                        ts = wp.timeseries
+                        ts_s = ts.iloc[:, 0] if isinstance(ts, pd.DataFrame) else ts
+                        peak_mw = float(ts_s.max()) / 1000.0
+                        sgen_idx = pp.create_sgen(
+                            net, bus=selected_bus, p_mw=max(peak_mw, 0.001),
+                            name=f"Wind_{mastr_nr}", type="WKA", in_service=True,
+                        )
+                        sgen_ts[sgen_idx] = ts_s  # eigene Zeitreihe je sgen
+                        added += 1
+
+                st.session_state["nsv2_net"] = net
+                st.session_state["nsv2_mastr_sgen_ts"] = sgen_ts
+                status.update(
+                    label=f"✅ {added} Anlage(n) hinzugefügt",
+                    state="complete", expanded=False,
+                )
+        except Exception as e:
+            st.error(f"Fehler beim Hinzufügen: {e}")
+            return
+        finally:
+            root_logger.removeHandler(log_handler)
+
+        if log_handler.records:
+            with st.expander(f"Datenkorrektur-Log ({len(log_handler.records)} Einträge)"):
+                for msg in log_handler.records:
+                    st.text(msg)
+
+        st.success(f"{added} Anlage(n) an Knoten {selected_bus} hinzugefügt.")
 
 
 # ---------------------------------------------------------------------------
@@ -972,6 +1115,22 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
             else:
                 st.caption("Bitte Zeitraum in Abschnitt 2 festlegen.")
 
+            surface_azimuth = float(st.slider(
+                "Ausrichtung (Azimut)", min_value=0, max_value=360, value=180, step=5,
+                format="%d°", key="nsv2_pv_azimuth",
+                help="Himmelsrichtung, in die die Module zeigen. "
+                     "0°/360° = Nord, 90° = Ost, 180° = Süd, 270° = West.",
+            ))
+            st.caption(
+                "🧭 0°/360° = Nord · 90° = Ost · 180° = Süd · 270° = West — "
+                f"aktuell: **{surface_azimuth:.0f}° ({_azimuth_label(surface_azimuth)})**"
+            )
+            surface_tilt = st.number_input(
+                "Neigungswinkel (°)", min_value=0.0, max_value=90.0, value=30.0,
+                step=5.0, key="nsv2_pv_tilt",
+                help="Modulneigung zur Horizontalen (0° = flach, 90° = senkrecht).",
+            )
+
             if st.button("PV-Profil generieren", key="nsv2_pv_gen", disabled=time_start is None):
                 with st.spinner(f"DWD-Wetterdaten abrufen und PV-Profil berechnen ({n_days} Tag(e))…"):
                     try:
@@ -1013,7 +1172,9 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                         end_ts = pd.Timestamp(time_end)
                         while current <= end_ts:
                             day_ts = get_normalized_pv_output(
-                                lat, lon, current, current + pd.Timedelta(days=1)
+                                lat, lon, current, current + pd.Timedelta(days=1),
+                                surface_tilt=surface_tilt,
+                                surface_azimuth=surface_azimuth,
                             )
                             daily.append(
                                 pd.to_numeric(day_ts, errors="coerce").fillna(0.0).reset_index(drop=True)
@@ -1024,7 +1185,9 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                         st.session_state["nsv2_profile_pv"] = full_profile
                         st.success(
                             f"PV-Profil erzeugt: {len(daily)} Tag(e) "
-                            f"({time_start} – {time_end}) für {pv_loc}."
+                            f"({time_start} – {time_end}) für {pv_loc}, "
+                            f"Ausrichtung {surface_azimuth:.0f}° ({_azimuth_label(surface_azimuth)}), "
+                            f"{surface_tilt:.0f}° Neigung."
                         )
                     except Exception as e:
                         st.error(f"PV-Profilgenerierung fehlgeschlagen: {e}")
@@ -1698,13 +1861,50 @@ def _section_simulation(net: pp.pandapowerNet) -> None:
     flex_available = flex_base or has_ev or has_hp
 
     # Profile status
+    mastr_ts = st.session_state.get("nsv2_mastr_sgen_ts", {})
+    pv_profile_set = st.session_state.get("nsv2_profile_pv") is not None
     profiles_info = {
-        "PV":         ("nsv2_profile_pv",      "kW/kWp"),
         "EV":         ("nsv2_profile_ev",      "kW"),
         "Wärmepumpe": ("nsv2_profile_hp",      "kW"),
         "Speicher":   ("nsv2_profile_storage", "kW"),
     }
     with st.expander("Profil-Status", expanded=True):
+        # Einspeiser (PV/Wind): MaStR-Anlagen bringen ihr Erzeugungsprofil bereits
+        # beim Hinzufügen mit; synthetische PV-Anlagen brauchen das PV-Profil aus 3.5.
+        if len(net.sgen) > 0:
+            s_name = net.sgen["name"].astype(str)
+            s_type = (net.sgen["type"].astype(str)
+                      if "type" in net.sgen.columns else s_name)
+            is_wind = (s_type.str.contains("WKA", case=False, na=False)
+                       | s_name.str.contains("Wind", case=False, na=False))
+            pv_mask = (~is_wind) & s_name.str.contains("PV", case=False, na=False)
+            pv_idx = net.sgen.index[pv_mask.to_numpy()]
+            wind_idx = net.sgen.index[is_wind.to_numpy()]
+
+            if len(pv_idx) > 0:
+                pv_total = len(pv_idx)
+                pv_with = sum(1 for i in pv_idx if (i in mastr_ts) or pv_profile_set)
+                if pv_with == pv_total:
+                    st.caption(f"✅ PV: {pv_with}/{pv_total} Anlagen mit Erzeugungsprofil")
+                elif pv_with == 0:
+                    st.caption(
+                        f"⚠️ PV: 0/{pv_total} Anlagen mit Erzeugungsprofil → bleiben "
+                        f"statisch (PV-Profil in Abschnitt 3.5 erzeugen)"
+                    )
+                else:
+                    st.caption(
+                        f"⚠️ PV: {pv_with}/{pv_total} Anlagen mit Erzeugungsprofil — "
+                        f"die übrigen benötigen das PV-Profil aus Abschnitt 3.5"
+                    )
+
+            if len(wind_idx) > 0:
+                wind_total = len(wind_idx)
+                wind_with = sum(1 for i in wind_idx if i in mastr_ts)
+                icon = "✅" if wind_with == wind_total else "⚠️"
+                st.caption(
+                    f"{icon} Wind: {wind_with}/{wind_total} Anlagen mit Erzeugungsprofil"
+                )
+
         for label, (key, unit) in profiles_info.items():
             val = st.session_state.get(key)
             if val is None:
@@ -1846,7 +2046,7 @@ def netzmodell():
                     "nsv2_net_name": net_name,
                     "nsv2_net_source": "predefined",
                 })
-                st.session_state.pop("nsv2_mastr_sgen_ts", None)
+                _reset_der_state()
             except Exception as e:
                 st.error(f"Netz konnte nicht geladen werden: {e}")
                 return
@@ -1864,7 +2064,7 @@ def netzmodell():
                         "nsv2_net_name": net_name,
                         "nsv2_net_source": "predefined",
                     })
-                    st.session_state.pop("nsv2_mastr_sgen_ts", None)
+                    _reset_der_state()
                     st.rerun()
                 except Exception as e:
                     st.error(f"Netz konnte nicht geladen werden: {e}")
@@ -1925,7 +2125,7 @@ def netzmodell():
                     st.session_state["nsv2_net"] = net
                     st.session_state["nsv2_net_name"] = uploaded.name
                     st.session_state["nsv2_net_source"] = "upload"
-                    st.session_state.pop("nsv2_mastr_sgen_ts", None)
+                    _reset_der_state()
                     st.success(
                         f"Netz geladen: {len(net.bus)} Knoten, {len(net.line)} Leitungen"
                     )
@@ -1969,7 +2169,7 @@ def netzmodell():
                     st.session_state["nsv2_net"] = net
                     st.session_state["nsv2_net_name"] = ", ".join(f.name for f in cim_files)
                     st.session_state["nsv2_net_source"] = "upload"
-                    st.session_state.pop("nsv2_mastr_sgen_ts", None)
+                    _reset_der_state()
                     st.success(
                         f"CIM-Netz geladen: {len(net.bus)} Knoten, {len(net.line)} Leitungen"
                     )
@@ -1987,7 +2187,7 @@ def netzmodell():
             st.session_state.pop("nsv2_net", None)
             st.session_state.pop("nsv2_net_name", None)
             st.session_state.pop("nsv2_net_source", None)
-            st.session_state.pop("nsv2_mastr_sgen_ts", None)
+            _reset_der_state()
             st.rerun()
 
     # ------------------------------------------------------------------ #
@@ -2018,7 +2218,7 @@ def netzmodell():
         with tab_sz:
             _tab_szenario(net)
         with tab_gz:
-            _tab_gezielt(net)
+            _tab_targeted(net)
         with tab_ms:
             _tab_mastr(net)
 
