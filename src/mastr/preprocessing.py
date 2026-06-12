@@ -14,6 +14,7 @@ __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 
 import pandas as pd
 from pathlib import Path
+from functools import lru_cache
 from sqlite3 import connect
 import sqlite3
 
@@ -25,17 +26,155 @@ from src.config import MASTR_DB_PATH
 
 _LOCATION_CACHE_DIR = Path(MASTR_DB_PATH).parent / "mastr"
 
+# Tables / cache files / column set used for location disambiguation.
+_LOCATION_TABLES = {
+    "solar": "solar_extended",
+    "wind": "wind_extended",
+    "storage": "storage_extended",
+}
+_LOCATION_CSV = {
+    "solar": "solar_locations.csv",
+    "wind": "wind_locations.csv",
+    "storage": "storage_locations.csv",
+}
+# Columns carried through the location cache. ``Gemeindeschluessel`` (the 8-digit
+# official AGS) is the only globally unique municipality key; ``Ort`` (postal town
+# name) is NOT unique — e.g. "Langenfeld" names three different municipalities.
+_LOC_COLS = ["Ort", "Gemeindeschluessel", "Gemeinde", "Bundesland", "Landkreis"]
 
-def _load_or_build_location_cache(csv_path, query, db_path) -> list[str]:
-    csv_path = Path(csv_path)
+
+def _build_location_labels(raw: pd.DataFrame) -> pd.DataFrame:
+    """Build unique, human-readable selection labels from raw location rows.
+
+    One entry per ``(Ort, AGS)``. An ``Ort`` whose name is unique keeps the bare
+    name; a name shared by several municipalities is suffixed with
+    ``(Landkreis, Bundesland)`` so the user can tell them apart. AGS is appended
+    only if a label would otherwise still collide, guaranteeing uniqueness.
+    """
+    df = raw.copy()
+    for col in _LOC_COLS:
+        if col not in df.columns:
+            df[col] = ""
+        df[col] = df[col].fillna("").astype(str).str.strip()
+
+    df = df[df["Ort"] != ""]
+    # Collapse to one row per (Ort, AGS); arbitrary-but-stable pick for the rest.
+    df = (
+        df.sort_values(_LOC_COLS, kind="stable")
+        .drop_duplicates(subset=["Ort", "Gemeindeschluessel"])
+        .reset_index(drop=True)
+    )
+
+    # An Ort is ambiguous when it maps to more than one municipality (AGS).
+    ambiguous = df.groupby("Ort")["Gemeindeschluessel"].transform("size") > 1
+    suffix = df.apply(
+        lambda r: ", ".join([p for p in (r["Landkreis"], r["Bundesland"]) if p])
+        or r["Gemeindeschluessel"],
+        axis=1,
+    )
+    df["label"] = df["Ort"].where(~ambiguous, df["Ort"] + " (" + suffix + ")")
+
+    # Final safety net: ensure labels are unique.
+    dup = df["label"].duplicated(keep=False)
+    if dup.any():
+        df.loc[dup, "label"] = [
+            f"{lbl} [{ags}]"
+            for lbl, ags in zip(df.loc[dup, "label"], df.loc[dup, "Gemeindeschluessel"])
+        ]
+
+    return df.sort_values("label", kind="stable").reset_index(drop=True)[
+        ["label", *_LOC_COLS]
+    ]
+
+
+@lru_cache(maxsize=None)
+def _ensure_location_cache(csv_path_str: str, table: str, db_path: str) -> pd.DataFrame:
+    """Return the location cache DataFrame, (re)building it from the DB if needed.
+
+    Self-heals legacy caches: a CSV without the ``label`` column (the old
+    ``Ort``-only schema) is rebuilt. Read as strings so AGS leading zeros survive.
+    """
+    csv_path = Path(csv_path_str)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
+
     if csv_path.exists():
-        return pd.read_csv(csv_path)['Ort'].tolist()
+        cached = pd.read_csv(csv_path, dtype=str).fillna("")
+        if "label" in cached.columns and set(_LOC_COLS).issubset(cached.columns):
+            return cached
+
     conn = sqlite3.connect(db_path)
-    df = pd.read_sql_query(query, conn)
+    query = (
+        f"SELECT DISTINCT {', '.join(_LOC_COLS)} FROM {table} "
+        "WHERE Ort IS NOT NULL AND Gemeindeschluessel IS NOT NULL "
+        "AND Gemeindeschluessel <> ''"
+    )
+    raw = pd.read_sql_query(query, conn, dtype=str)
     conn.close()
-    df.to_csv(csv_path, index=False)
-    return sorted(df['Ort'].tolist())
+
+    built = _build_location_labels(raw)
+    built.to_csv(csv_path, index=False)
+    return built
+
+
+def _resolve_location(location, csv_path, table: str, db_path: str) -> dict:
+    """Resolve a selection label (or bare Ort) to its municipality identifiers.
+
+    Returns a dict with ``ort``, ``ags``, ``gemeinde``, ``bundesland``,
+    ``landkreis`` and a Nominatim-friendly ``geocode_query``. Falls back to the
+    bare ``Ort`` (old behavior, no AGS) for inputs that are not known labels, so
+    direct/legacy callers keep working.
+    """
+    location = "" if location is None else str(location)
+    ort, ags, gemeinde, bundesland, landkreis = location, "", "", "", ""
+
+    try:
+        df = _ensure_location_cache(str(csv_path), table, db_path)
+    except Exception:
+        df = None
+
+    if df is not None and len(df):
+        hit = df[df["label"] == location]
+        if len(hit) == 0:
+            hit = df[df["Ort"] == location]  # bare-Ort fallback
+        if len(hit) == 1:
+            row = hit.iloc[0]
+            ort = row["Ort"]
+            ags = row["Gemeindeschluessel"]
+            gemeinde = row["Gemeinde"]
+            bundesland = row["Bundesland"]
+            landkreis = row["Landkreis"]
+        elif len(hit) > 1:
+            # Ambiguous bare Ort passed directly → keep old Ort-only behavior.
+            ort = location
+
+    if gemeinde and bundesland:
+        geocode_query = f"{gemeinde}, {bundesland}"
+    elif bundesland:
+        geocode_query = f"{ort}, {bundesland}"
+    else:
+        geocode_query = ort
+
+    return {
+        "ort": ort,
+        "ags": ags,
+        "gemeinde": gemeinde,
+        "bundesland": bundesland,
+        "landkreis": landkreis,
+        "geocode_query": geocode_query,
+    }
+
+
+def geocode_query_for_location(location, data_type: str = "solar", mastr_db_path=None) -> str:
+    """Public helper: clean ``"Gemeinde, Bundesland"`` geocode query for a label.
+
+    Used by pages that geocode a selected MaStR location separately (for weather
+    data) so they hit the right municipality instead of the ambiguous bare name.
+    """
+    if mastr_db_path is None:
+        mastr_db_path = str(MASTR_DB_PATH)
+    csv_path = _LOCATION_CACHE_DIR / _LOCATION_CSV.get(data_type, _LOCATION_CSV["solar"])
+    table = _LOCATION_TABLES.get(data_type, _LOCATION_TABLES["solar"])
+    return _resolve_location(location, csv_path, table, mastr_db_path)["geocode_query"]
 
 
 def download_mastr_data():
@@ -45,43 +184,54 @@ def download_mastr_data():
 
 
 def fetch_data(
-    table_name, 
-    columns, 
-    filter_column=None, 
-    filter_values=None, 
-    mastr_db_path=None
+    table_name,
+    columns,
+    filter_column=None,
+    filter_values=None,
+    mastr_db_path=None,
+    extra_equals=None,
 ):
     """Fetch data from MaStR database with optional filtering.
-    
+
     Args:
         table_name: Name of the database table to query.
         columns: List of column names to select.
         filter_column: Column name to filter by (optional).
         filter_values: Values to filter for (optional).
         mastr_db_path: Path to MaStR database file (uses config default if None).
-        
+        extra_equals: Optional ``{column: value}`` ANDed onto the WHERE clause as
+            exact matches — used to pin an ambiguous ``Ort`` to a single
+            municipality via ``Gemeindeschluessel`` (AGS).
+
     Returns:
         DataFrame containing the requested data.
     """
     if mastr_db_path is None:
         mastr_db_path = str(MASTR_DB_PATH)
-    
+
     conn = connect(str(mastr_db_path))
-    
+
+    where_clauses: list[str] = []
+    params: list = []
     if filter_values is not None:
         # Ensure filter_values is a list
         if isinstance(filter_values, str):
             filter_values = [filter_values]
         # Create a string of placeholders for the query
         placeholders = ', '.join(['?'] * len(filter_values))
-        query = f"SELECT {', '.join(columns)} FROM {table_name} WHERE {filter_column} IN ({placeholders})"
-        df = pd.read_sql_query(query, conn, params=filter_values)
-    else:
-        query = f"SELECT {', '.join(columns)} FROM {table_name}"
-        df = pd.read_sql_query(query, conn)
-    
+        where_clauses.append(f"{filter_column} IN ({placeholders})")
+        params.extend(filter_values)
+    if extra_equals:
+        for col, val in extra_equals.items():
+            where_clauses.append(f"{col} = ?")
+            params.append(val)
+
+    where = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    query = f"SELECT {', '.join(columns)} FROM {table_name}{where}"
+    df = pd.read_sql_query(query, conn, params=params or None)
+
     conn.close()
-    
+
     return df
 
 def fetch_solar(location=None, solar_columns=None, mastr_db_path=None):
@@ -111,36 +261,44 @@ def fetch_solar(location=None, solar_columns=None, mastr_db_path=None):
         solar_columns = ['EinheitMastrNummer',
                         'NameStromerzeugungseinheit',
                         'LokationMastrNummer',
-                        'Gemarkung', 
+                        'Gemarkung',
                         'Leistungsbegrenzung',
                         'ZugeordneteWirkleistungWechselrichter',
-                        'Bruttoleistung', 
-                        'Lage', 
-                        'Bundesland', 
-                        'Land', 
-                        'Gemeinde', 
-                        'Ort', 
-                        'Postleitzahl', 
-                        'Strasse', 
-                        'Hausnummer', 
-                        'Nettonennleistung', 
-                        'AnzahlModule', 
-                        'Laengengrad', 
-                        'Breitengrad', 
-                        'Hauptausrichtung', 
+                        'Bruttoleistung',
+                        'Lage',
+                        'Bundesland',
+                        'Land',
+                        'Landkreis',
+                        'Gemeinde',
+                        'Gemeindeschluessel',
+                        'Ort',
+                        'Postleitzahl',
+                        'Strasse',
+                        'Hausnummer',
+                        'Nettonennleistung',
+                        'AnzahlModule',
+                        'Laengengrad',
+                        'Breitengrad',
+                        'Hauptausrichtung',
                         'HauptausrichtungNeigungswinkel',
-                        'Nebenausrichtung', 
+                        'Nebenausrichtung',
                         'NebenausrichtungNeigungswinkel',
-                        'Inbetriebnahmedatum', 
+                        'Inbetriebnahmedatum',
                         'DatumEndgueltigeStilllegung',
                         'Netzbetreiberzuordnungen',
                         ]
-            
-    df_solar = fetch_data(table_name='solar_extended', 
-                          columns=solar_columns, 
-                          filter_column='Ort', 
-                          filter_values=location, 
-                          mastr_db_path=mastr_db_path
+
+    resolved = _resolve_location(
+        location, _LOCATION_CACHE_DIR / _LOCATION_CSV['solar'],
+        'solar_extended', mastr_db_path or str(MASTR_DB_PATH),
+    )
+    extra = {'Gemeindeschluessel': resolved['ags']} if resolved['ags'] else None
+    df_solar = fetch_data(table_name='solar_extended',
+                          columns=solar_columns,
+                          filter_column='Ort',
+                          filter_values=resolved['ort'],
+                          mastr_db_path=mastr_db_path,
+                          extra_equals=extra,
                           )
     
     # Map orientation and tilt angle values
@@ -152,18 +310,24 @@ def fetch_solar(location=None, solar_columns=None, mastr_db_path=None):
 def prepare_solar_data(location='Essen', mastr_db_path=None):
 
     try:
+            resolved = _resolve_location(
+                location, _LOCATION_CACHE_DIR / _LOCATION_CSV['solar'],
+                'solar_extended', mastr_db_path or str(MASTR_DB_PATH),
+            )
+            geocode_query = resolved['geocode_query']
+
             df_solar = fetch_solar(location=location, mastr_db_path=mastr_db_path)
             df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
-            df_solar = df_solar.merge(df_grid_connections, 
-                                      how='left', 
+            df_solar = df_solar.merge(df_grid_connections,
+                                      how='left',
                                       on='LokationMastrNummer'
                                       )
-            
+
             gdf_solar = df_to_gdf(df_solar)
-            gdf_solar = add_centroids(gdf_solar)
-            
-            city_district = ox.geocode_to_gdf([location])
-            
+            gdf_solar = add_centroids(gdf_solar, geocode_query)
+
+            city_district = ox.geocode_to_gdf([geocode_query])
+
             return gdf_solar, city_district
 
     except Exception as e:
@@ -174,11 +338,11 @@ def get_unique_solar_locations(mastr_db_path=None):
     if mastr_db_path is None:
         mastr_db_path = str(MASTR_DB_PATH)
     try:
-        return _load_or_build_location_cache(
-            _LOCATION_CACHE_DIR / "solar_locations.csv",
-            "SELECT DISTINCT Ort FROM solar_extended WHERE Ort IS NOT NULL ORDER BY Ort",
-            mastr_db_path,
+        df = _ensure_location_cache(
+            str(_LOCATION_CACHE_DIR / _LOCATION_CSV["solar"]),
+            "solar_extended", mastr_db_path,
         )
+        return df["label"].tolist()
     except Exception as e:
         raise Exception(f"Failed to fetch unique locations: {str(e)}")
 
@@ -187,53 +351,67 @@ def fetch_wind(location=None, wind_columns=None, mastr_db_path=None):
     if wind_columns is None:
         wind_columns = ['EinheitMastrNummer',
                         'LokationMastrNummer',
-                        'NameWindpark', 
+                        'NameWindpark',
                         'NameStromerzeugungseinheit',
-                        'Gemarkung', 
+                        'Gemarkung',
                         'Lage',
-                        'Hersteller', 
-                        'HerstellerId', 
-                        'Technologie', 
-                        'Typenbezeichnung', 
+                        'Hersteller',
+                        'HerstellerId',
+                        'Technologie',
+                        'Typenbezeichnung',
                         'Rotordurchmesser',
-                        'Bundesland', 
-                        'Land', 
-                        'Gemeinde', 
+                        'Bundesland',
+                        'Land',
+                        'Landkreis',
+                        'Gemeinde',
+                        'Gemeindeschluessel',
                         'Ort',
                         'Postleitzahl',
-                        'DatumEndgueltigeStilllegung', 
-                        'Bruttoleistung', 
+                        'DatumEndgueltigeStilllegung',
+                        'Bruttoleistung',
                         'Nettonennleistung',
-                        'AnschlussAnHoechstOderHochSpannung', 
-                        'Nabenhoehe', 
-                        'Laengengrad', 
-                        'Breitengrad', 
+                        'AnschlussAnHoechstOderHochSpannung',
+                        'Nabenhoehe',
+                        'Laengengrad',
+                        'Breitengrad',
                         'Inbetriebnahmedatum'
                         ]
-    
-    return fetch_data(table_name='wind_extended', 
-                      columns=wind_columns, 
-                      filter_column='Ort', 
-                      filter_values=location, 
-                      mastr_db_path=mastr_db_path
+
+    resolved = _resolve_location(
+        location, _LOCATION_CACHE_DIR / _LOCATION_CSV['wind'],
+        'wind_extended', mastr_db_path or str(MASTR_DB_PATH),
+    )
+    extra = {'Gemeindeschluessel': resolved['ags']} if resolved['ags'] else None
+    return fetch_data(table_name='wind_extended',
+                      columns=wind_columns,
+                      filter_column='Ort',
+                      filter_values=resolved['ort'],
+                      mastr_db_path=mastr_db_path,
+                      extra_equals=extra,
                       )
 
 def prepare_wind_data(location='Essen', mastr_db_path=None):
 
     try:
+            resolved = _resolve_location(
+                location, _LOCATION_CACHE_DIR / _LOCATION_CSV['wind'],
+                'wind_extended', mastr_db_path or str(MASTR_DB_PATH),
+            )
+            geocode_query = resolved['geocode_query']
+
             df_wind = fetch_wind(location=location, mastr_db_path=mastr_db_path)
             df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
-            df_wind = df_wind.merge(df_grid_connections, 
-                                    how='left', 
+            df_wind = df_wind.merge(df_grid_connections,
+                                    how='left',
                                     on='LokationMastrNummer'
                                     )
-            
+
             gdf_wind = df_to_gdf(df_wind)
-            gdf_wind = add_centroids(gdf_wind)
-            
-            city_district = ox.geocode_to_gdf([location])
+            gdf_wind = add_centroids(gdf_wind, geocode_query)
+
+            city_district = ox.geocode_to_gdf([geocode_query])
             city_district.set_index('name', inplace=True)
-            
+
             return gdf_wind, city_district
 
     except Exception as e:
@@ -243,16 +421,18 @@ def get_unique_wind_locations(mastr_db_path=None):
     if mastr_db_path is None:
         mastr_db_path = str(MASTR_DB_PATH)
     try:
-        return _load_or_build_location_cache(
-            _LOCATION_CACHE_DIR / "wind_locations.csv",
-            "SELECT DISTINCT Ort FROM wind_extended WHERE Ort IS NOT NULL ORDER BY Ort",
-            mastr_db_path,
+        df = _ensure_location_cache(
+            str(_LOCATION_CACHE_DIR / _LOCATION_CSV["wind"]),
+            "wind_extended", mastr_db_path,
         )
+        return df["label"].tolist()
     except Exception as e:
         raise Exception(f"Failed to fetch unique locations: {str(e)}")
 
 def read_storage_units(mastr_db_path=None):
-    
+    if mastr_db_path is None:
+        mastr_db_path = str(MASTR_DB_PATH)
+
     conn = connect(mastr_db_path)
 
     cursor = conn.cursor()
@@ -280,6 +460,9 @@ def fetch_storage(location=None, storage_columns=None, mastr_db_path=None):
                         'Technologie',
                         'LeistungsaufnahmeBeimEinspeichern',
                         'Bundesland',
+                        'Landkreis',
+                        'Gemeinde',
+                        'Gemeindeschluessel',
                         'Postleitzahl',
                         'Ort',
                         'Strasse',
@@ -293,12 +476,18 @@ def fetch_storage(location=None, storage_columns=None, mastr_db_path=None):
                         'Nettonennleistung',
                         'ZugeordneteWirkleistungWechselrichter'
                         ]
-    
-    df_storage = fetch_data(table_name='storage_extended', 
-                            columns=storage_columns, 
-                            filter_column='Ort', 
-                            filter_values=location, 
-                            mastr_db_path=mastr_db_path
+
+    resolved = _resolve_location(
+        location, _LOCATION_CACHE_DIR / _LOCATION_CSV['storage'],
+        'storage_extended', mastr_db_path or str(MASTR_DB_PATH),
+    )
+    extra = {'Gemeindeschluessel': resolved['ags']} if resolved['ags'] else None
+    df_storage = fetch_data(table_name='storage_extended',
+                            columns=storage_columns,
+                            filter_column='Ort',
+                            filter_values=resolved['ort'],
+                            mastr_db_path=mastr_db_path,
+                            extra_equals=extra,
                             )
     
     df_storage_units = read_storage_units(mastr_db_path=mastr_db_path)
@@ -314,21 +503,26 @@ def fetch_storage(location=None, storage_columns=None, mastr_db_path=None):
 def prepare_storage_data(location='Essen', mastr_db_path=None):
     
     try:
+            resolved = _resolve_location(
+                location, _LOCATION_CACHE_DIR / _LOCATION_CSV['storage'],
+                'storage_extended', mastr_db_path or str(MASTR_DB_PATH),
+            )
+            geocode_query = resolved['geocode_query']
+
             df_storage = fetch_storage(location=location, mastr_db_path=mastr_db_path)
             df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
-            df_storage = df_storage.merge(df_grid_connections, 
-                                          how='left', 
+            df_storage = df_storage.merge(df_grid_connections,
+                                          how='left',
                                           on='LokationMastrNummer'
                                           )
 
             gdf_storage = df_to_gdf(df_storage)
-            gdf_storage = add_centroids(gdf_storage)
-            
-            
-            city_district = ox.geocode_to_gdf([location])
-            
+            gdf_storage = add_centroids(gdf_storage, geocode_query)
+
+            city_district = ox.geocode_to_gdf([geocode_query])
+
             return gdf_storage, city_district
-            
+
     except Exception as e:
             raise Exception(f"Error preparing data for {location}: {str(e)}")
 
@@ -336,16 +530,18 @@ def get_unique_storage_locations(mastr_db_path=None):
     if mastr_db_path is None:
         mastr_db_path = str(MASTR_DB_PATH)
     try:
-        return _load_or_build_location_cache(
-            _LOCATION_CACHE_DIR / "storage_locations.csv",
-            "SELECT DISTINCT Ort FROM storage_extended WHERE Ort IS NOT NULL ORDER BY Ort",
-            mastr_db_path,
+        df = _ensure_location_cache(
+            str(_LOCATION_CACHE_DIR / _LOCATION_CSV["storage"]),
+            "storage_extended", mastr_db_path,
         )
+        return df["label"].tolist()
     except Exception as e:
         raise Exception(f"Failed to fetch unique locations: {str(e)}")
 
 
 def fetch_grid_connections(grid_connections_columns=None, mastr_db_path=None):
+    if mastr_db_path is None:
+        mastr_db_path = str(MASTR_DB_PATH)
     conn = connect(mastr_db_path)
     
     if grid_connections_columns is None:
@@ -377,7 +573,9 @@ def fetch_grid_connections(grid_connections_columns=None, mastr_db_path=None):
     return df_grid_connections
 
 def fetch_grids(grid_columns=None, mastr_db_path=None):
-    
+    if mastr_db_path is None:
+        mastr_db_path = str(MASTR_DB_PATH)
+
     conn = connect(mastr_db_path)
     
     if grid_columns is None:
@@ -427,8 +625,21 @@ def df_to_gdf(df):
     )
     return gdf
 
-def add_centroids(gdf):
-    city_district = ox.geocode_to_gdf(gdf['Ort'][0])
+def add_centroids(gdf, geocode_query=None):
+    if geocode_query is None:
+        # Derive a precise query from the disambiguating columns; bare Ort is
+        # ambiguous and can geocode to the wrong town (e.g. Langenfeld).
+        first = gdf.iloc[0]
+        gemeinde = str(first.get('Gemeinde', '') or '').strip()
+        bundesland = str(first.get('Bundesland', '') or '').strip()
+        ort = str(first.get('Ort', '') or '').strip()
+        if gemeinde and bundesland:
+            geocode_query = f"{gemeinde}, {bundesland}"
+        elif ort and bundesland:
+            geocode_query = f"{ort}, {bundesland}"
+        else:
+            geocode_query = ort or gdf['Ort'][0]
+    city_district = ox.geocode_to_gdf(geocode_query)
     city_district = city_district.to_crs("EPSG:4326")
     laengengrad = city_district.centroid.x[0]
     breitengrad = city_district.centroid.y[0]
@@ -471,7 +682,8 @@ def rebuild_location_caches(mastr_db_path=None):
     """Delete and rebuild solar/wind/storage location CSV caches from the SQLite database."""
     if mastr_db_path is None:
         mastr_db_path = str(MASTR_DB_PATH)
-    for name in ("solar_locations.csv", "wind_locations.csv", "storage_locations.csv"):
+    _ensure_location_cache.cache_clear()
+    for name in _LOCATION_CSV.values():
         p = _LOCATION_CACHE_DIR / name
         if p.exists():
             p.unlink()

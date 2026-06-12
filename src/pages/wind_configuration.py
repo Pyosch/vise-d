@@ -30,7 +30,11 @@ except Exception:
     _HAS_OSMNX = False
 
 from src.config.paths import MASTR_DB_PATH
-from src.mastr.preprocessing import get_unique_wind_locations, prepare_wind_data
+from src.mastr.preprocessing import (
+    get_unique_wind_locations,
+    geocode_query_for_location,
+    prepare_wind_data,
+)
 from src.ui.components.netzmittimeseries import get_normalized_wind_output, _get_wind_curve
 
 
@@ -296,7 +300,7 @@ def wind_configuration(key_suffix: str = "wind1") -> None:
         st.dataframe(selected_rows[preview_cols].reset_index(drop=True), use_container_width=True)
 
         try:
-            lat, lon = _geocode(city)
+            lat, lon = _geocode(geocode_query_for_location(city, "wind", str(MASTR_DB_PATH)))
         except Exception as e:
             st.error(f"Geocoding fehlgeschlagen: {e}")
             return

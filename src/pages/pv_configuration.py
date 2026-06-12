@@ -24,7 +24,11 @@ except Exception:
     _HAS_OSMNX = False
 
 from src.config.paths import MASTR_DB_PATH
-from src.mastr.preprocessing import get_unique_solar_locations, prepare_solar_data
+from src.mastr.preprocessing import (
+    get_unique_solar_locations,
+    geocode_query_for_location,
+    prepare_solar_data,
+)
 from src.ui.components.netzmittimeseries import get_normalized_pv_output
 
 
@@ -212,9 +216,10 @@ def pv_configuration() -> None:
         preview_cols = [c for c in [name_col, cap_col, lat_col, lon_col] if c in selected_rows.columns]
         st.dataframe(selected_rows[preview_cols].reset_index(drop=True), use_container_width=True)
 
-        # City centroid for weather data
+        # City centroid for weather data — resolve the ambiguous Ort to its
+        # precise municipality so e.g. "Langenfeld" geocodes to NRW, not RLP.
         try:
-            lat, lon = _geocode(city)
+            lat, lon = _geocode(geocode_query_for_location(city, "solar", str(MASTR_DB_PATH)))
         except Exception as e:
             st.error(f"Geocoding fehlgeschlagen: {e}")
             return
