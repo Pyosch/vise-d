@@ -65,6 +65,7 @@ from src.data_layer.environment import get_cached_environment
 from src.mastr.preprocessing import (
     get_unique_solar_locations,
     get_unique_wind_locations,
+    geocode_query_for_location,
     prepare_solar_data,
     prepare_wind_data,
 )
@@ -328,8 +329,10 @@ def _reset_der_state() -> None:
         "nsv2_mastr_sgen_ts",
         "nsv2_mastr_gdf_solar",
         "nsv2_mastr_gdf_wind",
+        "nsv2_mastr_city_district",
         "nsv2_mastr_list_loc",
         "nsv2_mastr_sel",
+        "nsv2_mastr_plz",
         "nsv2_mastr_filter",
         "nsv2_mastr_filter_prev",
     ):
@@ -533,7 +536,7 @@ def _mastr_selection_table(gdf_solar, gdf_wind):
     list of ``(tech, EinheitMastrNummer)`` tuples to map selected rows back to
     the underlying gdf rows.
     """
-    cols = ["Technologie", "Name", "Leistung (kW)", "Inbetriebnahme", "MaStR-Nr"]
+    cols = ["Technologie", "Name", "PLZ", "Leistung (kW)", "Inbetriebnahme", "MaStR-Nr"]
     frames = []
     mapping: list[tuple[str, str]] = []
     for gdf, tech_label in ((gdf_solar, "PV"), (gdf_wind, "Wind")):
@@ -544,6 +547,8 @@ def _mastr_selection_table(gdf_solar, gdf_wind):
             "Technologie": tech_label,
             "Name": (gdf["NameStromerzeugungseinheit"].astype(str).values
                      if "NameStromerzeugungseinheit" in gdf.columns else ""),
+            "PLZ": (gdf["Postleitzahl"].astype(str).values
+                    if "Postleitzahl" in gdf.columns else ""),
             "Leistung (kW)": (pd.to_numeric(gdf["Bruttoleistung"], errors="coerce").values
                               if "Bruttoleistung" in gdf.columns else np.nan),
             "Inbetriebnahme": (gdf["Inbetriebnahmedatum"].astype(str).values
@@ -555,6 +560,103 @@ def _mastr_selection_table(gdf_solar, gdf_wind):
     if not frames:
         return pd.DataFrame(columns=cols), mapping
     return pd.concat(frames, ignore_index=True)[cols], mapping
+
+
+def _plz_series(gdf) -> pd.Series:
+    """Clean, non-empty Postleitzahl values from a MaStR gdf (empty Series if none)."""
+    if gdf is None or len(gdf) == 0 or "Postleitzahl" not in gdf.columns:
+        return pd.Series(dtype=str)
+    s = gdf["Postleitzahl"].astype(str).str.strip()
+    return s[~s.isin(("", "nan", "None"))]
+
+
+def _collect_plz(gdf_solar, gdf_wind) -> list[str]:
+    """Sorted union of postal codes across the loaded PV and wind gdfs."""
+    return sorted(set(_plz_series(gdf_solar)) | set(_plz_series(gdf_wind)))
+
+
+def _filter_by_plz(gdf, plz_choice: str):
+    """Restrict a gdf to a single Postleitzahl ('Alle PLZ' → unchanged)."""
+    if (gdf is None or len(gdf) == 0 or plz_choice == "Alle PLZ"
+            or "Postleitzahl" not in gdf.columns):
+        return gdf
+    return gdf[gdf["Postleitzahl"].astype(str).str.strip() == plz_choice]
+
+
+def _mastr_overview_map(gdf_solar, gdf_wind, city_district, selected_nrs):
+    """Scatter map of all loaded MaStR plants (city / PLZ scope), coloured by tech.
+
+    Currently-selected plants (``selected_nrs`` = EinheitMastrNummer) are drawn as
+    a green overlay. Centre and a faint boundary polygon come from the geocoded
+    ``city_district`` when available, else the plants' mean coordinates. Returns a
+    plotly Figure, or ``None`` if no usable coordinates exist.
+    """
+    frames = []
+    for gdf, tech_label in ((gdf_solar, "PV"), (gdf_wind, "Wind")):
+        if gdf is None or len(gdf) == 0:
+            continue
+        if "Breitengrad" not in gdf.columns or "Laengengrad" not in gdf.columns:
+            continue
+        frames.append(pd.DataFrame({
+            "lat": pd.to_numeric(gdf["Breitengrad"], errors="coerce").values,
+            "lon": pd.to_numeric(gdf["Laengengrad"], errors="coerce").values,
+            "Technologie": tech_label,
+            "Name": (gdf["NameStromerzeugungseinheit"].astype(str).values
+                     if "NameStromerzeugungseinheit" in gdf.columns else ""),
+            "Leistung (kW)": (pd.to_numeric(gdf["Bruttoleistung"], errors="coerce").values
+                              if "Bruttoleistung" in gdf.columns else np.nan),
+            "PLZ": (gdf["Postleitzahl"].astype(str).values
+                    if "Postleitzahl" in gdf.columns else ""),
+            "MaStR-Nr": gdf["EinheitMastrNummer"].astype(str).values,
+        }))
+    if not frames:
+        return None
+    pts = pd.concat(frames, ignore_index=True).dropna(subset=["lat", "lon"])
+    if pts.empty:
+        return None
+
+    center = None
+    if city_district is not None:
+        try:
+            center = {"lat": float(city_district.lat.item()),
+                      "lon": float(city_district.lon.item())}
+        except Exception:
+            center = None
+    if center is None:
+        center = {"lat": float(pts["lat"].mean()), "lon": float(pts["lon"].mean())}
+
+    fig = px.scatter_mapbox(
+        pts, lat="lat", lon="lon", color="Technologie",
+        hover_name="Name",
+        hover_data={"Leistung (kW)": ":.1f", "PLZ": True, "MaStR-Nr": True,
+                    "lat": False, "lon": False},
+        color_discrete_map={"PV": "#f59e0b", "Wind": "#2563eb"},
+        zoom=10, center=center, mapbox_style="open-street-map",
+    )
+    if city_district is not None:
+        try:
+            choro = px.choropleth_mapbox(
+                city_district, geojson=city_district.geometry,
+                locations=city_district.index, color=None, opacity=0.25,
+            )
+            fig.add_trace(choro.data[0])
+            # keep scatter dots on top of the boundary polygon
+            fig.data = (fig.data[-1],) + fig.data[:-1]
+        except Exception:
+            pass
+
+    sel = pts[pts["MaStR-Nr"].isin({str(n) for n in selected_nrs})]
+    if len(sel):
+        fig.add_trace(go.Scattermapbox(
+            lat=sel["lat"], lon=sel["lon"], mode="markers",
+            marker=dict(size=15, color="#16a34a"),
+            name="ausgewählt", hoverinfo="skip",
+        ))
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=0, b=0),
+        legend=dict(orientation="h", yanchor="bottom", y=1.01),
+    )
+    return fig
 
 
 def _tab_mastr(net: pp.pandapowerNet) -> None:
@@ -608,10 +710,11 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
         root_logger.addHandler(log_handler)
         try:
             with st.status("MaStR-Anlagenliste wird geladen…", expanded=True) as status:
+                city_district = None
                 if "PV" in tech:
                     st.write(f"MaStR-Solardaten laden ({location})…")
                     try:
-                        gdf_solar, _ = prepare_solar_data(location, str(MASTR_DB_PATH))
+                        gdf_solar, city_district = prepare_solar_data(location, str(MASTR_DB_PATH))
                         gdf_solar = revise_power_values(gdf_solar)
                         st.session_state["nsv2_mastr_gdf_solar"] = gdf_solar
                         st.write(f"  → {len(gdf_solar)} PV-Anlagen gefunden.")
@@ -624,7 +727,9 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
                 if "Wind" in tech:
                     st.write(f"MaStR-Winddaten laden ({location})…")
                     try:
-                        gdf_wind, _ = prepare_wind_data(location, str(MASTR_DB_PATH))
+                        gdf_wind, cd_wind = prepare_wind_data(location, str(MASTR_DB_PATH))
+                        if city_district is None:
+                            city_district = cd_wind
                         st.session_state["nsv2_mastr_gdf_wind"] = gdf_wind
                         st.write(f"  → {len(gdf_wind)} Windkraftanlagen gefunden.")
                     except Exception as e:
@@ -633,6 +738,7 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
                 else:
                     st.session_state.pop("nsv2_mastr_gdf_wind", None)
 
+                st.session_state["nsv2_mastr_city_district"] = city_district
                 st.session_state["nsv2_mastr_list_loc"] = location
                 st.session_state.pop("nsv2_mastr_sel", None)  # stale Auswahl verwerfen
                 status.update(
@@ -656,9 +762,22 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
 
     gdf_solar = st.session_state.get("nsv2_mastr_gdf_solar")
     gdf_wind = st.session_state.get("nsv2_mastr_gdf_wind")
-    display_df, mapping = _mastr_selection_table(gdf_solar, gdf_wind)
+
+    # PLZ-Filter (optional) — schränkt Tabelle und Karte auf eine Postleitzahl ein.
+    plz_values = _collect_plz(gdf_solar, gdf_wind)
+    plz_choice = st.selectbox(
+        "Postleitzahl", ["Alle PLZ"] + plz_values, key="nsv2_mastr_plz",
+    )
+    gdf_solar_f = _filter_by_plz(gdf_solar, plz_choice)
+    gdf_wind_f = _filter_by_plz(gdf_wind, plz_choice)
+
+    display_df, mapping = _mastr_selection_table(gdf_solar_f, gdf_wind_f)
     if display_df.empty:
-        st.info("Keine Anlagen in der geladenen Liste.")
+        st.info(
+            "Keine Anlagen in der geladenen Liste."
+            if plz_choice == "Alle PLZ"
+            else f"Keine Anlagen mit PLZ {plz_choice}."
+        )
         return
 
     total_count = len(display_df)
@@ -675,10 +794,11 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
         display_df = display_df.iloc[keep].reset_index(drop=True)
         mapping = [mapping[i] for i in keep]
 
-    # Zeilenauswahl ist positionsbasiert → bei geänderter Filterung verwerfen,
-    # damit markierte Zeilen nicht auf andere Anlagen verrutschen.
-    if st.session_state.get("nsv2_mastr_filter_prev") != search_plants:
-        st.session_state["nsv2_mastr_filter_prev"] = search_plants
+    # Zeilenauswahl ist positionsbasiert → bei geänderter Filterung (PLZ oder
+    # Namensfilter) verwerfen, damit markierte Zeilen nicht verrutschen.
+    filter_key = f"{plz_choice}||{search_plants}"
+    if st.session_state.get("nsv2_mastr_filter_prev") != filter_key:
+        st.session_state["nsv2_mastr_filter_prev"] = filter_key
         st.session_state.pop("nsv2_mastr_sel", None)
 
     st.markdown(
@@ -697,6 +817,19 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
         column_config={"Leistung (kW)": st.column_config.NumberColumn(format="%.1f")},
     )
     selected_rows = list(getattr(getattr(event, "selection", None), "rows", []) or [])
+    selected_nrs = [mapping[r][1] for r in selected_rows if 0 <= r < len(mapping)]
+
+    # ── Karte: alle Anlagen im Ort / PLZ-Gebiet (Auswahl hervorgehoben) ─────
+    city_district = st.session_state.get("nsv2_mastr_city_district")
+    map_fig = _mastr_overview_map(gdf_solar_f, gdf_wind_f, city_district, selected_nrs)
+    if map_fig is not None:
+        n_total = sum(0 if g is None else len(g) for g in (gdf_solar_f, gdf_wind_f))
+        scope = "Ort" if plz_choice == "Alle PLZ" else f"PLZ {plz_choice}"
+        st.caption(
+            f"Karte — {n_total} Anlage(n) im gewählten {scope} · "
+            f"{len(selected_nrs)} ausgewählt"
+        )
+        st.plotly_chart(map_fig, use_container_width=True, key="nsv2_mastr_map")
 
     # Zielknoten wählen (Muster wie im Tab "Gezielt"; Default = erster Knoten)
     bus_df = _bus_labels(net)
@@ -732,7 +865,10 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
         try:
             with st.status("Ausgewählte Anlagen werden simuliert…", expanded=True) as status:
                 st.write(f"Geocoding: {location}…")
-                lat, lon = _geocode(location)
+                _geo_type = "solar" if "PV" in tech else "wind"
+                lat, lon = _geocode(
+                    geocode_query_for_location(location, _geo_type, str(MASTR_DB_PATH))
+                )
 
                 # je Anlage eine eigene Zeitreihe — vorhandene Einträge erhalten
                 sgen_ts = dict(st.session_state.get("nsv2_mastr_sgen_ts", {}))
