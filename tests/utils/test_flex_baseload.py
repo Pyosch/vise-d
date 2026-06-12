@@ -33,7 +33,7 @@ def test_load_profiles_shape_and_classes():
     df = fb.load_flex_profiles("transition")
     assert len(df) == fb.SLOTS_PER_WEEK
     classes = fb.available_classes("transition")
-    assert len(classes) == 10
+    assert len(classes) == 36
     # every class has both a baseline and a shifted column
     for cls in classes:
         assert f"{cls}__baseline_kw" in df.columns
