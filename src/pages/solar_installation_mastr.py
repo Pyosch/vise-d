@@ -17,6 +17,7 @@ import streamlit as st
 import plotly.express as px
 from vpplib.environment import Environment
 from src.data_layer.cache import get_cached_unique_locations, get_cached_mastr_data, create_cached_scatter_map
+from src.data_layer.mastr_source import render_mastr_location_input
 from src.mastr.simulation import (
     load_or_build_pv_params,
     build_pvsystems_from_params,
@@ -44,23 +45,11 @@ def solar_installation_mastr() -> None:
     from src.content.page_descriptions import render_page_description
     render_page_description("solar_mastr")
 
-    try:
-        with st.spinner("Standorte werden geladen…"):
-            unique_locations = get_cached_unique_locations("solar", str(MASTR_DB_PATH))
-        if not unique_locations:
-            st.error("Keine Standorte in der Datenbank gefunden.")
-            st.info("Bitte prüfen, ob die MaStR-Datenbankdatei vorhanden ist und Daten enthält.")
-            return
-    except Exception as e:
-        st.error("Datenbankverbindung fehlgeschlagen.")
-        with st.expander("Technische Details"):
-            st.code(str(e))
-        return
+    with st.spinner("Standorte werden geladen…"):
+        unique_locations = get_cached_unique_locations("solar", str(MASTR_DB_PATH))
 
-    location = st.selectbox(
-        "Stadt",
-        options=unique_locations,
-        index=unique_locations.index("Essen") if "Essen" in unique_locations else 0,
+    location = render_mastr_location_input(
+        unique_locations, label="Stadt", key="solar_loc", default="Essen"
     )
 
     if not location:

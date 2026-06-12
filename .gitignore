@@ -12,6 +12,12 @@ cache/
 mlruns/*
 .dwd_cache/
 
+# Ship MaStR place-name lists for the online fallback (place names only, NOT plant data).
+# These let the location dropdowns work without the multi-GB local open-mastr.db.
+!data/mastr/
+data/mastr/*
+!data/mastr/*_locations.csv
+
 # Streamlit secrets
 .streamlit/secrets.toml
 

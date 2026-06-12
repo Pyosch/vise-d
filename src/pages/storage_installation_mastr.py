@@ -14,6 +14,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 from src.mastr.preprocessing import get_unique_storage_locations, prepare_storage_data
+from src.data_layer.mastr_source import render_mastr_location_input
 from src.config import MASTR_DB_PATH
 
 
@@ -23,11 +24,13 @@ def storage_installation_mastr() -> None:
     from src.content.page_descriptions import render_page_description
     render_page_description("storage_mastr")
 
-    # Fetch unique locations for dropdown
+    # Fetch unique locations for dropdown (empty when no DB and no shipped CSV)
     unique_locations = get_unique_storage_locations(mastr_db_path=str(MASTR_DB_PATH))
 
-    # Dropdown for location selection
-    location = st.selectbox("Stadt", options=unique_locations, index=unique_locations.index("Essen") if "Essen" in unique_locations else 0)
+    # Location selection (selectbox, or free-text Ort/PLZ when no local catalogue)
+    location = render_mastr_location_input(
+        unique_locations, label="Stadt", key="storage_loc", default="Essen"
+    )
 
     # Button to trigger visualization
     if st.button("Anlagen anzeigen"):

@@ -24,11 +24,17 @@ from src.mastr.preprocessing import (
     get_unique_solar_locations,
     get_unique_storage_locations,
     get_unique_wind_locations,
+    mastr_data_available,
     prepare_grid_connections_data,
     prepare_solar_data,
     prepare_storage_data,
     prepare_wind_data,
     read_storage_units,
+)
+from src.mastr.online_api import (
+    fetch_solar_online,
+    fetch_storage_online,
+    fetch_wind_online,
 )
 from src.mastr.simulation import (
     aggregate_pv_time_series,
@@ -59,11 +65,16 @@ __all__ = [
     "get_unique_solar_locations",
     "get_unique_storage_locations",
     "get_unique_wind_locations",
+    "mastr_data_available",
     "prepare_grid_connections_data",
     "prepare_solar_data",
     "prepare_storage_data",
     "prepare_wind_data",
     "read_storage_units",
+    # Online (no-local-DB) fallback
+    "fetch_solar_online",
+    "fetch_storage_online",
+    "fetch_wind_online",
     # Simulation functions
     "aggregate_pv_time_series",
     "aggregate_wind_time_series",

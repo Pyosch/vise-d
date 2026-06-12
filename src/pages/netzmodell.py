@@ -62,6 +62,7 @@ from pandapower.timeseries import DFData
 
 from src.config.paths import MASTR_DB_PATH, PV_PARAMS_DIR
 from src.data_layer.environment import get_cached_environment
+from src.data_layer.mastr_source import render_mastr_location_input
 from src.mastr.preprocessing import (
     get_unique_solar_locations,
     get_unique_wind_locations,
@@ -306,10 +307,11 @@ def _load_mastr_locations() -> list[str]:
     try:
         solar = get_unique_solar_locations(mastr_db_path=str(MASTR_DB_PATH)) or []
         wind = get_unique_wind_locations(mastr_db_path=str(MASTR_DB_PATH)) or []
-        combined = sorted(set(solar) | set(wind))
-        return combined if combined else ["Aachen"]
+        # Empty when neither the DB nor the shipped location CSVs are available; the
+        # caller then offers free-text Ort/PLZ entry (online-only tier 3).
+        return sorted(set(solar) | set(wind))
     except Exception:
-        return ["Aachen"]
+        return []
 
 
 @st.cache_data
@@ -666,13 +668,14 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
     if not _HAS_VPPLIB:
         st.error("vpplib ist nicht installiert — MaStR-Simulation nicht verfügbar.")
         return
-    if not MASTR_DB_PATH.exists():
-        st.error(f"MaStR-Datenbank nicht gefunden: {MASTR_DB_PATH}")
-        return
 
     locations = _load_mastr_locations()
-    default_idx = locations.index("Aachen") if "Aachen" in locations else 0
-    location = st.selectbox("Ort", locations, index=default_idx, key="nsv2_mastr_loc")
+    location = render_mastr_location_input(
+        locations, label="Ort", key="nsv2_mastr_loc", default="Aachen"
+    )
+    if not location:
+        st.info("Bitte einen Ort oder eine PLZ eingeben.")
+        return
 
     tech = st.multiselect(
         "Technologie",

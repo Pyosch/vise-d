@@ -29,6 +29,7 @@ from src.mastr.preprocessing import (
     geocode_query_for_location,
     prepare_solar_data,
 )
+from src.data_layer.mastr_source import render_mastr_location_input
 from src.ui.components.netzmittimeseries import get_normalized_pv_output
 
 
@@ -39,10 +40,9 @@ from src.ui.components.netzmittimeseries import get_normalized_pv_output
 @st.cache_data
 def _solar_locations() -> list[str]:
     try:
-        locs = get_unique_solar_locations(str(MASTR_DB_PATH)) or []
-        return locs if locs else ["Aachen"]
+        return get_unique_solar_locations(str(MASTR_DB_PATH)) or []
     except Exception:
-        return ["Aachen"]
+        return []
 
 
 @st.cache_data
@@ -165,8 +165,12 @@ def pv_configuration() -> None:
             return
 
         locations = _solar_locations()
-        default_idx = locations.index("Aachen") if "Aachen" in locations else 0
-        city = st.selectbox("Stadt", locations, index=default_idx, key="pv_cfg_mastr_city")
+        city = render_mastr_location_input(
+            locations, label="Stadt", key="pv_cfg_mastr_city", default="Aachen"
+        )
+        if not city:
+            st.info("Bitte einen Ort oder eine PLZ eingeben.")
+            return
 
         df_mastr = _solar_mastr(city)
         if df_mastr.empty:

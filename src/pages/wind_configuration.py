@@ -35,6 +35,7 @@ from src.mastr.preprocessing import (
     geocode_query_for_location,
     prepare_wind_data,
 )
+from src.data_layer.mastr_source import render_mastr_location_input
 from src.ui.components.netzmittimeseries import get_normalized_wind_output, _get_wind_curve
 
 
@@ -45,10 +46,9 @@ from src.ui.components.netzmittimeseries import get_normalized_wind_output, _get
 @st.cache_data
 def _wind_locations() -> list[str]:
     try:
-        locs = get_unique_wind_locations(str(MASTR_DB_PATH)) or []
-        return locs if locs else ["Aachen"]
+        return get_unique_wind_locations(str(MASTR_DB_PATH)) or []
     except Exception:
-        return ["Aachen"]
+        return []
 
 
 @st.cache_data
@@ -232,8 +232,12 @@ def wind_configuration(key_suffix: str = "wind1") -> None:
             return
 
         locations = _wind_locations()
-        default_idx = locations.index("Aachen") if "Aachen" in locations else 0
-        city = st.selectbox("Stadt", locations, index=default_idx, key="wind_cfg_mastr_city")
+        city = render_mastr_location_input(
+            locations, label="Stadt", key="wind_cfg_mastr_city", default="Aachen"
+        )
+        if not city:
+            st.info("Bitte einen Ort oder eine PLZ eingeben.")
+            return
 
         df_mastr = _wind_mastr(city)
         if df_mastr.empty:

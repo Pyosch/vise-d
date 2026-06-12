@@ -18,7 +18,6 @@ from functools import lru_cache
 from sqlite3 import connect
 import sqlite3
 
-from open_mastr import Mastr
 import geopandas
 import osmnx as ox
 
@@ -102,6 +101,14 @@ def _ensure_location_cache(csv_path_str: str, table: str, db_path: str) -> pd.Da
         if "label" in cached.columns and set(_LOC_COLS).issubset(cached.columns):
             return cached
 
+    # Without a usable CSV we must read the SQLite DB. Guard against sqlite3.connect
+    # silently *creating* an empty open-mastr.db (which would poison the DB-presence
+    # check that the online fallback relies on) when the DB file does not exist.
+    if not Path(db_path).exists():
+        raise FileNotFoundError(
+            f"MaStR database not found at {db_path} and no usable location cache "
+            f"at {csv_path}."
+        )
     conn = sqlite3.connect(db_path)
     query = (
         f"SELECT DISTINCT {', '.join(_LOC_COLS)} FROM {table} "
@@ -178,9 +185,24 @@ def geocode_query_for_location(location, data_type: str = "solar", mastr_db_path
 
 
 def download_mastr_data():
-    """Download MaStR database using open-mastr library."""
+    """Download MaStR database using open-mastr library.
+
+    ``open_mastr`` (and its heavy transitive dependencies) is imported lazily so the
+    app and the online REST fallback run without it installed; it is only needed to
+    build/refresh the local SQLite database.
+    """
+    from open_mastr import Mastr
     db = Mastr()
     db.download()
+
+
+def mastr_data_available(mastr_db_path=None) -> bool:
+    """Return ``True`` if the local MaStR SQLite database file exists.
+
+    When it does not, callers should fall back to the on-demand online register
+    (see :mod:`src.mastr.online_api`).
+    """
+    return Path(mastr_db_path or MASTR_DB_PATH).exists()
 
 
 def fetch_data(
@@ -316,6 +338,12 @@ def prepare_solar_data(location='Essen', mastr_db_path=None):
             )
             geocode_query = resolved['geocode_query']
 
+            if not mastr_data_available(mastr_db_path):
+                # No local DB → fetch this location's plants live from the online register.
+                from src.mastr.online_api import fetch_solar_online
+                gdf_solar = add_centroids(df_to_gdf(fetch_solar_online(resolved)), geocode_query)
+                return gdf_solar, ox.geocode_to_gdf([geocode_query])
+
             df_solar = fetch_solar(location=location, mastr_db_path=mastr_db_path)
             df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
             df_solar = df_solar.merge(df_grid_connections,
@@ -343,8 +371,9 @@ def get_unique_solar_locations(mastr_db_path=None):
             "solar_extended", mastr_db_path,
         )
         return df["label"].tolist()
-    except Exception as e:
-        raise Exception(f"Failed to fetch unique locations: {str(e)}")
+    except Exception:
+        # No DB and no shipped location CSV → caller (UI) falls back to free-text entry.
+        return []
 
 def fetch_wind(location=None, wind_columns=None, mastr_db_path=None):
     
@@ -399,6 +428,14 @@ def prepare_wind_data(location='Essen', mastr_db_path=None):
             )
             geocode_query = resolved['geocode_query']
 
+            if not mastr_data_available(mastr_db_path):
+                # No local DB → fetch this location's turbines live from the online register.
+                from src.mastr.online_api import fetch_wind_online
+                gdf_wind = add_centroids(df_to_gdf(fetch_wind_online(resolved)), geocode_query)
+                city_district = ox.geocode_to_gdf([geocode_query])
+                city_district.set_index('name', inplace=True)
+                return gdf_wind, city_district
+
             df_wind = fetch_wind(location=location, mastr_db_path=mastr_db_path)
             df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
             df_wind = df_wind.merge(df_grid_connections,
@@ -426,8 +463,9 @@ def get_unique_wind_locations(mastr_db_path=None):
             "wind_extended", mastr_db_path,
         )
         return df["label"].tolist()
-    except Exception as e:
-        raise Exception(f"Failed to fetch unique locations: {str(e)}")
+    except Exception:
+        # No DB and no shipped location CSV → caller (UI) falls back to free-text entry.
+        return []
 
 def read_storage_units(mastr_db_path=None):
     if mastr_db_path is None:
@@ -509,6 +547,12 @@ def prepare_storage_data(location='Essen', mastr_db_path=None):
             )
             geocode_query = resolved['geocode_query']
 
+            if not mastr_data_available(mastr_db_path):
+                # No local DB → fetch this location's storage units live from the register.
+                from src.mastr.online_api import fetch_storage_online
+                gdf_storage = add_centroids(df_to_gdf(fetch_storage_online(resolved)), geocode_query)
+                return gdf_storage, ox.geocode_to_gdf([geocode_query])
+
             df_storage = fetch_storage(location=location, mastr_db_path=mastr_db_path)
             df_grid_connections = prepare_grid_connections_data(location=location, mastr_db_path=mastr_db_path)
             df_storage = df_storage.merge(df_grid_connections,
@@ -535,8 +579,9 @@ def get_unique_storage_locations(mastr_db_path=None):
             "storage_extended", mastr_db_path,
         )
         return df["label"].tolist()
-    except Exception as e:
-        raise Exception(f"Failed to fetch unique locations: {str(e)}")
+    except Exception:
+        # No DB and no shipped location CSV → caller (UI) falls back to free-text entry.
+        return []
 
 
 def fetch_grid_connections(grid_connections_columns=None, mastr_db_path=None):
