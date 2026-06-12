@@ -31,6 +31,10 @@ import numpy as np
 import pandas as pd
 import requests
 
+# Orientation (azimuth) labels are identical in the bulk DB and the public REST API
+# (verified same-unit), so the SQLite path's table is the single source of truth.
+from src.mastr.preprocessing import AUSRICHTUNG_MAPPING
+
 log = logging.getLogger(__name__)
 
 # Public JSON endpoint for extended public electricity-generation units.
@@ -56,19 +60,13 @@ _MAX_SAFE_TOTAL = 250_000
 _TIMEOUT = 60
 _MAX_RETRIES = 3
 
-# Solar orientation text → azimuth degrees. Same labels/values as
-# ``preprocessing.fetch_solar`` (the public endpoint uses identical orientation labels).
-_AUSRICHTUNG_MAPPING = {
-    "Ost-West": 0, "Nord": 0, "Nord-Ost": 45, "Ost": 90, "Süd-Ost": 135,
-    "Süd": 180, "Süd-West": 225, "West": 270, "Nord-West": 315,
-}
-# Tilt text → tilt degrees. The public endpoint bins tilt with *different* labels than the
-# bulk database (DB: "< 20 Grad"/"20 - 40 Grad"/...; REST: "5 - 20 Grad"/"21 - 40 Grad"/
-# "90 Grad (vertikal)"/...), so this mapping is REST-specific but resolves to the same
-# degree scale used downstream. "Nachgeführt" (tracked) stays unmapped → NaN.
-_NEIGUNGSWINKEL_MAPPING = {
-    "5 - 20 Grad": 10, "21 - 40 Grad": 30, "41 - 60 Grad": 50,
-    "61 - 89 Grad": 75, "90 Grad (vertikal)": 90,
+# Tilt text → tilt degrees. The REST API and the bulk DB label the SAME catalogue tilt
+# bins with DIFFERENT text (verified same-unit: DB "< 20 Grad" == REST "5 - 20 Grad" ==
+# Katalog-Id 810; DB "Fassadenintegriert" == REST "90 Grad (vertikal)" == Id 806), so the
+# DB's ``NEIGUNGSWINKEL_MAPPING`` keys do not match REST values. This mirrors that table
+# bin-for-bin; like it, the ">60°" bin and "Nachgeführt" stay unmapped → NaN.
+_NEIGUNGSWINKEL_MAPPING_ONLINE = {
+    "5 - 20 Grad": 10, "21 - 40 Grad": 30, "41 - 60 Grad": 50, "90 Grad (vertikal)": 90,
 }
 
 # REST response field → app column name, per technology. Columns the public endpoint
@@ -298,11 +296,11 @@ def fetch_solar_online(resolved: dict, *, betriebsstatus=BETRIEBSSTATUS_IN_BETRI
     df = _records_to_df(records, _SOLAR_MAP, _SOLAR_MISSING)
     if not df.empty:
         df["Hauptausrichtung"] = (
-            df["Hauptausrichtung"].astype("string").str.strip().map(_AUSRICHTUNG_MAPPING)
+            df["Hauptausrichtung"].astype("string").str.strip().map(AUSRICHTUNG_MAPPING)
         )
         df["HauptausrichtungNeigungswinkel"] = (
             df["HauptausrichtungNeigungswinkel"].astype("string").str.strip()
-            .map(_NEIGUNGSWINKEL_MAPPING)
+            .map(_NEIGUNGSWINKEL_MAPPING_ONLINE)
         )
     return df
 

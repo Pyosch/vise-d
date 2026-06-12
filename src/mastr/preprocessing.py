@@ -256,27 +256,32 @@ def fetch_data(
 
     return df
 
-def fetch_solar(location=None, solar_columns=None, mastr_db_path=None):
-    
-    #Umrechnungswerte für die Ausrichtung und Neigung
-    ausrichtung_mapping = {
-        'Ost-West': 0,
-        'Nord': 0,
-        'Nord-Ost': 45,
-        'Ost': 90,
-        'Süd-Ost': 135,
-        'Süd': 180,
-        'Süd-West': 225,
-        'West': 270,
-        'Nord-West': 315   
-    }
+# Umrechnungswerte für die Ausrichtung und Neigung der Solarmodule.
+# Module-level (not function-local) so the online REST path (src.mastr.online_api) can
+# reuse the orientation table. The public REST API uses *identical* orientation labels
+# but *different* tilt-bin labels for the same catalogue bins, so the online path keeps
+# its own tilt table aligned to these same degrees (see online_api).
+AUSRICHTUNG_MAPPING = {
+    'Ost-West': 0,
+    'Nord': 0,
+    'Nord-Ost': 45,
+    'Ost': 90,
+    'Süd-Ost': 135,
+    'Süd': 180,
+    'Süd-West': 225,
+    'West': 270,
+    'Nord-West': 315,
+}
 
-    neigungswinkel_mapping = {
-        '< 20 Grad': 10,
-        '20 - 40 Grad': 30,
-        '40 - 60 Grad': 50,
-        'Fassadenintegriert': 90
-    }
+NEIGUNGSWINKEL_MAPPING = {
+    '< 20 Grad': 10,
+    '20 - 40 Grad': 30,
+    '40 - 60 Grad': 50,
+    'Fassadenintegriert': 90,
+}
+
+
+def fetch_solar(location=None, solar_columns=None, mastr_db_path=None):
 
     # Define columns to be selected from database
     if solar_columns is None:
@@ -324,8 +329,8 @@ def fetch_solar(location=None, solar_columns=None, mastr_db_path=None):
                           )
     
     # Map orientation and tilt angle values
-    df_solar['Hauptausrichtung'] = df_solar['Hauptausrichtung'].map(ausrichtung_mapping)
-    df_solar['HauptausrichtungNeigungswinkel'] = df_solar['HauptausrichtungNeigungswinkel'].map(neigungswinkel_mapping)
+    df_solar['Hauptausrichtung'] = df_solar['Hauptausrichtung'].map(AUSRICHTUNG_MAPPING)
+    df_solar['HauptausrichtungNeigungswinkel'] = df_solar['HauptausrichtungNeigungswinkel'].map(NEIGUNGSWINKEL_MAPPING)
 
     return df_solar
 
