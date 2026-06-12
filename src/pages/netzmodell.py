@@ -67,6 +67,7 @@ from src.mastr.preprocessing import (
     get_unique_solar_locations,
     get_unique_wind_locations,
     geocode_query_for_location,
+    mastr_data_available,
     prepare_solar_data,
     prepare_wind_data,
 )
@@ -669,9 +670,27 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
         st.error("vpplib ist nicht installiert — MaStR-Simulation nicht verfügbar.")
         return
 
+    # Datenquelle wählen: lokale MaStR-Datenbank oder Online-Abruf. Ohne lokale DB wird
+    # der Schalter ausgeblendet und fest auf Online-Abruf gestellt.
+    if mastr_data_available():
+        use_online = st.toggle(
+            "Anlagen online vom MaStR-Register abrufen",
+            key="nsv2_mastr_online",
+            help="Statt der lokalen MaStR-Datenbank werden die Anlagen für den gewählten "
+                 "Ort live aus dem öffentlichen MaStR-Online-Register geladen "
+                 "(nur Anlagen „In Betrieb“).",
+        )
+        if use_online:
+            st.caption("🌐 Online-Abruf aktiv – Anlagen werden live aus dem öffentlichen "
+                       "MaStR-Register geladen (nur Anlagen „In Betrieb“).")
+    else:
+        use_online = True
+        st.info("Keine lokale MaStR-Datenbank gefunden – Anlagen werden online aus dem "
+                "öffentlichen MaStR-Register abgerufen (nur Anlagen „In Betrieb“).")
+
     locations = _load_mastr_locations()
     location = render_mastr_location_input(
-        locations, label="Ort", key="nsv2_mastr_loc", default="Aachen"
+        locations, label="Ort", key="nsv2_mastr_loc", default="Aachen", online_banner=False
     )
     if not location:
         st.info("Bitte einen Ort oder eine PLZ eingeben.")
@@ -717,7 +736,9 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
                 if "PV" in tech:
                     st.write(f"MaStR-Solardaten laden ({location})…")
                     try:
-                        gdf_solar, city_district = prepare_solar_data(location, str(MASTR_DB_PATH))
+                        gdf_solar, city_district = prepare_solar_data(
+                            location, str(MASTR_DB_PATH), force_online=use_online
+                        )
                         gdf_solar = revise_power_values(gdf_solar)
                         st.session_state["nsv2_mastr_gdf_solar"] = gdf_solar
                         st.write(f"  → {len(gdf_solar)} PV-Anlagen gefunden.")
@@ -730,7 +751,9 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
                 if "Wind" in tech:
                     st.write(f"MaStR-Winddaten laden ({location})…")
                     try:
-                        gdf_wind, cd_wind = prepare_wind_data(location, str(MASTR_DB_PATH))
+                        gdf_wind, cd_wind = prepare_wind_data(
+                            location, str(MASTR_DB_PATH), force_online=use_online
+                        )
                         if city_district is None:
                             city_district = cd_wind
                         st.session_state["nsv2_mastr_gdf_wind"] = gdf_wind

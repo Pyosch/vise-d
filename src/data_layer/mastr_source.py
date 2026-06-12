@@ -34,14 +34,20 @@ def render_mastr_location_input(
     key: Optional[str] = None,
     default: str = "Essen",
     mastr_db_path: Optional[str] = None,
+    online_banner: Optional[bool] = None,
 ) -> Optional[str]:
     """Render the location selector, adapting to whichever data tier is available.
 
     Shows an info banner when the local database is missing (data comes from the online
     register). Returns the selected/typed location string, or ``None`` if nothing is
     entered yet.
+
+    ``online_banner`` overrides the banner: ``None`` (default) shows it only when no
+    local DB is found; ``False`` suppresses it (e.g. when the caller renders its own
+    online/local messaging); ``True`` always shows it.
     """
-    if not mastr_data_available(mastr_db_path):
+    show_banner = (not mastr_data_available(mastr_db_path)) if online_banner is None else online_banner
+    if show_banner:
         st.info(_ONLINE_BANNER)
 
     if unique_locations:

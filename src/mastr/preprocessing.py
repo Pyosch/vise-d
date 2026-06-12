@@ -334,7 +334,7 @@ def fetch_solar(location=None, solar_columns=None, mastr_db_path=None):
 
     return df_solar
 
-def prepare_solar_data(location='Essen', mastr_db_path=None):
+def prepare_solar_data(location='Essen', mastr_db_path=None, force_online=False):
 
     try:
             resolved = _resolve_location(
@@ -343,8 +343,9 @@ def prepare_solar_data(location='Essen', mastr_db_path=None):
             )
             geocode_query = resolved['geocode_query']
 
-            if not mastr_data_available(mastr_db_path):
-                # No local DB → fetch this location's plants live from the online register.
+            if force_online or not mastr_data_available(mastr_db_path):
+                # No local DB (or online explicitly requested) → fetch this location's
+                # plants live from the online register.
                 from src.mastr.online_api import fetch_solar_online
                 gdf_solar = add_centroids(df_to_gdf(fetch_solar_online(resolved)), geocode_query)
                 return gdf_solar, ox.geocode_to_gdf([geocode_query])
@@ -424,7 +425,7 @@ def fetch_wind(location=None, wind_columns=None, mastr_db_path=None):
                       extra_equals=extra,
                       )
 
-def prepare_wind_data(location='Essen', mastr_db_path=None):
+def prepare_wind_data(location='Essen', mastr_db_path=None, force_online=False):
 
     try:
             resolved = _resolve_location(
@@ -433,8 +434,9 @@ def prepare_wind_data(location='Essen', mastr_db_path=None):
             )
             geocode_query = resolved['geocode_query']
 
-            if not mastr_data_available(mastr_db_path):
-                # No local DB → fetch this location's turbines live from the online register.
+            if force_online or not mastr_data_available(mastr_db_path):
+                # No local DB (or online explicitly requested) → fetch this location's
+                # turbines live from the online register.
                 from src.mastr.online_api import fetch_wind_online
                 gdf_wind = add_centroids(df_to_gdf(fetch_wind_online(resolved)), geocode_query)
                 city_district = ox.geocode_to_gdf([geocode_query])
@@ -543,8 +545,8 @@ def fetch_storage(location=None, storage_columns=None, mastr_db_path=None):
     
     return df_storage
 
-def prepare_storage_data(location='Essen', mastr_db_path=None):
-    
+def prepare_storage_data(location='Essen', mastr_db_path=None, force_online=False):
+
     try:
             resolved = _resolve_location(
                 location, _LOCATION_CACHE_DIR / _LOCATION_CSV['storage'],
@@ -552,8 +554,9 @@ def prepare_storage_data(location='Essen', mastr_db_path=None):
             )
             geocode_query = resolved['geocode_query']
 
-            if not mastr_data_available(mastr_db_path):
-                # No local DB → fetch this location's storage units live from the register.
+            if force_online or not mastr_data_available(mastr_db_path):
+                # No local DB (or online explicitly requested) → fetch this location's
+                # storage units live from the register.
                 from src.mastr.online_api import fetch_storage_online
                 gdf_storage = add_centroids(df_to_gdf(fetch_storage_online(resolved)), geocode_query)
                 return gdf_storage, ox.geocode_to_gdf([geocode_query])

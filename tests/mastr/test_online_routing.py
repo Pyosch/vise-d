@@ -92,6 +92,27 @@ def test_prepare_solar_uses_db_when_present(monkeypatch):
     assert list(gdf["EinheitMastrNummer"]) == ["Y"]
 
 
+def test_prepare_solar_force_online_overrides_db(monkeypatch):
+    """force_online=True routes to the online register even when the DB is present."""
+    monkeypatch.setattr(pp, "mastr_data_available", lambda *_a, **_k: True)  # DB present
+    monkeypatch.setattr(pp, "_resolve_location", lambda *a, **k: {
+        "ort": "Aachen", "ags": "05334002", "gemeinde": "Aachen",
+        "bundesland": "Nordrhein-Westfalen", "landkreis": "", "geocode_query": "Aachen, NRW",
+    })
+    online_df = pd.DataFrame(
+        {"EinheitMastrNummer": ["X"], "Laengengrad": [6.1], "Breitengrad": [50.7]}
+    )
+    monkeypatch.setattr(oa, "fetch_solar_online", lambda resolved, **k: online_df)
+    monkeypatch.setattr(pp, "fetch_solar", _boom)  # DB path must not run despite DB present
+    monkeypatch.setattr(pp, "add_centroids", lambda gdf, q=None: gdf)
+    monkeypatch.setattr(pp.ox, "geocode_to_gdf", lambda q: "CITY")
+
+    gdf, _city = pp.prepare_solar_data(
+        "Aachen", mastr_db_path=str(pp.MASTR_DB_PATH), force_online=True
+    )
+    assert list(gdf["EinheitMastrNummer"]) == ["X"]
+
+
 def test_location_cache_does_not_create_db(tmp_path):
     """Probing the cache with no CSV and no DB must raise, not create an empty DB."""
     missing_db = tmp_path / "nope.db"
