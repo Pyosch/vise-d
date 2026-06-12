@@ -10,6 +10,7 @@ Created: January 2026
 __author__ = "Pyosch"
 __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 
+import os
 from pathlib import Path
 from typing import Final
 
@@ -24,8 +25,15 @@ FIGURES_DIR: Final[Path] = DATA_DIR / "figures"
 CACHE_DIR: Final[Path] = PROJECT_ROOT / "cache"
 
 # MaStR database path
-# Note: The open-MaStR database is located in the root data directory
-MASTR_DB_PATH: Final[Path] = DATA_DIR / "open-mastr.db"
+# Note: The open-MaStR database is located in the root data directory.
+# Override with the VISED_MASTR_DB_PATH environment variable to point elsewhere — or, to
+# exercise the online REST fallback while keeping the real DB in place, set it to a path
+# that does NOT exist:
+#   * a non-existent file inside data/  → tier 2 (town dropdown from the shipped CSVs +
+#     live plant data), e.g. VISED_MASTR_DB_PATH=data/__force_online__.db
+#   * a non-existent path in an empty dir → tier 3 (free-text Ort/PLZ + live plant data).
+_MASTR_DB_ENV = os.environ.get("VISED_MASTR_DB_PATH")
+MASTR_DB_PATH: Final[Path] = Path(_MASTR_DB_ENV) if _MASTR_DB_ENV else DATA_DIR / "open-mastr.db"
 
 # PV parametrization cache directory (one CSV per location)
 PV_PARAMS_DIR: Final[Path] = DATA_DIR / "pv_parametrization"
