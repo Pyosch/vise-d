@@ -650,16 +650,45 @@ def _mastr_overview_map(gdf_solar, gdf_wind, city_district, selected_nrs):
 
     sel = pts[pts["MaStR-Nr"].isin({str(n) for n in selected_nrs})]
     if len(sel):
+        # Hoverable so the selection is verifiable even where many anonymised plants
+        # share the same (municipality-centre) coordinate and visually overlap.
         fig.add_trace(go.Scattermapbox(
             lat=sel["lat"], lon=sel["lon"], mode="markers",
-            marker=dict(size=15, color="#16a34a"),
-            name="ausgewählt", hoverinfo="skip",
+            marker=dict(size=16, color="#16a34a"),
+            name="ausgewählt",
+            customdata=np.stack([sel["Name"].values, sel["MaStR-Nr"].values], axis=-1),
+            hovertemplate="<b>%{customdata[0]}</b><br>MaStR-Nr: %{customdata[1]}"
+                          "<extra>ausgewählt</extra>",
         ))
     fig.update_layout(
         margin=dict(l=0, r=0, t=0, b=0),
         legend=dict(orientation="h", yanchor="bottom", y=1.01),
     )
     return fig
+
+
+def _anonymized_stack(gdf_solar, gdf_wind) -> tuple[int, int]:
+    """Size of the largest group of plants sharing one coordinate, and the total.
+
+    Plants with a non-public (anonymised) location have no published coordinates and are
+    all placed on the municipality centre by ``add_centroids`` — so they pile onto a
+    single point and a map highlight there cannot tell them apart.
+    """
+    coords = []
+    for gdf in (gdf_solar, gdf_wind):
+        if gdf is None or len(gdf) == 0:
+            continue
+        coords.append(pd.DataFrame({
+            "lat": pd.to_numeric(gdf["Breitengrad"], errors="coerce").round(5),
+            "lon": pd.to_numeric(gdf["Laengengrad"], errors="coerce").round(5),
+        }))
+    if not coords:
+        return 0, 0
+    pts = pd.concat(coords, ignore_index=True).dropna(subset=["lat", "lon"])
+    if pts.empty:
+        return 0, len(pts)
+    largest = int(pts.groupby(["lat", "lon"]).size().max())
+    return largest, len(pts)
 
 
 def _tab_mastr(net: pp.pandapowerNet) -> None:
@@ -856,6 +885,14 @@ def _tab_mastr(net: pp.pandapowerNet) -> None:
             f"{len(selected_nrs)} ausgewählt"
         )
         st.plotly_chart(map_fig, use_container_width=True, key="nsv2_mastr_map")
+        stack, total_pts = _anonymized_stack(gdf_solar_f, gdf_wind_f)
+        if stack > 1:
+            st.caption(
+                f"ℹ️ {stack} von {total_pts} Anlagen haben keinen öffentlichen Standort "
+                "(anonymisiert) und werden gebündelt am Gemeinde-Mittelpunkt angezeigt — "
+                "die grüne Markierung dort lässt sich kaum einzeln unterscheiden. "
+                "Die Auswahl in der Tabelle oben ist maßgeblich."
+            )
 
     # Zielknoten wählen (Muster wie im Tab "Gezielt"; Default = erster Knoten)
     bus_df = _bus_labels(net)
