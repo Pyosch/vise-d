@@ -1604,24 +1604,9 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                         with st.expander("Fehlerdetails"):
                             st.code(traceback.format_exc())
 
-        st.divider()
-        st.markdown("**Parametrisches Tagesganglinienprofil** *(vereinfacht, ohne Wetterdaten)*")
-        st.caption("Für ein wettergetriebenes Profil bitte den Button oben verwenden.")
-        c1, c2 = st.columns(2)
-        hp_kw = c1.number_input("Elektrische Leistung (kW)", 1.0, 100.0, 7.0, key="nsv2_hp_kw")
-        hp_season = c2.selectbox("Jahreszeit", ["Winter", "Übergang", "Sommer"], key="nsv2_hp_season")
-        season_factor = {"Winter": 1.0, "Übergang": 0.55, "Sommer": 0.20}[hp_season]
-
-        if st.button("WP-Profil generieren", key="nsv2_hp_gen"):
-            x = np.arange(96)
-            morning = np.exp(-0.5 * ((x - 28) / 10) ** 2)  # peak ~7:00
-            evening = np.exp(-0.5 * ((x - 74) / 8)  ** 2)  # peak ~18:30
-            profile = (morning + 0.8 * evening).clip(0.05, 1.0)
-            profile = profile / profile.max() * hp_kw * season_factor
-            st.session_state["nsv2_profile_hp"] = pd.Series(profile)
-            st.success("WP-Profil (parametrisch) erzeugt.")
-
         if "nsv2_profile_hp" in st.session_state:
+            st.divider()
+            st.markdown("**Ergebnis der DWD-Wetterdatensimulation**")
             _profile_chart(st.session_state["nsv2_profile_hp"], "kW (elektrisch)", "nsv2_chart_hp")
 
     # ------------------------------------------------------------------ #
