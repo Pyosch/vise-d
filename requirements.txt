@@ -118,3 +118,13 @@ zipp==3.19.2
 geopy>=2.4.0
 # pip install -e path/to/dwd_fetcher/dwd_data_fetcher
 open-mastr==0.15.0
+
+# Geo / MaStR runtime deps (imported at startup via src.mastr; missing from the
+# original pip-freeze). All have Linux cp312 wheels on PyPI.
+geopandas==1.1.0
+shapely==2.0.6
+pyproj==3.7.0
+osmnx==2.0.3
+networkx==3.4.2
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.27.3
