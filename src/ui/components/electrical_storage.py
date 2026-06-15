@@ -24,8 +24,8 @@ import pandas as pd
 
 # Import validation and error handling utilities
 try:
-    from utils.validation import InputValidator, validate_energy_system_inputs, display_validation_results
-    from utils.error_handling import handle_data_processing_errors, log_user_action
+    from src.utils.validation import InputValidator, validate_energy_system_inputs, display_validation_results
+    from src.utils.error_handling import handle_data_processing_errors, log_user_action
 except ImportError:
     # Fallback if utils are not available
     st.warning("⚠️ Erweiterte Validierungsfunktionen nicht verfügbar")
