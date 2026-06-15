@@ -18,8 +18,9 @@ from functools import lru_cache
 from sqlite3 import connect
 import sqlite3
 
-import geopandas
-import osmnx as ox
+# geopandas / osmnx are imported lazily inside the functions that use them
+# (df_to_gdf, add_centroids, prepare_*_data) so importing this module does not
+# pull the heavy geo stack at app startup.
 
 from src.config import MASTR_DB_PATH
 
@@ -335,6 +336,7 @@ def fetch_solar(location=None, solar_columns=None, mastr_db_path=None):
     return df_solar
 
 def prepare_solar_data(location='Essen', mastr_db_path=None, force_online=False):
+    import osmnx as ox
 
     try:
             resolved = _resolve_location(
@@ -426,6 +428,7 @@ def fetch_wind(location=None, wind_columns=None, mastr_db_path=None):
                       )
 
 def prepare_wind_data(location='Essen', mastr_db_path=None, force_online=False):
+    import osmnx as ox
 
     try:
             resolved = _resolve_location(
@@ -546,6 +549,7 @@ def fetch_storage(location=None, storage_columns=None, mastr_db_path=None):
     return df_storage
 
 def prepare_storage_data(location='Essen', mastr_db_path=None, force_online=False):
+    import osmnx as ox
 
     try:
             resolved = _resolve_location(
@@ -673,12 +677,14 @@ def prepare_grid_connections_data(location='Essen', mastr_db_path=None):
         raise Exception(f"Error preparing data for {location}: {str(e)}")
 
 def df_to_gdf(df):
+    import geopandas
     gdf = geopandas.GeoDataFrame(
     df, geometry=geopandas.points_from_xy(df.Laengengrad, df.Breitengrad), crs="EPSG:4326"
     )
     return gdf
 
 def add_centroids(gdf, geocode_query=None):
+    import osmnx as ox
     if geocode_query is None:
         # Derive a precise query from the disambiguating columns; bare Ort is
         # ambiguous and can geocode to the wrong town (e.g. Langenfeld).
