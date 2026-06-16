@@ -130,6 +130,7 @@ def pv_configuration() -> None:
         ["Standortbasierte Simulation", "Anlagenbasierte Simulation"],
         horizontal=True,
         key="pv_cfg_mode",
+        help="Standortbasiert: freie Leistungsangabe für einen Ort. Anlagenbasiert: reale MaStR-Anlagen einer Stadt auswählen.",
     )
 
     lat: float | None = None
@@ -148,6 +149,7 @@ def pv_configuration() -> None:
         capacity_kwp = st.number_input(
             "Installierte Leistung (kWp)", min_value=0.1, max_value=100_000.0,
             value=10.0, key="pv_cfg_cap",
+            help="Nennleistung der PV-Anlage unter Standardbedingungen. Hausdach typ. 5–15 kWp; ~6–7 m² Modulfläche je kWp.",
         )
 
         if city_input:
