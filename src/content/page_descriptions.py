@@ -9,8 +9,7 @@ Zwei Quellen, je nach Anzeigeort:
   „Anleitung & Bedienung" angezeigt.
 
 ``render_page_description`` zeigt bevorzugt die Anleitung; existiert für einen
-Page-Key keine Anleitung (z. B. ``mv_fallstudie``), fällt es auf die
-Kurzbeschreibung zurück.
+Page-Key keine Anleitung, fällt es auf die Kurzbeschreibung zurück.
 
 Author: Pyosch
 AI Assistance: GitHub Copilot (Claude Opus 4.8)
@@ -30,12 +29,6 @@ PAGE_DESCRIPTIONS: dict[str, str] = {
         "Verteilnetze: Wie wirken sich verschiedene DSO-Eingriffsstrategien "
         "und Tarifmodelle (Festpreis, Time-of-Use, Real-Time) auf das "
         "optimierte Laden, den Flexibilitätsbedarf und die Stromkosten aus?"
-    ),
-    "mv_fallstudie": (
-        "Fallstudie zur Validierung eines Mittelspannungsnetzes nach der "
-        "Methodik Shapefile → pandapower → Messdaten-Abgleich. Eigene "
-        "Validierungs-CSVs können hochgeladen werden, um die Analyse auf dem "
-        "eigenen Netz auszuführen (Demodaten: CIGRE-MS-Referenznetz)."
     ),
     "bev_settings": (
         "Konfiguration und Simulation von Ladevorgängen für Elektrofahrzeuge "
@@ -393,7 +386,6 @@ PAGE_OVERVIEW: dict[str, list[tuple[str, str]]] = {
     ],
     "Forschungsergebnisse": [
         ("research_results", "Integration von E-Fahrzeugen in Verteilnetze"),
-        # ("mv_fallstudie", "Fallstudie: MS-Netz Validierung"),
     ],
     "Lastprofilgeneratoren": [
         ("bev_settings", "E-Mobilität"),
@@ -423,8 +415,7 @@ def render_page_description(key: str) -> None:
             st.markdown(instructions)
         return
 
-    # Seiten ohne ausführliche Anleitung (z. B. mv_fallstudie) zeigen weiter die
-    # Kurzbeschreibung.
+    # Seiten ohne ausführliche Anleitung zeigen weiter die Kurzbeschreibung.
     description = PAGE_DESCRIPTIONS.get(key)
     if not description:
         return
