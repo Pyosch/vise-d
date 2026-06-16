@@ -29,15 +29,14 @@ from vpplib.environment import Environment
 # Ramp-/Min-Zeiten sind in Zeitschritten (1 Zeitschritt = timebase = 15 min).
 _HP_DEFAULTS = {
     "identifier": "hp1",
-    "user_profile": "None",
     "heat_pump_type": "Air",
     "Heat System Temperature": 60.0,  # °C
     "el_power": 5.0,  # kW - elektrische Leistung
     "th_power": 8.0,  # kW - thermische Leistung
     "yearly_thermal_energy_demand": 12500.0,  # kWh/Jahr
     "building_type": "DE_HEF33",  # SigLinDe-Gebäudeklassifikation
-    "Ramp Up Time": 1 / 15,    # Zeitschritte
-    "Ramp Down Time": 1 / 15,  # Zeitschritte
+    "Ramp Up Time": 1.0,    # Zeitschritte
+    "Ramp Down Time": 1.0,  # Zeitschritte
     "Minimum Run Time": 1.0,   # Zeitschritte
     "Minimum Stop Time": 2.0,  # Zeitschritte
 }
@@ -73,27 +72,9 @@ def heatpump_settings(form_key_suffix=""):
         # Input Section
             st.header("Wärmepumpen-Einstellungen")
 
-            identifier = st.selectbox(
-            "Bezeichner auswählen",
-            options=["None", "hp1", "hp2"],
-            format_func=lambda x: "Kein" if x == "None" else x,
-            index=0 if st.session_state.heatpump_settings["identifier"] == "None" else 1 if st.session_state.heatpump_settings["identifier"] == "hp1" else 2,
-            key="identifier"
-            )
-            
-            # Environment = st.selectbox(
-            # "Select Environment",
-            # options=["None", "Environment 1", "Environment 2"],
-            # index=0 if st.session_state.heatpump_settings["Environment"] == "None" else 1 if st.session_state.heatpump_settings["Environment"] == "Environment 1" else 2,
-            # key="Environment"
-            # )
-            
-            user_profile = st.selectbox(
-                "Nutzerprofil",
-                options = ["None","Profile1","Profile2"],
-                format_func=lambda x: {"None": "Kein", "Profile1": "Profil 1", "Profile2": "Profil 2"}.get(x, x),
-                index = 0 if st.session_state.heatpump_settings["user_profile"]=="None" else 1 if st.session_state.heatpump_settings["user_profile"]=="Profile1" else 2,
-                key = "user_profile"
+            identifier = st.text_input(
+                "Bezeichner",
+                value=str(st.session_state.heatpump_settings["identifier"]),
             )
 
         # Dropdown for Heat Pump Type
@@ -200,8 +181,6 @@ def heatpump_settings(form_key_suffix=""):
                     "heat_pump_type": heat_pump_type,
                     "Heat System Temperature": system_temperature,
                     "el_power": el_power,
-            #        "Environment": Environment,
-                    "user_profile": user_profile,
                     "th_power":th_power,
                     "yearly_thermal_energy_demand": yearly_thermal_energy_demand,
                     "building_type": building_type,
@@ -221,7 +200,6 @@ def heatpump_settings(form_key_suffix=""):
             "heat_pump_type": "Wärmepumpentyp",
             "Heat System Temperature": "Vorlauftemperatur (°C)",
             "el_power": "Elektrische Leistung (kW)",
-            "user_profile": "Nutzerprofil",
             "th_power": "Thermische Leistung (kW)",
             "yearly_thermal_energy_demand": "Jährlicher Wärmebedarf (kWh)",
             "building_type": "Gebäudetyp",

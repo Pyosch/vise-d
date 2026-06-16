@@ -57,8 +57,8 @@ PAGE_DESCRIPTIONS: dict[str, str] = {
     "thermal_storage": (
         "Konfiguration und Simulation eines thermischen Speichers "
         "(Warmwasserspeicher). Speichermasse, Zieltemperatur und Hysterese "
-        "festlegen und den Betrieb mit Heizstab über eine Beispielwoche "
-        "simulieren."
+        "festlegen; der Wärmebedarf wird aus DWD-Temperaturen berechnet und der "
+        "Speicher von einer Wärmepumpe über den gewählten Zeitraum beladen."
     ),
     "netzmodell": (
         "Aufbau und Analyse von Netzszenarien: vordefinierte oder eigene Netze "
