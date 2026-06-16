@@ -181,6 +181,7 @@ def wind_configuration(key_suffix: str = "wind1") -> None:
         ["Standortbasierte Simulation", "Anlagenbasierte Simulation"],
         horizontal=True,
         key="wind_cfg_mode",
+        help="Standortbasiert: freie Anlagenangabe für einen Ort. Anlagenbasiert: reale MaStR-Windanlagen einer Stadt auswählen.",
     )
 
     lat: float | None = None
@@ -199,10 +200,12 @@ def wind_configuration(key_suffix: str = "wind1") -> None:
         city_input = st.text_input("Ort (Stadtname)", value="Aachen", key="wind_cfg_city")
         c1, c2 = st.columns(2)
         hub_height_m = c1.number_input(
-            "Nabenhöhe (m)", min_value=10.0, max_value=300.0, value=100.0, key="wind_cfg_hub"
+            "Nabenhöhe (m)", min_value=10.0, max_value=300.0, value=100.0, key="wind_cfg_hub",
+            help="Höhe der Rotornabe über Grund. Moderne Onshore-Anlagen 80–160 m; größere Höhe = mehr Ertrag.",
         )
         rated_kw = c2.number_input(
-            "Nennleistung (kW)", min_value=1.0, max_value=20_000.0, value=2000.0, key="wind_cfg_cap"
+            "Nennleistung (kW)", min_value=1.0, max_value=20_000.0, value=2000.0, key="wind_cfg_cap",
+            help="Nennleistung bei Nennwindgeschwindigkeit. Onshore typ. 2.000–6.000 kW; Kleinwind <100 kW.",
         )
         hellman_exp = st.number_input(
             "Hellman-Exponent",
