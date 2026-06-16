@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from vpplib.battery_electric_vehicle import BatteryElectricVehicle
 from vpplib.environment import Environment
 from src.ui.components import battery_electric_vehicle_settings
+from src.utils.pdf_export import generate_pdf_report_matplotlib
 
 
 # Initialize session state for BEV settings if not already present
@@ -123,5 +124,55 @@ def bev_settings():
             ax.set_ylabel("Wert (kW)")
             plt.tight_layout()
 
+            # Store figure for PDF export (outside the form)
+            st.session_state["bev_fig"] = fig
+
             # Display the plot in Streamlit
             st.pyplot(fig)
+
+    # ── PDF Export ──────────────────────────────────────────────────────
+    if "bev_fig" in st.session_state and st.session_state.get("bev") is not None:
+        st.markdown("---")
+        st.markdown("### 📄 Export Simulation Results")
+        if st.button("📄 Generate PDF Report", key="bev_pdf_btn"):
+            try:
+                bev_obj = st.session_state["bev"]
+                bev_cfg = st.session_state.get("bev_settings", {})
+
+                _metadata = {
+                    "Max. Kapazität": f"{bev_cfg.get('max_battery_capacity', '-')} kWh",
+                    "Min. Kapazität": f"{bev_cfg.get('min_battery_capacity', '-')} kWh",
+                    "Batterienutzung": f"{bev_cfg.get('battery_usage', '-')} kWh/Tag",
+                    "Ladeleistung": f"{bev_cfg.get('charging_power', '-')} kW",
+                    "Wirkungsgrad": f"{bev_cfg.get('charging_efficiency', '-') * 100:.0f} %",
+                    "Startzeit": str(bev_cfg.get('start_time', '-')),
+                    "Endzeit": str(bev_cfg.get('end_time', '-')),
+                    "Zeitbasis": f"{bev_cfg.get('timebase', 15)} min",
+                }
+
+                ts = bev_obj.timeseries
+                _summary = {
+                    "Spitzenlast": f"{float(ts.max().max()):.2f} kW",
+                    "Mittellast": f"{float(ts.mean().mean()):.2f} kW",
+                    "Energie (Tag)": f"{float(ts.sum().sum()) * (bev_cfg.get('timebase', 15) / 60):.2f} kWh",
+                    "Zeitschritte": str(len(ts)),
+                }
+
+                with st.spinner("PDF wird erstellt…"):
+                    _pdf_bytes = generate_pdf_report_matplotlib(
+                        figures=[st.session_state["bev_fig"]],
+                        chart_titles=["BEV Ladeprofil (Zeitreihe)"],
+                        title="E-Mobilität – BEV Simulationsbericht",
+                        metadata=_metadata,
+                        summary_stats=_summary,
+                    )
+                st.download_button(
+                    label="⬇️ PDF herunterladen",
+                    data=_pdf_bytes,
+                    file_name="bev_simulationsbericht.pdf",
+                    mime="application/pdf",
+                    key="bev_pdf_download"
+                )
+                st.success("✅ PDF bereit! Oben auf den Button klicken zum Herunterladen.")
+            except Exception as _pdf_err:
+                st.error(f"❌ PDF-Erstellung fehlgeschlagen: {_pdf_err}")

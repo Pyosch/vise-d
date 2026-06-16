@@ -86,6 +86,7 @@ from src.utils.vpplib_interface import assign_assets_to_buses
 from src.utils.simbench_profiles import Simbench_multiplier, Simbench_multiplier_range, fix_simbench_dtypes
 from src.ui.components.netzmittimeseries import get_normalized_pv_output
 from src.utils import flex_baseload as fb
+from src.utils.pdf_export import build_netzmodell_pdf
 
 
 # ---------------------------------------------------------------------------
@@ -1872,6 +1873,77 @@ def _run_timeseries_pf(
     return voltage_df, loading_df
 
 
+
+# ---------------------------------------------------------------------------
+# PDF export helper
+# ---------------------------------------------------------------------------
+
+def _render_pdf_download_button(
+    voltage_df: pd.DataFrame,
+    loading_df: pd.DataFrame,
+    dt_index,
+) -> None:
+    """Render the 'Export als PDF' button that generates and downloads the report."""
+    st.subheader("📄 Bericht exportieren")
+
+    col_btn, col_info = st.columns([1, 3])
+    with col_btn:
+        generate = st.button(
+            "📄 Bericht als PDF exportieren",
+            key="nsv2_pdf_export",
+            type="primary",
+            use_container_width=True,
+        )
+    with col_info:
+        st.caption(
+            "Erstellt einen vollständigen Simulationsbericht (Netzübersicht, "
+            "Spannungsband, Leitungsauslastung und verfügbare Lastprofile) als PDF-Datei."
+        )
+
+    if generate:
+        net = st.session_state.get("nsv2_net")
+        if net is None:
+            st.error("Kein Netz geladen — PDF-Export nicht möglich.")
+            return
+        with st.spinner("PDF wird erstellt… (Diagramme werden gerendert)"):
+            try:
+                pdf_bytes = build_netzmodell_pdf(
+                    net=net,
+                    voltage_df=voltage_df,
+                    loading_df=loading_df,
+                    dt_index=dt_index,
+                    session_state=dict(st.session_state),
+                )
+                net_name = st.session_state.get("nsv2_net_name", "netz")
+                safe_name = "".join(
+                    c if c.isalnum() or c in "-_" else "_" for c in str(net_name)
+                )
+                from datetime import datetime as _dt
+                filename = f"netzmodell_{safe_name}_{_dt.now().strftime('%Y%m%d_%H%M')}.pdf"
+                st.download_button(
+                    label="⬇️ PDF herunterladen",
+                    data=pdf_bytes,
+                    file_name=filename,
+                    mime="application/pdf",
+                    key="nsv2_pdf_dl",
+                    use_container_width=True,
+                )
+                st.success(
+                    f"Bericht erstellt ({len(pdf_bytes) / 1024:.0f} KB). "
+                    "Klicken Sie auf 'PDF herunterladen' um die Datei zu speichern."
+                )
+            except ImportError as exc:
+                st.error(
+                    f"Fehlende Bibliothek: {exc}\n\n"
+                    "Bitte führen Sie `pip install kaleido fpdf2` in der Projektumgebung aus."
+                )
+            except Exception as exc:
+                st.error(f"PDF-Erstellung fehlgeschlagen: {exc}")
+                import traceback
+                with st.expander("Fehlerdetails"):
+                    st.code(traceback.format_exc())
+
+
 def _render_sim_results(
     voltage_df: pd.DataFrame,
     loading_df: pd.DataFrame,
@@ -1952,6 +2024,10 @@ def _render_sim_results(
             disp.index = x_labels[:len(disp)]
             disp.columns = [str(c) for c in disp.columns]
             st.dataframe(disp.head(20).style.format("{:.1f}"), height=200)
+
+    # ── PDF export button (visible inside the results tabs) ── #
+    st.divider()
+    _render_pdf_download_button(voltage_df, loading_df, dt_index)
 
 
 def _render_comparison_results(vb, lb, vf, lf, dt_index, alpha) -> None:
