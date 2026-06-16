@@ -24,8 +24,8 @@ import pandas as pd
 
 # Import validation and error handling utilities
 try:
-    from utils.validation import InputValidator, validate_energy_system_inputs, display_validation_results
-    from utils.error_handling import handle_data_processing_errors, log_user_action
+    from src.utils.validation import InputValidator, validate_energy_system_inputs, display_validation_results
+    from src.utils.error_handling import handle_data_processing_errors, log_user_action
 except ImportError:
     # Fallback if utils are not available
     st.warning("⚠️ Erweiterte Validierungsfunktionen nicht verfügbar")
@@ -79,7 +79,8 @@ def electrical_storage(form_key_suffix=""):
                 max_value=100.0,
                 value=float(st.session_state.electrical_storage["Charge Efficiency"] * 100),
                 placeholder="z. B. 90 %",
-                key="charging_efficiency"
+                key="charging_efficiency",
+                help="Anteil der Energie, der beim Laden in der Batterie ankommt. Li-Ion 90–98 %, Blei-Säure 80–90 %.",
             )
         st.markdown("**Entladewirkungsgrad**")
         discharging_efficiency = st.number_input(
@@ -88,7 +89,8 @@ def electrical_storage(form_key_suffix=""):
                 max_value=100.0,
                 value=float(st.session_state.electrical_storage["Discharge Efficiency"] * 100),
                 placeholder="z. B. 90 %",
-                key="discharging_efficiency"
+                key="discharging_efficiency",
+                help="Anteil der gespeicherten Energie, der beim Entladen nutzbar ist. Li-Ion 90–98 %.",
             )
 
         st.markdown("**Max. Leistung**")

@@ -150,6 +150,7 @@ def thermal_storage_settings() -> None:
             "Jährlicher Wärmebedarf (kWh)",
             min_value=1000.0, max_value=50000.0, value=12500.0, step=500.0,
             key="ts_yearly_demand",
+            help="Heizenergiebedarf pro Jahr. Einfamilienhaus oft 10.000–20.000 kWh/a (Neubau weniger, Altbau mehr).",
         )
         building_type = st.selectbox(
             "Gebäudetyp", options=_BUILDING_TYPES, index=0,
@@ -173,6 +174,7 @@ def thermal_storage_settings() -> None:
             value=float(st.session_state["thermal_storage_settings"]["target temperature"]),
             placeholder="z. B. 60 °C",
             key="target_temperature",
+            help="Solltemperatur, auf die der Speicher geladen wird. Warmwasser typ. 55–60 °C (Legionellenschutz).",
         )
 
         st.markdown("**Minimale Temperatur**")
@@ -182,6 +184,7 @@ def thermal_storage_settings() -> None:
             value=float(st.session_state["thermal_storage_settings"]["minimum temperature"]),
             placeholder="z. B. 40 °C",
             key="minimum_temperature",
+            help="Untere nutzbare Temperatur; darunter gilt der Speicher als leer. Warmwasser typ. 40 °C.",
         )
 
         st.markdown("**Hysterese**")
@@ -191,6 +194,7 @@ def thermal_storage_settings() -> None:
             value=float(st.session_state["thermal_storage_settings"]["hysteresis"]),
             placeholder="z. B. 5 °C",
             key="hysteresis",
+            help="Schaltband um die Zieltemperatur gegen häufiges Takten. Typisch 5 °C.",
         )
 
         st.markdown("**Aktuelle Temperatur**")
@@ -200,6 +204,7 @@ def thermal_storage_settings() -> None:
             value=float(target_temperature - hysteresis),
             placeholder="z. B. 50 °C",
             key="current_temperature",
+            help="Anfangstemperatur des Speichers zu Simulationsbeginn.",
         )
 
         st.markdown("**Masse**")
@@ -209,6 +214,7 @@ def thermal_storage_settings() -> None:
             value=float(st.session_state["thermal_storage_settings"]["mass"]),
             placeholder="z. B. 300 kg",
             key="mass",
+            help="Wassermasse des Speichers; 1 l ≈ 1 kg. 300 kg ≈ 300-l-Speicher.",
         )
 
         st.markdown("**Spezifische Wärmekapazität**")
@@ -218,6 +224,7 @@ def thermal_storage_settings() -> None:
             value=float(st.session_state["thermal_storage_settings"]["cp"]),
             placeholder="z. B. 4,18 kJ/kg°C",
             key="cp",
+            help="Wärmespeichervermögen des Mediums. Wasser ≈ 4,18 kJ/kg·°C.",
         )
 
         st.markdown("**Thermischer Energieverlust pro Tag**")
@@ -238,6 +245,7 @@ def thermal_storage_settings() -> None:
             value=float(st.session_state["thermal_storage_settings"]["timebase_minutes"]),
             placeholder="z. B. 15 Minuten",
             key="timebase_minutes",
+            help="Zeitliche Auflösung der Simulation. Standard 15 Minuten.",
         )
 
         if st.button("Einstellungen speichern", key="submit_thermal_storage_settings"):
@@ -262,19 +270,23 @@ def thermal_storage_settings() -> None:
         hp_type_label = st.selectbox(
             "Wärmepumpentyp", options=["Luft", "Erde"],
             index=0 if gen["heat_pump_type"] == "Air" else 1, key="ts_hp_type",
+            help="Wärmequelle der Wärmepumpe. Luft (Luft-Wasser): günstiger, JAZ ~3–4. Erde (Sole/Erdwärme): effizienter, JAZ ~4–5, aber aufwendigere Erschließung.",
         )
         hp_type = {"Luft": "Air", "Erde": "Ground"}[hp_type_label]
         hp_heat_sys_temp = st.number_input(
             "Vorlauftemperatur (°C)", min_value=0.0, max_value=100.0,
             value=float(gen["heat_sys_temp"]), step=1.0, key="ts_hp_sys_temp",
+            help="Vorlauftemperatur des Heizkreises. Fußbodenheizung 30–40 °C, Heizkörper 45–55 °C; niedriger = effizienter.",
         )
         hp_el_power = st.number_input(
             "Elektrische Leistung (kW)", min_value=0.0,
             value=float(gen["el_power"]), step=0.5, key="ts_hp_el_power",
+            help="Max. elektrische Leistungsaufnahme des Verdichters. Einfamilienhaus typ. 2–5 kW.",
         )
         hp_th_power = st.number_input(
             "Thermische Leistung (kW)", min_value=0.0,
             value=float(gen["th_power"]), step=0.5, key="ts_hp_th_power",
+            help="Max. Heizleistung der Wärmepumpe. Einfamilienhaus typ. 6–12 kW.",
         )
         hp_ramp_up = st.number_input(
             "Anlaufzeit (Zeitschritte)", min_value=0.0,

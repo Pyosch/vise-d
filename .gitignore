@@ -56,3 +56,14 @@ htmlcov/
 build/
 dist/
 *.egg-info/
+
+# Dashboard runtime data: static reference + (published) research results.
+# Placed after the broad *.json/*.db ignores so the negations win.
+!data/median_windpower_curve.csv
+!data/figures/
+data/figures/*
+!data/figures/*.csv
+!data/figures/trafo_loadings.json
+!data/flexibility_profiles/
+data/flexibility_profiles/*
+!data/flexibility_profiles/flex_profiles_*.csv

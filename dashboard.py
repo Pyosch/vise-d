@@ -31,10 +31,6 @@ def _research_results():
     from src.pages.research_results import research_results
     research_results()
 
-def _mv_fallstudie():
-    from src.pages.mv_fallstudie import mv_fallstudie
-    mv_fallstudie()
-
 def _bev_settings():
     from src.pages.bev_settings import bev_settings
     bev_settings()
@@ -124,7 +120,6 @@ _page_startseite = st.Page(_startseite, title="Startseite", icon="🏠", default
 
 pages = {
     "research_results": st.Page(_research_results, title="Integration von E-Fahrzeugen in Verteilnetze"),
-    # "mv_fallstudie": st.Page(_mv_fallstudie, title="Fallstudie: MS-Netz Validierung"),
     "bev_settings": st.Page(_bev_settings, title="E-Mobilität"),
     "heatpump": st.Page(_heatpump_configuration, title="Wärmepumpe"),
     "pv": st.Page(_pv_configuration, title="Photovoltaik"),
@@ -156,7 +151,6 @@ pg = st.navigation({
     ],
     "Forschungsergebnisse": [
         pages["research_results"],
-        # pages["mv_fallstudie"],
     ],
     "Lastprofilgeneratoren": [
         pages["bev_settings"],

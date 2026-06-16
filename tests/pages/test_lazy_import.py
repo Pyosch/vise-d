@@ -22,7 +22,6 @@ _PAGE_FUNCTION_NAMES = [
     'wind_energy_generation',
     'flexibility_configurator',
     'netzmodell',
-    'mv_fallstudie',
 ]
 
 

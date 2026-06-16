@@ -50,7 +50,6 @@ PAGE_MODULES = [
     "src.pages.wind_energy_generation",
     "src.pages.flexibility_configurator",
     "src.pages.netzmodell",
-    "src.pages.mv_fallstudie",
 ]
 
 

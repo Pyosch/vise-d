@@ -82,7 +82,8 @@ def heatpump_settings(form_key_suffix=""):
             "Wärmepumpentyp",
             options=["Luft", "Erde"],
             index=0,
-                placeholder="Wärmepumpentyp wählen"
+                placeholder="Wärmepumpentyp wählen",
+                help="Wärmequelle der Wärmepumpe. Luft (Luft-Wasser): günstiger, JAZ ~3–4. Erde (Sole/Erdwärme): effizienter, JAZ ~4–5, aber aufwendigere Erschließung.",
         )
             heat_pump_type = {"Luft": "Air", "Erde": "Ground"}[_hp_type_label]
 
@@ -93,7 +94,8 @@ def heatpump_settings(form_key_suffix=""):
             max_value=100.0,
             value=float(st.session_state.heatpump_settings["Heat System Temperature"]),
             step=0.1,
-            placeholder="z. B. 60"
+            placeholder="z. B. 60",
+            help="Benötigte Temperatur des Heizkreises. Fußbodenheizung 30–40 °C, Heizkörper (Neubau) 45–55 °C, Altbau bis 70 °C. Niedriger = effizienter.",
         )
 
         # Number input for Electrical Power
@@ -103,7 +105,8 @@ def heatpump_settings(form_key_suffix=""):
             max_value=100.0,
             value=float(st.session_state.heatpump_settings["el_power"]),
             step=0.1,
-            placeholder="z. B. 5"
+            placeholder="z. B. 5",
+            help="Max. elektrische Leistungsaufnahme des Verdichters. Einfamilienhaus typ. 2–5 kW.",
         )
 
             th_power = st.number_input(
@@ -112,7 +115,8 @@ def heatpump_settings(form_key_suffix=""):
                 max_value = 100.0,
                 value=float(st.session_state.heatpump_settings["th_power"]),
                 step = 0.1,
-                placeholder = "z. B. 8"
+                placeholder = "z. B. 8",
+                help="Max. Heizleistung. Einfamilienhaus typ. 6–12 kW; sollte zur Heizlast des Gebäudes passen.",
             )
 
             yearly_thermal_energy_demand = st.number_input(
@@ -121,6 +125,7 @@ def heatpump_settings(form_key_suffix=""):
                 max_value=50000.0,
                 value=float(st.session_state.heatpump_settings["yearly_thermal_energy_demand"]),
                 step=500.0,
+                help="Heizenergiebedarf pro Jahr. Richtwert: Neubau ~50–100 kWh/m²·a, Altbau ~150–250 kWh/m²·a; Einfamilienhaus oft 10.000–20.000 kWh/a.",
             )
 
             _bt_default = st.session_state.heatpump_settings["building_type"]

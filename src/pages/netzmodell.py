@@ -418,22 +418,26 @@ def _tab_szenario(net: pp.pandapowerNet) -> None:
                 pen = st.slider(
                     "Penetrationsrate (%)", 0, 100, defaults["pen"],
                     key=f"nsv2_sz_{key}_pen",
+                    help="Anteil der geeigneten Knoten, die mit dieser Technologie bestückt werden (0–100 %).",
                 )
                 kw = st.number_input(
                     "Leistung pro Einheit (kW)", 0.1, 5000.0, defaults["kw"],
                     key=f"nsv2_sz_{key}_kw",
+                    help="Nennleistung je Anlage an den ausgewählten Knoten.",
                 )
                 kwh = None
                 if key == "Storage":
                     kwh = st.number_input(
                         "Energie pro Einheit (kWh)", 0.1, 10000.0, defaults["kwh"],
                         key=f"nsv2_sz_{key}_kwh",
+                        help="Speicherkapazität je Batteriespeicher-Einheit.",
                     )
                 strat = st.radio(
                     "Platzierung",
                     ["Zufällig", "Kritischste Knoten (Spannungsabweichung)"],
                     key=f"nsv2_sz_{key}_strat",
                     horizontal=True,
+                    help="Zufällig: gleichverteilte Platzierung. Kritischste Knoten: zuerst dort, wo die Spannungsabweichung am größten ist (Worst-Case).",
                 )
             cfg[key] = {"pen": pen, "kw": kw, "kwh": kwh, "strat": strat}
 
@@ -503,11 +507,13 @@ def _tab_targeted(net: pp.pandapowerNet) -> None:
 
     type_key = {"PV": "PV", "EV": "EV", "Wärmepumpe": "HP", "Batteriespeicher": "Storage"}[der_type]
     default_kw = _DER_DEFAULTS[type_key]["kw"]
-    kw = st.number_input("Leistung (kW)", 0.1, 5000.0, default_kw, key="nsv2_gz_kw")
+    kw = st.number_input("Leistung (kW)", 0.1, 5000.0, default_kw, key="nsv2_gz_kw",
+                         help="Nennleistung der an diesem Knoten platzierten Anlage.")
     kwh = None
     if type_key == "Storage":
         kwh = st.number_input("Energie (kWh)", 0.1, 10000.0, _DER_DEFAULTS["Storage"]["kwh"],
-                               key="nsv2_gz_kwh")
+                               key="nsv2_gz_kwh",
+                               help="Speicherkapazität des Batteriespeichers an diesem Knoten.")
 
     if st.button("Hinzufügen", key="nsv2_gz_add"):
         p_mw = kw / 1000.0
@@ -1186,11 +1192,13 @@ def _render_basislast_flex(net, time_start, time_end, n_days) -> None:
     mode = st.radio(
         "Zuweisung der Klassen", ["Zufällig (Seed)", "Manuell pro Last"],
         horizontal=True, key="nsv2_flex_mode",
+        help="Wie Haushaltstypen den Lasten zugeordnet werden — zufällig (mit Seed reproduzierbar) oder manuell je Last.",
     )
     manual: dict[int, str] | None = None
     seed = 42
     if mode == "Zufällig (Seed)":
-        seed = st.number_input("Seed", min_value=0, value=42, step=1, key="nsv2_flex_seed")
+        seed = st.number_input("Seed", min_value=0, value=42, step=1, key="nsv2_flex_seed",
+                               help="Startwert des Zufallsgenerators — gleicher Seed ⇒ reproduzierbare Zuordnung.")
     else:
         manual = {}
         with st.expander(f"Klasse je Last ({len(base_ids)})", expanded=False):
@@ -1422,11 +1430,16 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
             if time_start and time_end:
                 st.caption(f"Zeitraum aus Abschnitt 2: {time_start} – {time_end} ({n_days} Tag(e))")
             c1, c2 = st.columns(2)
-            bat_max  = c1.number_input("Akkukapazität max (kWh)", 5.0,  200.0, 75.0, key="nsv2_ev_batmax")
-            bat_min  = c1.number_input("Akkukapazität min (kWh)", 0.0,   50.0, 15.0, key="nsv2_ev_batmin")
-            bat_use  = c2.number_input("Täglicher Verbrauch (kWh)", 1.0, 150.0, 50.0, key="nsv2_ev_batuse")
-            charge_p = c2.number_input("Ladeleistung (kW)", 1.0, 150.0, 11.0, key="nsv2_ev_cp")
-            eff = st.slider("Ladeeffizienz", 0.80, 1.00, 0.95, 0.01, key="nsv2_ev_eff")
+            bat_max  = c1.number_input("Akkukapazität max (kWh)", 5.0,  200.0, 75.0, key="nsv2_ev_batmax",
+                                       help="Nutzbare Akkukapazität des Fahrzeugs. Typisch 50–110 kWh.")
+            bat_min  = c1.number_input("Akkukapazität min (kWh)", 0.0,   50.0, 15.0, key="nsv2_ev_batmin",
+                                       help="Untere Ladegrenze (Reserve). Häufig 10–20 % der Maximalkapazität.")
+            bat_use  = c2.number_input("Täglicher Verbrauch (kWh)", 1.0, 150.0, 50.0, key="nsv2_ev_batuse",
+                                       help="Täglicher Fahrenergiebedarf. Richtwert ~15–20 kWh je 100 km.")
+            charge_p = c2.number_input("Ladeleistung (kW)", 1.0, 150.0, 11.0, key="nsv2_ev_cp",
+                                       help="Anschlussleistung des Ladepunkts. Typisch 11/22 kW (Wallbox), 50–350 kW (Schnelllader).")
+            eff = st.slider("Ladeeffizienz", 0.80, 1.00, 0.95, 0.01, key="nsv2_ev_eff",
+                            help="Anteil der zugeführten Energie, der in der Batterie ankommt. Typisch 85–95 %.")
 
             if st.button("EV-Profil generieren", key="nsv2_ev_gen", disabled=time_start is None):
                 with st.spinner(f"EV-Profil berechnen ({n_days} Tag(e))…"):
@@ -1502,7 +1515,8 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
                     "**34** = Neubau/modernisiert (nach WSchVO 1984, gute Dämmung)"
                 ),
             )
-            t_0           = st.number_input("Heizgrenztemperatur (°C)", 0.0, 70.0, 40.0,    key="nsv2_hp_t0")
+            t_0           = st.number_input("Heizgrenztemperatur (°C)", 0.0, 70.0, 40.0,    key="nsv2_hp_t0",
+                                            help="Außentemperatur, ab der geheizt wird. Typisch 12–15 °C.")
 
             if st.button("WP-Profil generieren (DWD)", key="nsv2_hp_gen_dwd",
                          disabled=time_start is None):
@@ -1626,6 +1640,7 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
             "Betriebsstrategie",
             ["PV-Überschuss speichern", "Feste Lade-/Entladezeiten"],
             key="nsv2_st_strat", horizontal=True,
+            help="PV-Überschuss speichern: lädt nur bei PV-Überschuss. Feste Lade-/Entladezeiten: vorgegebene Zeiten unabhängig von der PV.",
         )
 
         if time_start and time_end:
@@ -1638,9 +1653,11 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
             else:
                 st.caption("Ladung bei PV-Erzeugung > Schwellwert; Entladung in den Abendstunden.")
                 threshold = st.slider("Lademindest-PV (kW/kWp)", 0.05, 1.0, 0.20, 0.05,
-                                      key="nsv2_st_thresh")
+                                      key="nsv2_st_thresh",
+                                      help="Mindest-PV-Erzeugung (je kWp), ab der der Speicher geladen wird.")
                 max_p = st.number_input("Max. Lade-/Entladeleistung (kW)", 0.5, 100.0, 5.0,
-                                        key="nsv2_st_maxp")
+                                        key="nsv2_st_maxp",
+                                        help="Maximale Leistung beim Laden/Entladen des Speichers.")
                 if st.button("Speicher-Profil generieren", key="nsv2_st_gen_pv"):
                     n_steps = len(pv_profile)
                     storage = np.zeros(n_steps)
@@ -1661,11 +1678,15 @@ def _section_profile_generation(net: pp.pandapowerNet) -> None:
         else:
             c1, c2 = st.columns(2)
             charge_start = c1.time_input("Ladebeginn",
-                                         value=datetime(2000, 1, 1, 22, 0).time(), key="nsv2_st_cs")
+                                         value=datetime(2000, 1, 1, 22, 0).time(), key="nsv2_st_cs",
+                                         help="Uhrzeit, ab der der Speicher geladen wird (z. B. Beginn des Nachtstrom-Fensters).")
             charge_end   = c1.time_input("Ladeende",
-                                         value=datetime(2000, 1, 1,  6, 0).time(), key="nsv2_st_ce")
-            max_p = c2.number_input("Ladeleistung (kW)",    0.5, 100.0, 5.0, key="nsv2_st_fixp")
-            dis_p = c2.number_input("Entladeleistung (kW)", 0.5, 100.0, 5.0, key="nsv2_st_disp")
+                                         value=datetime(2000, 1, 1,  6, 0).time(), key="nsv2_st_ce",
+                                         help="Uhrzeit, bis zu der geladen wird; außerhalb des Fensters wird entladen.")
+            max_p = c2.number_input("Ladeleistung (kW)",    0.5, 100.0, 5.0, key="nsv2_st_fixp",
+                                    help="Leistung beim Laden während des Ladefensters.")
+            dis_p = c2.number_input("Entladeleistung (kW)", 0.5, 100.0, 5.0, key="nsv2_st_disp",
+                                    help="Leistung beim Entladen außerhalb des Ladefensters.")
             if st.button("Speicher-Profil generieren", key="nsv2_st_gen_fix"):
                 cs = charge_start.hour * 4 + charge_start.minute // 15
                 ce = charge_end.hour   * 4 + charge_end.minute   // 15
