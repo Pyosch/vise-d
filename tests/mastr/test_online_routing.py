@@ -37,7 +37,7 @@ def test_prepare_solar_routes_online_when_db_absent(monkeypatch):
     monkeypatch.setattr(oa, "fetch_solar_online", fake_online)
     monkeypatch.setattr(pp, "fetch_solar", _boom)  # DB path must not run
     monkeypatch.setattr(pp, "add_centroids", lambda gdf, q=None: gdf)
-    monkeypatch.setattr(pp.ox, "geocode_to_gdf", lambda q: "CITY")
+    monkeypatch.setattr("osmnx.geocode_to_gdf", lambda q: "CITY")
 
     gdf, city = pp.prepare_solar_data("Aachen", mastr_db_path="/nonexistent.db")
 
@@ -63,7 +63,7 @@ def test_prepare_wind_routes_online_when_db_absent(monkeypatch):
         def set_index(self, *_a, **_k):
             return self
 
-    monkeypatch.setattr(pp.ox, "geocode_to_gdf", lambda q: _City())
+    monkeypatch.setattr("osmnx.geocode_to_gdf", lambda q: _City())
 
     gdf, _city = pp.prepare_wind_data("Aachen", mastr_db_path="/nonexistent.db")
     assert list(gdf["EinheitMastrNummer"]) == ["W"]
@@ -86,7 +86,7 @@ def test_prepare_solar_uses_db_when_present(monkeypatch):
         lambda *a, **k: pd.DataFrame({"LokationMastrNummer": ["L"]}),
     )
     monkeypatch.setattr(pp, "add_centroids", lambda gdf, q=None: gdf)
-    monkeypatch.setattr(pp.ox, "geocode_to_gdf", lambda q: "CITY")
+    monkeypatch.setattr("osmnx.geocode_to_gdf", lambda q: "CITY")
 
     gdf, _city = pp.prepare_solar_data("Aachen", mastr_db_path=str(pp.MASTR_DB_PATH))
     assert list(gdf["EinheitMastrNummer"]) == ["Y"]
@@ -105,7 +105,7 @@ def test_prepare_solar_force_online_overrides_db(monkeypatch):
     monkeypatch.setattr(oa, "fetch_solar_online", lambda resolved, **k: online_df)
     monkeypatch.setattr(pp, "fetch_solar", _boom)  # DB path must not run despite DB present
     monkeypatch.setattr(pp, "add_centroids", lambda gdf, q=None: gdf)
-    monkeypatch.setattr(pp.ox, "geocode_to_gdf", lambda q: "CITY")
+    monkeypatch.setattr("osmnx.geocode_to_gdf", lambda q: "CITY")
 
     gdf, _city = pp.prepare_solar_data(
         "Aachen", mastr_db_path=str(pp.MASTR_DB_PATH), force_online=True
