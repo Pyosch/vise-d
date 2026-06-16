@@ -96,7 +96,7 @@ def electrical_storage_configuration():
             max_value=10.0,
             value=1.5,
             step=0.1,
-            help="Konstante elektrische Grundlast des Haushalts"
+            help="Konstante elektrische Grundlast des Haushalts. Richtwert: 0,3–0,8 kW Dauerlast (Jahresverbrauch 3.500 kWh ≈ 0,4 kW im Mittel)."
         )
     
     with st.form(key="electrical_storage_simulation_form"):
