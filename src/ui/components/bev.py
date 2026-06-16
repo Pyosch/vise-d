@@ -76,7 +76,8 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
                 min_value=0.0,
                 value=float(st.session_state["bev_settings"]["max_battery_capacity"]),
                 placeholder="z. B. 100 kWh",
-                key="max_battery_capacity"
+                key="max_battery_capacity",
+                help="Nutzbare Kapazität der Fahrzeugbatterie. Typisch: Kleinwagen 20–40 kWh, Mittelklasse 50–80 kWh, Oberklasse/SUV 80–110 kWh.",
             )
 
             # Min Battery Capacity
@@ -86,7 +87,8 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
                 min_value=0.0,
                 value=float(st.session_state["bev_settings"]["min_battery_capacity"]),
                 placeholder="z. B. 15 kWh",
-                key="min_battery_capacity"
+                key="min_battery_capacity",
+                help="Untere Ladegrenze (Reserve), die nicht unterschritten wird. Häufig 10–20 % der Maximalkapazität.",
             )
 
             # Battery Usage
@@ -96,7 +98,8 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
                 min_value=0.0,
                 value=float(st.session_state["bev_settings"]["battery_usage"]),
                 placeholder="z. B. 50",
-                key="battery_usage"
+                key="battery_usage",
+                help="Täglicher Fahrenergiebedarf (Entladung). Richtwert ~15–20 kWh je 100 km; bei 40 km/Tag also ca. 6–8 kWh.",
             )
             st.markdown("*Hinweis: Der tägliche Energieverbrauch der Fahrt (Entladung).*")
 
@@ -107,7 +110,8 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
                 min_value=0.0,
                 value=float(st.session_state["bev_settings"]["charging_power"]),
                 placeholder="z. B. 11 kW",
-                key="charging_power"
+                key="charging_power",
+                help="Anschlussleistung des Ladepunkts. Typisch: 3,7 kW (Haushaltssteckdose), 11/22 kW (Wallbox), 50–350 kW (Schnelllader).",
             )
 
             # Charging Efficiency
@@ -118,7 +122,8 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
                 max_value=100.0,
                 value=float(st.session_state["bev_settings"]["charging_efficiency"] * 100),
                 placeholder="z. B. 90 %",
-                key="charging_efficiency"
+                key="charging_efficiency",
+                help="Anteil der zugeführten Energie, der in der Batterie ankommt. Typisch 85–95 % (AC-Laden inkl. Ladeverluste).",
             )
 
             st.markdown("**Beginn der Ladeleistungsreduktion**")
@@ -127,7 +132,8 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
                 min_value=0.0,
                 value=float(st.session_state["bev_settings"]["load_degradation_begin"]),
                 placeholder="z. B. 0,8",
-                key="load_degradation_begin"
+                key="load_degradation_begin",
+                help="Ladezustand, ab dem die Ladeleistung gedrosselt wird, um die Batterie zu schonen. Üblich ~0,8 (= 80 % SoC).",
             )
 
             st.markdown("**Startzeit**")
@@ -153,7 +159,8 @@ def battery_electric_vehicle_settings(form_key_suffix=""):
                 max_value=60,
                 value=15,
                 step=1,
-                key="timebase"
+                key="timebase",
+                help="Zeitliche Auflösung der Simulation. Standard 15 Minuten (96 Schritte/Tag).",
             )
 
 
