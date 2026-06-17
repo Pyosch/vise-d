@@ -230,6 +230,24 @@ def _pandapower_xlsx_template() -> bytes:
         os.unlink(tmp_path)
 
 
+def _net_to_xlsx_bytes(net: pp.pandapowerNet, include_results: bool = False) -> bytes:
+    """Serialisiert ein pandapower-Netz als .xlsx und gibt die Bytes zurück.
+
+    Nutzt ``pp.to_excel`` (gleiches Format wie die Vorlage), damit die Datei über
+    den bestehenden Upload-Pfad (``pp.from_excel``) wieder eingelesen werden kann.
+    Mit ``include_results=True`` werden zusätzlich die ``res_*``-Tabellen des
+    aktuellen Lastflusses geschrieben. Nicht gecacht — das Netz ändert sich.
+    """
+    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        pp.to_excel(net, tmp_path, include_results=include_results)
+        with open(tmp_path, "rb") as fh:
+            return fh.read()
+    finally:
+        os.unlink(tmp_path)
+
+
 # ---------------------------------------------------------------------------
 # Helper functions — DER placement
 # ---------------------------------------------------------------------------
@@ -339,6 +357,11 @@ def _reset_der_state() -> None:
         "nsv2_mastr_plz",
         "nsv2_mastr_filter",
         "nsv2_mastr_filter_prev",
+        # Simulated nets (snapshot for the Excel export) belong to the previous
+        # topology — drop them so a stale net is never exported after a switch.
+        "nsv2_net_simulated",
+        "nsv2_net_simulated_base",
+        "nsv2_net_simulated_flex",
     ):
         st.session_state.pop(key, None)
 
@@ -1894,6 +1917,46 @@ def _run_timeseries_pf(
     return voltage_df, loading_df
 
 
+def _snapshot_critical_step(
+    net: pp.pandapowerNet,
+    profiles: dict[str, pd.DataFrame],
+    voltage_df: pd.DataFrame,
+    loading_df: pd.DataFrame,
+) -> None:
+    """Bringt ``net`` in den Zustand des kritischsten Zeitschritts und rechnet ihn.
+
+    Nach der Zeitreihe enthält ``net`` nur den letzten Schritt (oft uninformativ,
+    z. B. 23:45 ohne PV). Für den Excel-Export wird stattdessen der **kritischste**
+    Schritt gewählt — höchste Leitungsauslastung, ersatzweise größte Spannungs-
+    abweichung von 1,0 p.u. — und ``runpp`` ausgeführt, sodass Element-``p_mw`` und
+    ``res_*`` konsistent diesen Betriebspunkt abbilden. Hinterlassene Controller
+    werden entfernt, damit die Datei minimal bleibt.
+    """
+    if hasattr(net, "controller") and len(net.controller) > 0:
+        net.controller.drop(net.controller.index, inplace=True)
+
+    if loading_df is not None and not loading_df.empty:
+        t = int(np.asarray(loading_df.reset_index(drop=True).max(axis=1).values).argmax())
+    elif voltage_df is not None and not voltage_df.empty:
+        dev = (voltage_df.reset_index(drop=True) - 1.0).abs().max(axis=1)
+        t = int(np.asarray(dev.values).argmax())
+    else:
+        return
+
+    for elem in ("sgen", "load", "storage"):
+        df = profiles.get(elem)
+        if df is None or df.empty or t >= len(df):
+            continue
+        for col in df.columns:
+            if col in net[elem].index:
+                net[elem].at[col, "p_mw"] = float(df.iloc[t][col])
+
+    try:
+        pp.runpp(net, verbose=False)
+    except Exception:
+        pass
+
+
 
 # ---------------------------------------------------------------------------
 # PDF export helper
@@ -1963,6 +2026,66 @@ def _render_pdf_download_button(
                 import traceback
                 with st.expander("Fehlerdetails"):
                     st.code(traceback.format_exc())
+
+
+def _safe_net_stem() -> str:
+    """Dateinamen-Stamm aus dem aktuellen Netznamen (nur [A-Za-z0-9-_])."""
+    net_name = st.session_state.get("nsv2_net_name", "netz")
+    return "".join(c if c.isalnum() or c in "-_" else "_" for c in str(net_name))
+
+
+def _render_excel_download_buttons(results: list[tuple[str, str, str]]) -> None:
+    """Excel-Downloads für das simulierte Netz.
+
+    Immer angeboten: **Netz + DER** aus dem konfigurierten Netz
+    (``nsv2_net``, Nennleistungen, keine Controller) — die wieder hochladbare
+    Datei. Zusätzlich je Eintrag in ``results`` eine **Ergebnisse**-Datei mit
+    ``res_*``-Tabellen am kritischsten Zeitschritt.
+
+    ``results`` = Liste von ``(label, session_state_key, filename_suffix)`` für
+    die simulierten Netze (Einzellauf: eines; Vergleich: ohne/mit Verschiebung).
+    """
+    _XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    st.markdown("**Als Excel exportieren**")
+    stem = _safe_net_stem()
+    cols = st.columns(1 + len(results))
+
+    net_cfg = st.session_state.get("nsv2_net")
+    with cols[0]:
+        if net_cfg is not None:
+            try:
+                st.download_button(
+                    "⬇️ Netz + DER (Excel)",
+                    data=_net_to_xlsx_bytes(net_cfg, include_results=False),
+                    file_name=f"{stem}_netz_der.xlsx",
+                    mime=_XLSX_MIME,
+                    key="nsv2_xlsx_netz_der",
+                    help=("Netz inkl. hinzugefügter DER (Nennleistungen). Erneut "
+                          "hochladbar, um dasselbe Netz für einen neuen Zeitraum "
+                          "zu simulieren."),
+                    use_container_width=True,
+                )
+            except Exception as exc:
+                st.caption(f"Excel-Export fehlgeschlagen: {exc}")
+
+    for i, (label, key, suffix) in enumerate(results, start=1):
+        with cols[i]:
+            net_sim = st.session_state.get(key)
+            if net_sim is None:
+                continue
+            try:
+                st.download_button(
+                    label,
+                    data=_net_to_xlsx_bytes(net_sim, include_results=True),
+                    file_name=f"{stem}_{suffix}.xlsx",
+                    mime=_XLSX_MIME,
+                    key=f"nsv2_xlsx_{suffix}",
+                    help=("Netz inkl. DER und pandapower-res_*-Tabellen am "
+                          "kritischsten Zeitschritt (höchste Auslastung)."),
+                    use_container_width=True,
+                )
+            except Exception as exc:
+                st.caption(f"Excel-Export fehlgeschlagen: {exc}")
 
 
 def _render_sim_results(
@@ -2049,6 +2172,9 @@ def _render_sim_results(
     # ── PDF export button (visible inside the results tabs) ── #
     st.divider()
     _render_pdf_download_button(voltage_df, loading_df, dt_index)
+    _render_excel_download_buttons([
+        ("⬇️ Ergebnisse (Excel)", "nsv2_net_simulated", "ergebnisse"),
+    ])
 
 
 def _render_comparison_results(vb, lb, vf, lf, dt_index, alpha) -> None:
@@ -2128,6 +2254,14 @@ def _render_comparison_results(vb, lb, vf, lf, dt_index, alpha) -> None:
                               hovermode="x unified")
             st.plotly_chart(fig, use_container_width=True, key="nsv2_cmp_loading")
     st.caption("Erste Iteration der Vergleichsdarstellung — wird noch verfeinert.")
+
+    st.divider()
+    _render_excel_download_buttons([
+        ("⬇️ Ergebnisse – ohne Verschiebung", "nsv2_net_simulated_base",
+         "ergebnisse_ohne_verschiebung"),
+        ("⬇️ Ergebnisse – mit Verschiebung", "nsv2_net_simulated_flex",
+         "ergebnisse_mit_verschiebung"),
+    ])
 
 
 def _section_simulation(net: pp.pandapowerNet) -> None:
@@ -2222,6 +2356,7 @@ def _section_simulation(net: pp.pandapowerNet) -> None:
         if st.button("Zeitreihensimulation starten (Vergleich)", type="primary",
                      key="nsv2_sim_run"):
             results: dict[str, tuple] = {}
+            sim_nets: dict[str, pp.pandapowerNet] = {}
             progress_bar = st.progress(0)
             with st.spinner("Simulation läuft (2 Szenarien)…"):
                 for variant in ("baseline", "flex"):
@@ -2232,6 +2367,9 @@ def _section_simulation(net: pp.pandapowerNet) -> None:
                     if not l_df.empty:
                         l_df.index = dt_index[: len(l_df)]
                     results[variant] = (v_df, l_df)
+                    # Snapshot the most-stressed step for the Excel export.
+                    _snapshot_critical_step(net_copy, profiles, v_df, l_df)
+                    sim_nets[variant] = net_copy
             st.session_state.update({
                 "nsv2_cmp_voltage_base": results["baseline"][0],
                 "nsv2_cmp_loading_base": results["baseline"][1],
@@ -2239,8 +2377,11 @@ def _section_simulation(net: pp.pandapowerNet) -> None:
                 "nsv2_cmp_loading_flex": results["flex"][1],
                 "nsv2_cmp_dt_index": dt_index,
                 "nsv2_cmp_alpha": alpha,
+                "nsv2_net_simulated_base": sim_nets["baseline"],
+                "nsv2_net_simulated_flex": sim_nets["flex"],
             })
             st.session_state.pop("nsv2_results_voltage", None)
+            st.session_state.pop("nsv2_net_simulated", None)
             st.success(f"Vergleich abgeschlossen ({n_steps} Schritte × 2 Szenarien).")
 
         if "nsv2_cmp_voltage_base" in st.session_state:
@@ -2264,12 +2405,17 @@ def _section_simulation(net: pp.pandapowerNet) -> None:
             voltage_df.index = dt_index
             if not loading_df.empty:
                 loading_df.index = dt_index[: len(loading_df)]
+            # Snapshot the most-stressed step for the Excel export.
+            _snapshot_critical_step(net_copy, profiles, voltage_df, loading_df)
             st.session_state.update({
                 "nsv2_results_voltage": voltage_df,
                 "nsv2_results_loading": loading_df,
                 "nsv2_results_dt_index": dt_index,
+                "nsv2_net_simulated": net_copy,
             })
             st.session_state.pop("nsv2_cmp_voltage_base", None)
+            st.session_state.pop("nsv2_net_simulated_base", None)
+            st.session_state.pop("nsv2_net_simulated_flex", None)
             st.success(f"Simulation abgeschlossen ({n_steps} Schritte).")
 
         if "nsv2_results_voltage" in st.session_state:
@@ -2376,6 +2522,14 @@ def netzmodell():
             uploaded = st.file_uploader(
                 "Pandapower-Netz hochladen (.json oder .xlsx)",
                 type=["json", "xlsx"],
+                help=(
+                    "Auch eine zuvor exportierte **Netz + DER**- oder "
+                    "**Ergebnisse**-Datei kann hier wieder hochgeladen werden, um "
+                    "dasselbe Netz inkl. aller DER für einen neuen Zeitraum zu "
+                    "simulieren. Hinweis: MaStR-Erzeugungsprofile werden nicht "
+                    "mitgespeichert — Wind-Anlagen bleiben dann statisch, bis sie "
+                    "im MaStR-Tab erneut hinzugefügt werden."
+                ),
                 key="nsv2_file_upload",
             )
 
@@ -2387,8 +2541,9 @@ def netzmodell():
                     )
                 else:
                     st.info(
-                        "Bitte eine Netzdatei hochladen "
-                        "(pandapower JSON- oder Excel-Export via `pp.to_json()` / `pp.to_excel()`)."
+                        "Bitte eine Netzdatei hochladen (pandapower JSON-/Excel-Export "
+                        "via `pp.to_json()` / `pp.to_excel()` — auch eine hier zuvor "
+                        "heruntergeladene **Netz + DER**- oder **Ergebnisse**-Datei)."
                     )
             else:
                 try:
