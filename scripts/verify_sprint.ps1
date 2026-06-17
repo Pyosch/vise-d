@@ -58,7 +58,7 @@ function Run-Script {
 # CHECK 1 — Import-Checks
 # ---------------------------------------------------------------------------
 Run-Check "1a: vpplib.operator imports" $vised @"
-from vpplib.operator import assign_assets_to_buses, build_timeseries_net
+from vpplib.operator import build_timeseries_net
 print('  operator OK')
 "@
 
@@ -73,7 +73,7 @@ print('  environment OK')
 "@
 
 Run-Check "1d: vise-d vpplib_interface" $vised @"
-from src.utils.vpplib_interface import assign_assets_to_buses, build_timeseries_net
+from src.utils.vpplib_interface import build_timeseries_net
 print('  vpplib_interface OK')
 "@
 

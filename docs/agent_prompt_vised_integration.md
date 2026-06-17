@@ -228,8 +228,10 @@ On button click "MaStR-Anlagen laden":
    `init_windturbines_mastr` from `src/mastr/simulation.py`.
    Use `fetch_weather_for_pv` / `fetch_weather_for_wind` from
    `src/data_layer/weather_integration.py` for the environment.
-4. Call `assign_assets_to_buses(net, gdf)` from `src/utils/vpplib_interface.py`
-   for each asset type.
+4. ~~Call `assign_assets_to_buses(net, gdf)` from `src/utils/vpplib_interface.py`
+   for each asset type.~~ **Hinweis (entfernt):** Die geografische Zuweisung
+   hat sich nicht bewährt und wurde entfernt. Die MaStR-Anlagen werden im DER-
+   Konfigurator (Tab „MaStR-Anlagen") manuell einem Zielknoten zugeordnet.
 5. Create pandapower sgen elements in the net for each asset at its assigned bus.
 
 **Step 4: Load configuration**
