@@ -377,13 +377,23 @@ def _build_profile_figure(
 def _fig_to_png(
     fig: go.Figure, width: int = 1000, height: int = 500
 ) -> bytes:
-    """Convert a Plotly figure to PNG bytes via kaleido."""
+    """Convert a Plotly figure to PNG bytes via kaleido.
+
+    Raises on failure so the caller can surface the error instead of silently
+    producing a figure-less PDF (e.g. an incompatible kaleido/plotly pairing).
+    Optional charts that may legitimately be skipped wrap this call in their
+    own try/except.
+    """
     if not _HAS_KALEIDO:
         return b""
     try:
         return fig.to_image(format="png", width=width, height=height, scale=2)
-    except Exception:
-        return b""
+    except Exception as exc:
+        raise RuntimeError(
+            "Plotly-Figur konnte nicht als PNG gerendert werden. Stellen Sie "
+            "sicher, dass 'kaleido==0.2.1' (kompatibel mit plotly 5.x) "
+            f"installiert ist. Fehler: {exc}"
+        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -620,11 +630,11 @@ def _make_pdf(
                 self.set_text_color(*_WHITE)
                 self.set_font("Helvetica", "B", 9)
                 self.set_xy(8, 2)
-                self.cell(0, 8, title, ln=False)
+                self.cell(0, 8, _safe(title), ln=False)
                 self.set_xy(-70, 2)
                 self.cell(
                     62, 8,
-                    f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}",
+                    _safe(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}"),
                     align="R",
                 )
                 self.set_text_color(*_DARK)
@@ -656,7 +666,7 @@ def _make_pdf(
     pdf.set_font("Helvetica", "B", 26)
     pdf.set_text_color(*_WHITE)
     pdf.set_xy(15, 10)
-    pdf.cell(0, 16, title, ln=True)
+    pdf.cell(0, 16, _safe(title), ln=True)
     pdf.set_font("Helvetica", "", 13)
     pdf.set_text_color(180, 210, 255)
     pdf.set_x(15)
@@ -666,7 +676,7 @@ def _make_pdf(
     pdf.set_x(15)
     pdf.cell(
         0, 8,
-        f"Generated on: {datetime.datetime.now().strftime('%A, %B %d %Y  –  %H:%M:%S')}",
+        _safe(f"Generated on: {datetime.datetime.now().strftime('%A, %B %d %Y  -  %H:%M:%S')}"),
         ln=True,
     )
 
@@ -685,9 +695,9 @@ def _make_pdf(
             pdf.set_fill_color(*_SECONDARY)
             for k, v in row:
                 pdf.set_font("Helvetica", "B", 8)
-                pdf.cell(col_w // 2, 6, f"  {k}:", fill=True)
+                pdf.cell(col_w // 2, 6, _safe(f"  {k}:"), fill=True)
                 pdf.set_font("Helvetica", "", 8)
-                pdf.cell(col_w // 2, 6, str(v), fill=True)
+                pdf.cell(col_w // 2, 6, _safe(str(v)), fill=True)
             pdf.ln(7)
 
     if summary_stats:
@@ -707,13 +717,13 @@ def _make_pdf(
             pdf.set_fill_color(*_PRIMARY)
             pdf.set_text_color(*_WHITE)
             pdf.set_font("Helvetica", "B", 8)
-            pdf.cell(col_w, 6, f"  {k}", fill=True, ln=False)
+            pdf.cell(col_w, 6, _safe(f"  {k}"), fill=True, ln=False)
             pdf.ln(6)
             pdf.set_xy(x0, pdf.get_y())
             pdf.set_fill_color(220, 235, 255)
             pdf.set_text_color(*_DARK)
             pdf.set_font("Helvetica", "B", 11)
-            pdf.cell(col_w, 10, f"  {v}", fill=True, ln=False)
+            pdf.cell(col_w, 10, _safe(f"  {v}"), fill=True, ln=False)
         pdf.ln(14)
 
     if png_buffers:
@@ -727,7 +737,7 @@ def _make_pdf(
         for i, ct in enumerate(chart_titles[: len(png_buffers)], start=1):
             pdf.set_fill_color(*(_LIGHT_BG if i % 2 == 0 else _SECONDARY))
             pdf.cell(10, 6, f"  {i}.", fill=True)
-            pdf.cell(255, 6, f"  {ct}", fill=True, ln=True)
+            pdf.cell(255, 6, _safe(f"  {ct}"), fill=True, ln=True)
 
     for i, (png_bytes, chart_title) in enumerate(zip(png_buffers, chart_titles)):
         pdf.add_page()
@@ -735,7 +745,7 @@ def _make_pdf(
         pdf.set_text_color(*_WHITE)
         pdf.set_font("Helvetica", "B", 11)
         pdf.set_y(14)
-        pdf.cell(0, 8, f"  {i + 1}.  {chart_title}", fill=True, ln=True)
+        pdf.cell(0, 8, _safe(f"  {i + 1}.  {chart_title}"), fill=True, ln=True)
         pdf.ln(2)
         try:
             img_buf = io.BytesIO(png_bytes)
@@ -744,7 +754,7 @@ def _make_pdf(
         except Exception as e:
             pdf.set_text_color(200, 0, 0)
             pdf.set_font("Helvetica", "I", 9)
-            pdf.cell(0, 8, f"[Chart could not be rendered: {e}]", ln=True)
+            pdf.cell(0, 8, _safe(f"[Chart could not be rendered: {e}]"), ln=True)
 
     return bytes(pdf.output())
 

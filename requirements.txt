@@ -69,6 +69,11 @@ pillow==10.3.0
 platformdirs==4.2.2
 plotly==5.22.0
 plotly-express==0.4.1
+# PDF export (src/utils/pdf_export.py): Netzmodell & BEV simulation reports.
+# kaleido renders Plotly figures to PNG; pin 0.2.1 (bundles its own Chromium)
+# because kaleido>=1.0 requires plotly>=6.1.1. fpdf2 assembles the PDF.
+kaleido==0.2.1
+fpdf2==2.7.9
 prompt_toolkit==3.0.46
 propcache==0.2.0
 proto-plus==1.25.0
