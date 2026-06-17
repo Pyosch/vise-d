@@ -12,8 +12,6 @@ __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 
 import streamlit as st
 
-import src.utils.preloader  # noqa: F401 — starts background library preload
-
 # Import configuration
 from src.config import MASTR_DB_PATH
 
