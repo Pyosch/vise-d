@@ -2262,10 +2262,12 @@ def _section_simulation(net: pp.pandapowerNet) -> None:
     flex_assignment = st.session_state.get("nsv2_flex_assignment")
     alpha = float(st.session_state.get("nsv2_flex_alpha", 1.0))
 
-    has_ev = st.session_state.get("nsv2_profile_ev") is not None
-    has_hp = st.session_state.get("nsv2_profile_hp") is not None
     flex_base = base_source == "flex" and bool(flex_assignment)
-    flex_available = flex_base or has_ev or has_hp
+    # The comparison run (baseline vs. flex) is tied strictly to the base-load
+    # source: only the household flexibility model triggers the two-run shift
+    # comparison. SimBench base load always runs a single simulation; EV/HP
+    # loads then stay unshifted.
+    flex_available = flex_base
 
     # Profile status
     mastr_ts = st.session_state.get("nsv2_mastr_sgen_ts", {})
