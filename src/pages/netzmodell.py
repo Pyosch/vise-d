@@ -1993,8 +1993,15 @@ def _render_pdf_download_button(
     voltage_df: pd.DataFrame,
     loading_df: pd.DataFrame,
     dt_index,
+    trafo_loading_df: pd.DataFrame | None = None,
+    flex_results: dict | None = None,
 ) -> None:
-    """Render the 'Export als PDF' button that generates and downloads the report."""
+    """Render the 'Export als PDF' button that generates and downloads the report.
+
+    ``trafo_loading_df`` adds the transformer-loading section; ``flex_results``
+    (keys ``voltage_df`` / ``loading_df`` / ``trafo_loading_df``) appends the
+    "mit Verschiebung" scenario for the flexibility comparison run.
+    """
     st.subheader("📄 Bericht exportieren")
 
     col_btn, col_info = st.columns([1, 3])
@@ -2024,6 +2031,8 @@ def _render_pdf_download_button(
                     loading_df=loading_df,
                     dt_index=dt_index,
                     session_state=dict(st.session_state),
+                    trafo_loading_df=trafo_loading_df,
+                    flex_results=flex_results,
                 )
                 net_name = st.session_state.get("nsv2_net_name", "netz")
                 safe_name = "".join(
@@ -2286,7 +2295,9 @@ def _render_sim_results(
 
     # ── PDF export button (visible inside the results tabs) ── #
     st.divider()
-    _render_pdf_download_button(voltage_df, loading_df, dt_index)
+    _render_pdf_download_button(
+        voltage_df, loading_df, dt_index, trafo_loading_df=trafo_loading_df
+    )
     _render_download_buttons({
         "": _ts_tables(
             voltage_df, loading_df,
@@ -2404,9 +2415,13 @@ def _render_comparison_results(vb, lb, vf, lf, dt_index, alpha) -> None:
     st.caption("Erste Iteration der Vergleichsdarstellung — wird noch verfeinert.")
 
     st.divider()
-    # PDF report uses the baseline ("ohne Verschiebung") scenario as the
-    # representative network state.
-    _render_pdf_download_button(vb, lb, dt_index)
+    # PDF report: baseline ("ohne Verschiebung") as the primary scenario, with
+    # the flex ("mit Verschiebung") results appended.
+    _render_pdf_download_button(
+        vb, lb, dt_index,
+        trafo_loading_df=tb,
+        flex_results={"voltage_df": vf, "loading_df": lf, "trafo_loading_df": tf},
+    )
     _render_download_buttons({
         "ohne": _ts_tables(
             vb, lb, st.session_state.get("nsv2_cmp_profiles_base"), tb

@@ -352,6 +352,48 @@ def _build_loading_figure(
         font=dict(family="Helvetica, Arial", size=10),
         margin=dict(l=65, r=20, t=55, b=60),
     )
+    # The line labels are numeric-looking strings ("0", "1", …); without an
+    # explicit category type Plotly coerces them to a linear axis (range
+    # -0.5..n-0.5), which kaleido renders literally. Pin it to "category" so the
+    # y-axis shows exactly the line numbers as discrete ticks.
+    fig.update_yaxes(type="category")
+    return fig
+
+
+def _build_trafo_figure(
+    trafo_loading_df: pd.DataFrame, dt_index, net: Any = None
+) -> go.Figure | None:
+    """Transformer loading over time: one line per transformer.
+
+    Returns ``None`` when there is no transformer data. Traces are labelled with
+    the transformer name from *net* when available.
+    """
+    if trafo_loading_df is None or trafo_loading_df.empty:
+        return None
+    x_labels = [str(t) for t in dt_index]
+
+    fig = go.Figure()
+    for col in trafo_loading_df.columns:
+        label = f"Trafo {col}"
+        if net is not None and hasattr(net, "trafo") and col in net.trafo.index:
+            name = net.trafo.at[col, "name"]
+            if isinstance(name, str) and name:
+                label = name
+        fig.add_trace(go.Scatter(
+            x=x_labels, y=trafo_loading_df[col].values, mode="lines", name=label,
+        ))
+    fig.add_hline(y=100, line_dash="dot", line_color="#ef4444",
+                  annotation_text="100 %")
+    fig.add_hline(y=80, line_dash="dot", line_color="#facc15",
+                  annotation_text="80 %")
+    fig.update_layout(
+        title="Transformatorauslastung (%)",
+        xaxis_title="Zeit", yaxis_title="Auslastung (%)",
+        height=420, showlegend=True, hovermode="x unified",
+        plot_bgcolor="white", paper_bgcolor="white",
+        font=dict(family="Helvetica, Arial", size=10),
+        margin=dict(l=65, r=20, t=55, b=60),
+    )
     return fig
 
 
@@ -397,6 +439,120 @@ def _fig_to_png(
 
 
 # ---------------------------------------------------------------------------
+# Per-scenario result block (voltage / line loading / transformer loading)
+# ---------------------------------------------------------------------------
+
+def _add_result_block(
+    pdf: "_NetzPDF",
+    net: Any,
+    voltage_df: pd.DataFrame,
+    loading_df: pd.DataFrame | None,
+    trafo_loading_df: pd.DataFrame | None,
+    dt_index: Any,
+    suffix: str = "",
+) -> None:
+    """Render one scenario's result charts (voltage band, line-loading heatmap,
+    transformer loading) each followed by a stats table.
+
+    ``suffix`` (e.g. ``" (ohne Verschiebung)"``) is appended to the section
+    titles so the comparison report distinguishes the two scenarios.
+    """
+    if voltage_df is None or voltage_df.empty:
+        return
+    if loading_df is None:
+        loading_df = pd.DataFrame()
+    n_steps = max(1, len(voltage_df))
+    vm_min = voltage_df.min(axis=1)
+    vm_max = voltage_df.max(axis=1)
+    violations = int(((vm_min < 0.95) | (vm_max > 1.05)).sum())
+
+    # ── Voltage band ── #
+    fig_v = _build_voltage_figure(voltage_df, dt_index)
+    png_v = _fig_to_png(fig_v, width=1100, height=520)
+    pdf.section_title(f"Spannungsband - Zeitreihenergebnisse{suffix}")
+    pdf.embed_png(
+        png_v, caption="Spannungsband (Min./Max.) uber den Simulationszeitraum"
+    )
+    pdf.two_col_tables(
+        left_title="Spannungsstatistik",
+        left_rows=[
+            ("Min. Spannung", f"{vm_min.min():.4f} p.u."),
+            ("Max. Spannung", f"{vm_max.max():.4f} p.u."),
+            ("Mittl. Min.",   f"{vm_min.mean():.4f} p.u."),
+            ("Mittl. Max.",   f"{vm_max.mean():.4f} p.u."),
+        ],
+        right_title="Grenzwertanalyse",
+        right_rows=[
+            ("Band 0.95-1.05 p.u.", "EN 50160"),
+            ("Verletzungen",        str(violations)),
+            ("Verletzungsquote",    f"{violations / n_steps * 100:.1f} %"),
+        ],
+    )
+
+    # ── Line loading ── #
+    if not loading_df.empty:
+        n_lines = len(loading_df.columns)
+        fig_l = _build_loading_figure(loading_df, dt_index)
+        png_l = (_fig_to_png(fig_l, width=1100, height=max(400, n_lines * 22 + 130))
+                 if fig_l is not None else b"")
+        if png_l:
+            max_load = float(loading_df.max().max())
+            warn_steps = int((loading_df > 80).any(axis=1).sum())
+            over_steps = int((loading_df > 100).any(axis=1).sum())
+            pdf.check_for_chart(min_h=70)
+            pdf.section_title(f"Leitungsauslastung - Zeitreihenergebnisse{suffix}")
+            load_h = min(76.0, max(40.0, n_lines * 8.0))  # scale with line count
+            pdf.embed_png(
+                png_l,
+                caption="Leitungsauslastung (%) als Heatmap - Zeitachse x Leitung",
+                img_h_mm=load_h,
+            )
+            pdf.two_col_tables(
+                left_title="Auslastungsstatistik",
+                left_rows=[
+                    ("Max. Auslastung",  f"{max_load:.1f} %"),
+                    ("Anzahl Leitungen", str(n_lines)),
+                ],
+                right_title="Engpassanalyse",
+                right_rows=[
+                    ("> 80 % Schritte",  str(warn_steps)),
+                    ("> 100 % Schritte", str(over_steps)),
+                    ("Uberlastquote",    f"{over_steps / n_steps * 100:.1f} %"),
+                ],
+            )
+
+    # ── Transformer loading ── #
+    if trafo_loading_df is not None and not trafo_loading_df.empty:
+        n_trafo = len(trafo_loading_df.columns)
+        fig_t = _build_trafo_figure(trafo_loading_df, dt_index, net)
+        png_t = _fig_to_png(fig_t, width=1100, height=420) if fig_t is not None else b""
+        if png_t:
+            t_max = float(trafo_loading_df.max().max())
+            t_warn = int((trafo_loading_df > 80).any(axis=1).sum())
+            t_over = int((trafo_loading_df > 100).any(axis=1).sum())
+            pdf.check_for_chart(min_h=70)
+            pdf.section_title(f"Transformatorauslastung - Zeitreihenergebnisse{suffix}")
+            pdf.embed_png(
+                png_t,
+                caption="Transformatorauslastung (%) uber den Simulationszeitraum",
+                img_h_mm=60.0,
+            )
+            pdf.two_col_tables(
+                left_title="Trafo-Auslastungsstatistik",
+                left_rows=[
+                    ("Max. Auslastung",        f"{t_max:.1f} %"),
+                    ("Anzahl Transformatoren", str(n_trafo)),
+                ],
+                right_title="Engpassanalyse",
+                right_rows=[
+                    ("> 80 % Schritte",  str(t_warn)),
+                    ("> 100 % Schritte", str(t_over)),
+                    ("Uberlastquote",    f"{t_over / n_steps * 100:.1f} %"),
+                ],
+            )
+
+
+# ---------------------------------------------------------------------------
 # Public — Netzmodell-specific report
 # ---------------------------------------------------------------------------
 
@@ -406,6 +562,8 @@ def build_netzmodell_pdf(
     loading_df: pd.DataFrame,
     dt_index: Any,
     session_state: dict,
+    trafo_loading_df: pd.DataFrame | None = None,
+    flex_results: dict | None = None,
 ) -> bytes:
     """Build and return a branded A4 PDF report for the Netzmodell simulation.
 
@@ -417,6 +575,12 @@ def build_netzmodell_pdf(
     dt_index      : DatetimeIndex or RangeIndex aligned with the DataFrames.
     session_state : Streamlit session_state dict (or equivalent plain dict)
                     containing optional profile keys (nsv2_profile_pv, _ev …).
+    trafo_loading_df : shape (n_steps, n_trafos) — transformer loading_percent;
+                    omitted (or empty) when the net has no transformers.
+    flex_results  : optional dict for the flexibility comparison run with keys
+                    ``voltage_df`` / ``loading_df`` / ``trafo_loading_df``. When
+                    given, the baseline sections are labelled "(ohne Verschiebung)"
+                    and a second block "(mit Verschiebung)" is appended.
 
     Returns
     -------
@@ -452,15 +616,6 @@ def build_netzmodell_pdf(
 
     n_sgen    = len(net.sgen)    if hasattr(net, "sgen")    else 0
     n_storage = len(net.storage) if (hasattr(net, "storage") and net.storage is not None) else 0
-
-    # ── Render Plotly figures → PNG ── #
-    fig_v   = _build_voltage_figure(voltage_df, dt_index)
-    png_v   = _fig_to_png(fig_v, width=1100, height=520)
-
-    fig_l   = _build_loading_figure(loading_df, dt_index)
-    n_lines = len(loading_df.columns) if not loading_df.empty else 0
-    png_l   = _fig_to_png(fig_l, width=1100, height=max(400, n_lines * 22 + 130)) \
-              if fig_l is not None else b""
 
     # ── Optional profile PNGs ── #
     profile_charts: list[tuple[str, bytes]] = []
@@ -543,52 +698,31 @@ def build_netzmodell_pdf(
     pdf.ln(15)   # advance past the 11 mm boxes
     pdf.ln(2)
 
-    # ── Voltage chart ── #
-    pdf.section_title("Spannungsband - Zeitreihenergebnisse")
-    pdf.embed_png(png_v, caption="Spannungsband (Min./Max.) uber den Simulationszeitraum")
-
-    # ── Voltage stats — two columns side by side ── #
-    pdf.two_col_tables(
-        left_title="Spannungsstatistik",
-        left_rows=[
-            ("Min. Spannung",     f"{vm_min.min():.4f} p.u."),
-            ("Max. Spannung",     f"{vm_max.max():.4f} p.u."),
-            ("Mittl. Min.",       f"{vm_min.mean():.4f} p.u."),
-            ("Mittl. Max.",       f"{vm_max.mean():.4f} p.u."),
-        ],
-        right_title="Grenzwertanalyse",
-        right_rows=[
-            ("Band 0.95-1.05 p.u.", "EN 50160"),
-            ("Verletzungen",        str(violations)),
-            ("Verletzungsquote",    f"{violations / n_steps * 100:.1f} %"),
-        ],
+    # ── Result charts (voltage / line loading / transformer loading) ── #
+    base_suffix = " (ohne Verschiebung)" if flex_results else ""
+    _add_result_block(
+        pdf, net, voltage_df, loading_df, trafo_loading_df, dt_index,
+        suffix=base_suffix,
     )
 
-    # ──────────────────────────────────────────────────────────────────
-    # Page 2 (or continuation) — Line loading chart
-    # ──────────────────────────────────────────────────────────────────
-    if not loading_df.empty and png_l:
-        pdf.check_for_chart(min_h=70)
-        pdf.section_title("Leitungsauslastung - Zeitreihenergebnisse")
-        load_h = min(76.0, max(40.0, n_lines * 8.0))  # scale with line count
-        pdf.embed_png(png_l,
-                      caption="Leitungsauslastung (%) als Heatmap - Zeitachse x Leitung",
-                      img_h_mm=load_h)
-
-        pdf.two_col_tables(
-            left_title="Auslastungsstatistik",
-            left_rows=[
-                ("Max. Auslastung",  f"{max_load:.1f} %"),
-                ("Anzahl Leitungen", str(n_lines)),
-            ],
-            right_title="Engpassanalyse",
-            right_rows=[
-                ("> 80 % Schritte",  str(warn_steps)),
-                ("> 100 % Schritte", str(over_steps)),
-                ("Uberlastquote",    f"{over_steps / n_steps * 100:.1f} %"),
-            ],
+    # ── Comparison: append the flexibility ("mit Verschiebung") scenario ── #
+    if flex_results:
+        pdf.add_page()
+        pdf.set_fill_color(*_PRIMARY)
+        pdf.set_text_color(*_WHITE)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 9, _safe("Ergebnisse mit Verschiebung (Flexibilitaet)"),
+                 ln=True, fill=True, align="C")
+        pdf.set_text_color(*_DARK)
+        pdf.ln(3)
+        _add_result_block(
+            pdf, net,
+            flex_results.get("voltage_df"),
+            flex_results.get("loading_df"),
+            flex_results.get("trafo_loading_df"),
+            dt_index,
+            suffix=" (mit Verschiebung)",
         )
-
 
     # ──────────────────────────────────────────────────────────────────
     # Profile charts — flow on same page when room exists
