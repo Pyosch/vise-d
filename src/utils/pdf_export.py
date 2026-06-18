@@ -1,19 +1,16 @@
 """pdf_export.py — Simulation report builder for the VISE-D Netzmodell page.
 
-Provides two public functions:
+Public functions:
 
-    build_netzmodell_pdf(net, voltage_df, loading_df, dt_index, session_state)
+    build_netzmodell_pdf(net, voltage_df, loading_df, dt_index, session_state, …)
         → bytes   (Netzmodell-specific, branded A4 portrait report)
-
-    generate_pdf_report_plotly(figures, chart_titles, title, metadata, summary_stats)
-        → bytes   (generic Plotly-figure PDF, kept for other pages)
 
     generate_pdf_report_matplotlib(figures, ...)
         → bytes   (generic Matplotlib-figure PDF, kept for other pages)
 
-Both approaches use:
-  • kaleido  — Plotly figure → PNG bytes
-  • fpdf2    — PDF layout / assembly
+Figures are rendered to PNG with matplotlib (Agg backend, in-process) and
+assembled with fpdf2 — no kaleido/Chromium dependency, which keeps PDF
+generation fast and the deployment lean.
 """
 
 from __future__ import annotations
@@ -24,8 +21,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
+from matplotlib.figure import Figure
+from matplotlib.colors import LinearSegmentedColormap
 
 
 # ---------------------------------------------------------------------------
@@ -36,12 +33,6 @@ try:
     _HAS_FPDF = True
 except ImportError:
     _HAS_FPDF = False
-
-try:
-    import kaleido  # noqa: F401 — side-effect: activates kaleido back-end
-    _HAS_KALEIDO = True
-except ImportError:
-    _HAS_KALEIDO = False
 
 
 # ---------------------------------------------------------------------------
@@ -292,150 +283,133 @@ class _NetzPDF(FPDF if _HAS_FPDF else object):
 
 
 # ---------------------------------------------------------------------------
-# Figure builders — re-create Plotly figures from raw DataFrames
-# (so the export works even when Streamlit's widget state is unavailable)
+# Figure builders — render report charts with matplotlib (Agg, in-process).
+# No kaleido/Chromium: matplotlib rasterises directly to PNG, which is both
+# much faster and far leaner for deployment.
 # ---------------------------------------------------------------------------
 
-def _build_voltage_figure(
-    voltage_df: pd.DataFrame, dt_index
-) -> go.Figure:
-    x_labels = [str(t) for t in dt_index]
-    vm_min = voltage_df.min(axis=1)
-    vm_max = voltage_df.max(axis=1)
+def _time_xticks(ax, dt_index, n: int, max_ticks: int = 7) -> None:
+    """Place a handful of readable time ticks on the x-axis of *ax*."""
+    if n <= 0:
+        return
+    step = max(1, n // max_ticks)
+    pos = list(range(0, n, step))
+    idx = pd.Index(dt_index)
+    if isinstance(idx, pd.DatetimeIndex):
+        labels = [idx[i].strftime("%H:%M") for i in pos]
+    else:
+        labels = [str(idx[i]) for i in pos]
+    ax.set_xticks(pos)
+    ax.set_xticklabels(labels, fontsize=7)
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=x_labels, y=vm_max.values, name="Max U (p.u.)",
-        line=dict(color="#2563eb"), fill=None,
-    ))
-    fig.add_trace(go.Scatter(
-        x=x_labels, y=vm_min.values, name="Min U (p.u.)",
-        line=dict(color="#dc2626"), fill="tonexty",
-        fillcolor="rgba(239,68,68,0.1)",
-    ))
-    fig.add_hline(y=1.05, line_dash="dot", line_color="gray",
-                  annotation_text="1.05 p.u.")
-    fig.add_hline(y=0.95, line_dash="dot", line_color="gray",
-                  annotation_text="0.95 p.u.")
-    fig.update_layout(
-        title="Spannungsband (p.u.)",
-        xaxis_title="Zeit", yaxis_title="Spannung (p.u.)",
-        height=450, showlegend=True, hovermode="x unified",
-        plot_bgcolor="white", paper_bgcolor="white",
-        font=dict(family="Helvetica, Arial", size=11),
-        margin=dict(l=65, r=20, t=55, b=60),
-    )
+
+def _build_voltage_figure(voltage_df: pd.DataFrame, dt_index) -> Figure:
+    vm_min = voltage_df.min(axis=1).to_numpy()
+    vm_max = voltage_df.max(axis=1).to_numpy()
+    n = len(voltage_df)
+    x = np.arange(n)
+
+    fig = Figure(figsize=(11, 4.5), dpi=100)
+    ax = fig.subplots()
+    ax.plot(x, vm_max, color="#2563eb", linewidth=1.6, label="Max U (p.u.)")
+    ax.plot(x, vm_min, color="#dc2626", linewidth=1.6, label="Min U (p.u.)")
+    ax.fill_between(x, vm_min, vm_max, color="#dc2626", alpha=0.08)
+    ax.axhline(1.05, ls=":", color="gray", linewidth=1)
+    ax.axhline(0.95, ls=":", color="gray", linewidth=1)
+    ax.set_title("Spannungsband (p.u.)", fontsize=12, fontweight="bold")
+    ax.set_xlabel("Zeit", fontsize=9)
+    ax.set_ylabel("Spannung (p.u.)", fontsize=9)
+    ax.grid(True, alpha=0.25)
+    ax.legend(loc="best", fontsize=8)
+    _time_xticks(ax, dt_index, n)
+    fig.tight_layout()
     return fig
 
 
-def _build_loading_figure(
-    loading_df: pd.DataFrame, dt_index
-) -> go.Figure | None:
+def _build_loading_figure(loading_df: pd.DataFrame, dt_index) -> Figure | None:
     if loading_df.empty:
         return None
-    x_labels = [str(t) for t in dt_index]
-    heat_df = loading_df.copy()
-    heat_df.columns = [str(c) for c in heat_df.columns]
-    heat_df.index = x_labels[: len(heat_df)]
+    data = loading_df.to_numpy().T            # rows = lines, cols = time steps
+    n_lines, n = data.shape
 
-    fig = px.imshow(
-        heat_df.T,
-        color_continuous_scale=[[0, "#22c55e"], [0.667, "#facc15"], [1.0, "#ef4444"]],
-        zmin=0, zmax=120,
-        labels={"x": "Zeit", "y": "Leitung", "color": "Auslastung (%)"},
-        title="Leitungsauslastung (%)",
+    cmap = LinearSegmentedColormap.from_list(
+        "load", [(0.0, "#22c55e"), (0.667, "#facc15"), (1.0, "#ef4444")]
     )
-    n_lines = len(loading_df.columns)
-    fig.update_layout(
-        height=max(350, n_lines * 22 + 130),
-        plot_bgcolor="white", paper_bgcolor="white",
-        font=dict(family="Helvetica, Arial", size=10),
-        margin=dict(l=65, r=20, t=55, b=60),
-    )
-    # The line labels are numeric-looking strings ("0", "1", …); without an
-    # explicit category type Plotly coerces them to a linear axis (range
-    # -0.5..n-0.5), which kaleido renders literally. Pin it to "category" so the
-    # y-axis shows exactly the line numbers as discrete ticks.
-    fig.update_yaxes(type="category")
+    fig = Figure(figsize=(11, max(2.2, min(8.0, n_lines * 0.45 + 1.6))), dpi=100)
+    ax = fig.subplots()
+    im = ax.imshow(data, aspect="auto", cmap=cmap, vmin=0, vmax=120)
+    # Discrete line-number ticks — avoids the continuous -0.5..n-0.5 axis that
+    # Plotly/kaleido produced from numeric-looking string labels.
+    ax.set_yticks(np.arange(n_lines))
+    ax.set_yticklabels([str(c) for c in loading_df.columns], fontsize=7)
+    ax.set_ylabel("Leitung", fontsize=9)
+    ax.set_xlabel("Zeit", fontsize=9)
+    ax.set_title("Leitungsauslastung (%)", fontsize=12, fontweight="bold")
+    _time_xticks(ax, dt_index, n)
+    fig.colorbar(im, ax=ax, label="Auslastung (%)", fraction=0.025, pad=0.01)
+    fig.tight_layout()
     return fig
 
 
 def _build_trafo_figure(
     trafo_loading_df: pd.DataFrame, dt_index, net: Any = None
-) -> go.Figure | None:
+) -> Figure | None:
     """Transformer loading over time: one line per transformer.
 
-    Returns ``None`` when there is no transformer data. Traces are labelled with
+    Returns ``None`` when there is no transformer data. Lines are labelled with
     the transformer name from *net* when available.
     """
     if trafo_loading_df is None or trafo_loading_df.empty:
         return None
-    x_labels = [str(t) for t in dt_index]
+    n = len(trafo_loading_df)
+    x = np.arange(n)
 
-    fig = go.Figure()
+    fig = Figure(figsize=(11, 3.6), dpi=100)
+    ax = fig.subplots()
     for col in trafo_loading_df.columns:
         label = f"Trafo {col}"
         if net is not None and hasattr(net, "trafo") and col in net.trafo.index:
             name = net.trafo.at[col, "name"]
             if isinstance(name, str) and name:
                 label = name
-        fig.add_trace(go.Scatter(
-            x=x_labels, y=trafo_loading_df[col].values, mode="lines", name=label,
-        ))
-    fig.add_hline(y=100, line_dash="dot", line_color="#ef4444",
-                  annotation_text="100 %")
-    fig.add_hline(y=80, line_dash="dot", line_color="#facc15",
-                  annotation_text="80 %")
-    fig.update_layout(
-        title="Transformatorauslastung (%)",
-        xaxis_title="Zeit", yaxis_title="Auslastung (%)",
-        height=420, showlegend=True, hovermode="x unified",
-        plot_bgcolor="white", paper_bgcolor="white",
-        font=dict(family="Helvetica, Arial", size=10),
-        margin=dict(l=65, r=20, t=55, b=60),
-    )
+        ax.plot(x, trafo_loading_df[col].to_numpy(), linewidth=1.6, label=label)
+    ax.axhline(100, ls=":", color="#ef4444", linewidth=1)
+    ax.axhline(80, ls=":", color="#facc15", linewidth=1)
+    ax.set_title("Transformatorauslastung (%)", fontsize=12, fontweight="bold")
+    ax.set_xlabel("Zeit", fontsize=9)
+    ax.set_ylabel("Auslastung (%)", fontsize=9)
+    ax.grid(True, alpha=0.25)
+    ax.legend(loc="best", fontsize=8)
+    _time_xticks(ax, dt_index, n)
+    fig.tight_layout()
     return fig
 
 
-def _build_profile_figure(
-    series: pd.Series, ylabel: str, title: str
-) -> go.Figure:
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        y=series.values, mode="lines",
-        line=dict(width=2, color="#2563eb"), showlegend=False,
-    ))
-    fig.update_layout(
-        title=title,
-        xaxis_title="Zeitschritt (15 min)", yaxis_title=ylabel,
-        height=320,
-        plot_bgcolor="white", paper_bgcolor="white",
-        font=dict(family="Helvetica, Arial", size=10),
-        margin=dict(l=65, r=20, t=55, b=55),
-    )
+def _build_profile_figure(series: pd.Series, ylabel: str, title: str) -> Figure:
+    fig = Figure(figsize=(11, 3.3), dpi=100)
+    ax = fig.subplots()
+    ax.plot(np.arange(len(series)), np.asarray(series.values),
+            color="#2563eb", linewidth=1.8)
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_xlabel("Zeitschritt (15 min)", fontsize=9)
+    ax.set_ylabel(ylabel, fontsize=9)
+    ax.grid(True, alpha=0.25)
+    fig.tight_layout()
     return fig
 
 
-def _fig_to_png(
-    fig: go.Figure, width: int = 1000, height: int = 500
-) -> bytes:
-    """Convert a Plotly figure to PNG bytes via kaleido.
+def _fig_to_png(fig: Figure | None) -> bytes:
+    """Rasterise a matplotlib figure to PNG bytes (Agg renderer, in-process).
 
-    Raises on failure so the caller can surface the error instead of silently
-    producing a figure-less PDF (e.g. an incompatible kaleido/plotly pairing).
-    Optional charts that may legitimately be skipped wrap this call in their
-    own try/except.
+    Returns ``b""`` when *fig* is None so optional charts can be skipped.
     """
-    if not _HAS_KALEIDO:
+    if fig is None:
         return b""
-    try:
-        return fig.to_image(format="png", width=width, height=height, scale=2)
-    except Exception as exc:
-        raise RuntimeError(
-            "Plotly-Figur konnte nicht als PNG gerendert werden. Stellen Sie "
-            "sicher, dass 'kaleido==0.2.1' (kompatibel mit plotly 5.x) "
-            f"installiert ist. Fehler: {exc}"
-        ) from exc
+    buf = io.BytesIO()
+    # The builders already call tight_layout(); skip bbox_inches="tight" so
+    # savefig does not trigger a second full render pass per figure.
+    fig.savefig(buf, format="png")
+    return buf.getvalue()
 
 
 # ---------------------------------------------------------------------------
@@ -468,7 +442,7 @@ def _add_result_block(
 
     # ── Voltage band ── #
     fig_v = _build_voltage_figure(voltage_df, dt_index)
-    png_v = _fig_to_png(fig_v, width=1100, height=520)
+    png_v = _fig_to_png(fig_v)
     pdf.section_title(f"Spannungsband - Zeitreihenergebnisse{suffix}")
     pdf.embed_png(
         png_v, caption="Spannungsband (Min./Max.) uber den Simulationszeitraum"
@@ -493,8 +467,7 @@ def _add_result_block(
     if not loading_df.empty:
         n_lines = len(loading_df.columns)
         fig_l = _build_loading_figure(loading_df, dt_index)
-        png_l = (_fig_to_png(fig_l, width=1100, height=max(400, n_lines * 22 + 130))
-                 if fig_l is not None else b"")
+        png_l = _fig_to_png(fig_l)
         if png_l:
             max_load = float(loading_df.max().max())
             warn_steps = int((loading_df > 80).any(axis=1).sum())
@@ -525,7 +498,7 @@ def _add_result_block(
     if trafo_loading_df is not None and not trafo_loading_df.empty:
         n_trafo = len(trafo_loading_df.columns)
         fig_t = _build_trafo_figure(trafo_loading_df, dt_index, net)
-        png_t = _fig_to_png(fig_t, width=1100, height=420) if fig_t is not None else b""
+        png_t = _fig_to_png(fig_t)
         if png_t:
             t_max = float(trafo_loading_df.max().max())
             t_warn = int((trafo_loading_df > 80).any(axis=1).sum())
@@ -590,10 +563,6 @@ def build_netzmodell_pdf(
         raise ImportError(
             "fpdf2 ist nicht installiert. Bitte 'pip install fpdf2' ausführen."
         )
-    if not _HAS_KALEIDO:
-        raise ImportError(
-            "kaleido ist nicht installiert. Bitte 'pip install kaleido' ausführen."
-        )
 
     # ── Metadata ── #
     net_name: str = (
@@ -632,7 +601,7 @@ def build_netzmodell_pdf(
         try:
             series = prof.mean(axis=1) if isinstance(prof, pd.DataFrame) else pd.Series(prof)
             fig_p  = _build_profile_figure(series, ylabel, title)
-            png_p  = _fig_to_png(fig_p, width=1000, height=360)
+            png_p  = _fig_to_png(fig_p)
             if png_p:
                 profile_charts.append((title, png_p))
         except Exception:
@@ -924,47 +893,4 @@ def generate_pdf_report_matplotlib(
         fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
         buf.seek(0)
         png_buffers.append(buf.read())
-    return _make_pdf(title, chart_titles, metadata, summary_stats, png_buffers)
-
-
-def generate_pdf_report_plotly(
-    figures: list,
-    chart_titles: list[str] | None = None,
-    title: str = "Simulation Results",
-    metadata: dict[str, Any] | None = None,
-    summary_stats: dict[str, Any] | None = None,
-    width: int = 1400,
-    height: int = 620,
-) -> bytes:
-    """Generate a PDF report from a list of Plotly figures.
-
-    Requires ``kaleido`` (pip install kaleido).
-
-    Parameters
-    ----------
-    figures      : list of plotly.graph_objects.Figure
-    chart_titles : list of str, optional
-    title        : str
-    metadata     : dict, optional
-    summary_stats: dict, optional
-    width, height: int — pixel dimensions for PNG rendering.
-
-    Returns
-    -------
-    bytes — raw PDF bytes for ``st.download_button``.
-    """
-    if chart_titles is None:
-        chart_titles = [f"Chart {i + 1}" for i in range(len(figures))]
-    png_buffers: list[bytes] = []
-    for fig in figures:
-        try:
-            png_buffers.append(
-                fig.to_image(format="png", width=width, height=height, scale=2)
-            )
-        except Exception as e:
-            raise RuntimeError(
-                "Could not render Plotly chart to PNG. "
-                "Make sure 'kaleido' is installed (pip install kaleido). "
-                f"Error: {e}"
-            )
     return _make_pdf(title, chart_titles, metadata, summary_stats, png_buffers)

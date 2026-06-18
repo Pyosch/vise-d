@@ -1,9 +1,9 @@
 """Unit tests for the Netzmodell PDF figure builders (src/utils/pdf_export.py).
 
-Focus on the parts that do not require kaleido/Chromium: the line-loading
-heatmap must use a categorical y-axis (so line numbers render as discrete
-ticks instead of a continuous -0.5..3.5 range), and the transformer-loading
-figure must produce one trace per transformer labelled with its name.
+The report figures are rendered with matplotlib (Agg, in-process) — no kaleido
+/Chromium. The line-loading heatmap must label its y-axis with the line numbers
+as discrete ticks, the transformer-loading figure must draw one line per
+transformer (named from the net), and ``_fig_to_png`` must return PNG bytes.
 """
 
 __author__ = "Pyosch"
@@ -20,15 +20,17 @@ def _dt(n=6):
     return pd.date_range("2025-06-01", periods=n, freq="15min")
 
 
-class TestLoadingHeatmapAxis:
-    def test_yaxis_is_categorical_so_line_numbers_show_as_ticks(self):
+class TestLoadingHeatmap:
+    def test_yaxis_ticklabels_are_the_line_numbers(self):
         dt = _dt()
         loading = pd.DataFrame(
             {i: np.linspace(10, 90, len(dt)) for i in range(4)}, index=dt)
 
         fig = pe._build_loading_figure(loading, dt)
+        ax = fig.axes[0]
+        labels = [t.get_text() for t in ax.get_yticklabels()]
 
-        assert fig.layout.yaxis.type == "category"
+        assert labels == ["0", "1", "2", "3"]
 
     def test_returns_none_for_empty_loading(self):
         assert pe._build_loading_figure(pd.DataFrame(), _dt()) is None
@@ -45,16 +47,28 @@ class TestTransformerFigure:
                               std_type="0.4 MVA 10/0.4 kV", name="Ortsnetztrafo")
         return net
 
-    def test_one_trace_per_transformer_named_from_net(self):
+    def test_one_line_per_transformer_named_from_net(self):
         net = self._net()
         dt = _dt()
         trafo = pd.DataFrame(
             {t: np.linspace(20, 90, len(dt)) for t in net.trafo.index}, index=dt)
 
         fig = pe._build_trafo_figure(trafo, dt, net)
+        _, labels = fig.axes[0].get_legend_handles_labels()
 
-        assert len(fig.data) == len(net.trafo)
-        assert any("Ortsnetztrafo" in (tr.name or "") for tr in fig.data)
+        assert labels == ["Ortsnetztrafo"]   # one legend entry per transformer
 
     def test_returns_none_when_empty(self):
         assert pe._build_trafo_figure(pd.DataFrame(), _dt(), None) is None
+
+
+class TestFigToPng:
+    def test_returns_png_bytes(self):
+        net = TestTransformerFigure._net()
+        dt = _dt()
+        trafo = pd.DataFrame(
+            {t: np.linspace(20, 90, len(dt)) for t in net.trafo.index}, index=dt)
+
+        png = pe._fig_to_png(pe._build_trafo_figure(trafo, dt, net))
+
+        assert png[:8] == b"\x89PNG\r\n\x1a\n"   # PNG magic number
