@@ -175,7 +175,7 @@ This is a vpplib bug/documentation mismatch — file an issue if this causes pro
 
 | Path | Description |
 |------|-------------|
-| `src/utils/vpplib_interface.py` | Re-exports `assign_assets_to_buses`, `build_timeseries_net` from `vpplib.operator` |
+| `src/utils/vpplib_interface.py` | Provides `build_timeseries_net` (die frühere geografische Zuweisung `assign_assets_to_buses` wurde entfernt — die MaStR-Zuweisung erfolgt rein manuell) |
 | `src/flexibility/__init__.py` | Empty package marker |
 | `src/flexibility/appliance_defaults.py` | Copied from `household_flexibility_simulation/config/`, imports fixed |
 | `src/flexibility/appliance_model.py` | Copied from `model/`, imports fixed |
@@ -224,7 +224,7 @@ This is a vpplib bug/documentation mismatch — file an issue if this causes pro
 # Working directory: C:\Users\sbirk\Documents\Code\vise-d
 
 # 1. Import checks
-.\vise\Scripts\python -c "from src.utils.vpplib_interface import assign_assets_to_buses, build_timeseries_net; print('OK')"
+.\vise\Scripts\python -c "from src.utils.vpplib_interface import build_timeseries_net; print('OK')"
 .\vise\Scripts\python -c "from src.flexibility.load_profile_generator import LoadProfileGenerator; print('OK')"
 .\vise\Scripts\python -c "from src.data_layer.weather_integration import fetch_weather_for_pv; print('OK')"
 

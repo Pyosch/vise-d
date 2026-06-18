@@ -82,7 +82,6 @@ from src.mastr.simulation import (
     revise_power_values,
     wind_turbine_matching,
 )
-from src.utils.vpplib_interface import assign_assets_to_buses
 from src.utils.simbench_profiles import Simbench_multiplier, Simbench_multiplier_range, fix_simbench_dtypes
 from src.ui.components.netzmittimeseries import get_normalized_pv_output
 from src.utils import flex_baseload as fb
@@ -156,13 +155,6 @@ def _show_network(net: pp.pandapowerNet) -> None:
     c2.metric("Leitungen", len(net.line))
     c3.metric("Lasten", len(net.load))
     c4.metric("Transformatoren", len(net.trafo))
-
-    has_geodata = hasattr(net, "bus_geodata") and len(net.bus_geodata) > 0
-    st.session_state["nsv2_has_geodata"] = has_geodata
-    if has_geodata:
-        st.success("Geodaten vorhanden — MaStR-Zuweisung geografisch möglich")
-    else:
-        st.info("Keine Geodaten — automatisches Knotenlayout für Visualisierung")
 
     if _HAS_PLOTLY_NET:
         try:
