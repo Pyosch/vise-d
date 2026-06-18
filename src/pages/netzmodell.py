@@ -245,6 +245,7 @@ def _net_to_xlsx_bytes(net: pp.pandapowerNet, include_results: bool = False) -> 
 _TS_SHEET_SPEC: list[tuple[str, str, str]] = [
     ("voltage", "Spannung_pu",        "bus"),
     ("loading", "Leitungsausl_%",     "line"),
+    ("trafo",   "Trafo_Ausl_%",       "trafo"),
     ("sgen",    "DER_Einspeisung_MW", "sgen"),
     ("load",    "DER_Last_MW",        "load"),
     ("storage", "DER_Speicher_MW",    "storage"),
@@ -405,12 +406,15 @@ def _reset_der_state() -> None:
         # exported after a switch.
         "nsv2_results_voltage",
         "nsv2_results_loading",
+        "nsv2_results_trafo_loading",
         "nsv2_results_profiles",
         "nsv2_results_dt_index",
         "nsv2_cmp_voltage_base",
         "nsv2_cmp_loading_base",
+        "nsv2_cmp_trafo_loading_base",
         "nsv2_cmp_voltage_flex",
         "nsv2_cmp_loading_flex",
+        "nsv2_cmp_trafo_loading_flex",
         "nsv2_cmp_profiles_base",
         "nsv2_cmp_profiles_flex",
     ):
@@ -1898,11 +1902,13 @@ def _run_timeseries_pf(
     n_steps: int,
     profiles: dict[str, pd.DataFrame],
     progress_bar=None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Run per-timestep pandapower PF using ConstControl/DFData.
 
-    Returns (voltage_df [n_steps × buses], loading_df [n_steps × lines]).
-    Uses the manual loop rather than run_timeseries() to stay OPF-compatible.
+    Returns (voltage_df [n_steps × buses], loading_df [n_steps × lines],
+    trafo_loading_df [n_steps × trafos]). Empty DataFrames when the net has no
+    lines / transformers. Uses the manual loop rather than run_timeseries() to
+    stay OPF-compatible.
     """
     # Clear any controllers left from previous runs
     if hasattr(net, "controller") and len(net.controller) > 0:
@@ -1934,6 +1940,9 @@ def _run_timeseries_pf(
 
     voltage_rows: list = []
     loading_rows: list = []
+    trafo_rows: list = []
+    n_line = len(net.line)
+    n_trafo = len(net.trafo)
     update_every = max(1, n_steps // 50)
 
     for t in range(n_steps):
@@ -1947,12 +1956,16 @@ def _run_timeseries_pf(
         try:
             pp.runpp(net, verbose=False)
             voltage_rows.append(net.res_bus["vm_pu"].values.copy())
-            if len(net.res_line) > 0:
+            if n_line > 0:
                 loading_rows.append(net.res_line["loading_percent"].values.copy())
+            if n_trafo > 0:
+                trafo_rows.append(net.res_trafo["loading_percent"].values.copy())
         except Exception:
             voltage_rows.append(np.full(len(net.bus), np.nan))
-            if len(net.res_line) > 0:
-                loading_rows.append(np.full(len(net.res_line), np.nan))
+            if n_line > 0:
+                loading_rows.append(np.full(n_line, np.nan))
+            if n_trafo > 0:
+                trafo_rows.append(np.full(n_trafo, np.nan))
 
         if progress_bar is not None and t % update_every == 0:
             progress_bar.progress((t + 1) / n_steps)
@@ -1965,7 +1978,11 @@ def _run_timeseries_pf(
         pd.DataFrame(loading_rows, columns=net.line.index)
         if loading_rows else pd.DataFrame()
     )
-    return voltage_df, loading_df
+    trafo_loading_df = (
+        pd.DataFrame(trafo_rows, columns=net.trafo.index)
+        if trafo_rows else pd.DataFrame()
+    )
+    return voltage_df, loading_df, trafo_loading_df
 
 
 # ---------------------------------------------------------------------------
@@ -2048,12 +2065,14 @@ def _ts_tables(
     voltage_df: pd.DataFrame | None,
     loading_df: pd.DataFrame | None,
     profiles: dict[str, pd.DataFrame] | None,
+    trafo_loading_df: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame | None]:
     """Bündelt Netz- und DER-Zeitreihen eines Szenarios für den Excel-Export.
 
-    Die DER-Profile sind ganzzahlig indexiert (Simulationsschritt); für eine
-    gemeinsame ``Zeit``-Spalte werden sie auf den Zeitindex der Netzergebnisse
-    umgesetzt, sofern die Längen übereinstimmen.
+    Netzergebnisse (``voltage`` p.u., ``loading`` / ``trafo`` %) sind bereits auf
+    den Zeitindex gesetzt. Die DER-Profile sind ganzzahlig indexiert
+    (Simulationsschritt) und werden für eine gemeinsame ``Zeit``-Spalte auf den
+    Zeitindex der Netzergebnisse umgesetzt, sofern die Längen übereinstimmen.
     """
     profiles = profiles or {}
     idx = voltage_df.index if voltage_df is not None else None
@@ -2068,6 +2087,7 @@ def _ts_tables(
     return {
         "voltage": voltage_df,
         "loading": loading_df,
+        "trafo": trafo_loading_df,
         "sgen": _reindex(profiles.get("sgen")),
         "load": _reindex(profiles.get("load")),
         "storage": _reindex(profiles.get("storage")),
@@ -2135,15 +2155,59 @@ def _render_download_buttons(
                 st.caption(f"Excel-Export fehlgeschlagen: {exc}")
 
 
+def _render_trafo_loading(
+    trafo_loading_df: pd.DataFrame | None, x_labels: list[str], chart_key: str
+) -> None:
+    """Transformatorauslastung über die Zeit: Metriken + eine Linie je Trafo."""
+    if trafo_loading_df is None or trafo_loading_df.empty:
+        st.info("Keine Transformatordaten vorhanden.")
+        return
+
+    t_max = trafo_loading_df.max().max()
+    t_warn = int((trafo_loading_df > 80).any(axis=1).sum())
+    t_over = int((trafo_loading_df > 100).any(axis=1).sum())
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Max. Trafo-Auslastung", f"{t_max:.1f} %")
+    c2.metric("Zeitschritte > 80 %", t_warn)
+    c3.metric("Zeitschritte > 100 % (Überlast)", t_over,
+              delta_color="inverse" if t_over > 0 else "off")
+
+    net_cfg = st.session_state.get("nsv2_net")
+    fig = go.Figure()
+    for col in trafo_loading_df.columns:
+        label = f"Trafo {col}"
+        if net_cfg is not None and col in net_cfg.trafo.index:
+            name = net_cfg.trafo.at[col, "name"]
+            if isinstance(name, str) and name:
+                label = name
+        fig.add_trace(go.Scatter(
+            x=x_labels, y=trafo_loading_df[col].values, name=label,
+        ))
+    fig.add_hline(y=100, line_dash="dot", line_color="#ef4444",
+                  annotation_text="100 %")
+    fig.add_hline(y=80, line_dash="dot", line_color="#facc15",
+                  annotation_text="80 %")
+    fig.update_layout(
+        title="Transformatorauslastung (%)", height=350,
+        xaxis_title="Zeit", yaxis_title="Auslastung (%)",
+        showlegend=True, hovermode="x unified",
+    )
+    st.plotly_chart(fig, use_container_width=True, key=chart_key)
+
+
 def _render_sim_results(
     voltage_df: pd.DataFrame,
     loading_df: pd.DataFrame,
     dt_index,
 ) -> None:
-    """Render voltage band and line loading results in two tabs."""
+    """Render voltage band, line loading and transformer loading in three tabs."""
     x_labels = [str(t) for t in dt_index]
+    trafo_loading_df = st.session_state.get("nsv2_results_trafo_loading")
 
-    tab_v, tab_l = st.tabs(["⚡ Spannungsband", "📈 Leitungsauslastung"])
+    tab_v, tab_l, tab_t = st.tabs(
+        ["⚡ Spannungsband", "📈 Leitungsauslastung", "🔌 Transformatorauslastung"]
+    )
 
     # ---- Voltage ---- #
     with tab_v:
@@ -2183,45 +2247,51 @@ def _render_sim_results(
     with tab_l:
         if loading_df.empty:
             st.info("Keine Leitungsdaten vorhanden.")
-            return
+        else:
+            max_load = loading_df.max().max()
+            warn_steps = int((loading_df > 80).any(axis=1).sum())
+            over_steps = int((loading_df > 100).any(axis=1).sum())
 
-        max_load = loading_df.max().max()
-        warn_steps = int((loading_df > 80).any(axis=1).sum())
-        over_steps = int((loading_df > 100).any(axis=1).sum())
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Max. Leitungsauslastung", f"{max_load:.1f} %")
+            c2.metric("Zeitschritte > 80 %", warn_steps)
+            c3.metric("Zeitschritte > 100 % (Überlast)", over_steps,
+                      delta_color="inverse" if over_steps > 0 else "off")
 
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Max. Leitungsauslastung", f"{max_load:.1f} %")
-        c2.metric("Zeitschritte > 80 %", warn_steps)
-        c3.metric("Zeitschritte > 100 % (Überlast)", over_steps,
-                  delta_color="inverse" if over_steps > 0 else "off")
+            heat_df = loading_df.copy()
+            heat_df.columns = [str(c) for c in heat_df.columns]
+            heat_df.index = x_labels[:len(heat_df)]
+            fig_h = px.imshow(
+                heat_df.T,
+                color_continuous_scale=[[0, "#22c55e"], [0.667, "#facc15"],
+                                        [1.0, "#ef4444"]],
+                zmin=0, zmax=120,
+                labels={"x": "Zeit", "y": "Leitung", "color": "Auslastung (%)"},
+                title="Leitungsauslastung (%)",
+            )
+            fig_h.update_layout(height=max(250, len(loading_df.columns) * 20 + 100))
+            st.plotly_chart(fig_h, use_container_width=True, key="nsv2_res_loading")
 
-        heat_df = loading_df.copy()
-        heat_df.columns = [str(c) for c in heat_df.columns]
-        heat_df.index = x_labels[:len(heat_df)]
-        fig_h = px.imshow(
-            heat_df.T,
-            color_continuous_scale=[[0, "#22c55e"], [0.667, "#facc15"], [1.0, "#ef4444"]],
-            zmin=0, zmax=120,
-            labels={"x": "Zeit", "y": "Leitung", "color": "Auslastung (%)"},
-            title="Leitungsauslastung (%)",
-        )
-        fig_h.update_layout(height=max(250, len(loading_df.columns) * 20 + 100))
-        st.plotly_chart(fig_h, use_container_width=True, key="nsv2_res_loading")
+            congested = loading_df[(loading_df > 80).any(axis=1)]
+            if not congested.empty:
+                st.markdown(f"**Engpass-Zeitpunkte (> 80 %):** {len(congested)}")
+                disp = congested.copy()
+                disp.index = x_labels[:len(disp)]
+                disp.columns = [str(c) for c in disp.columns]
+                st.dataframe(disp.head(20).style.format("{:.1f}"), height=200)
 
-        congested = loading_df[(loading_df > 80).any(axis=1)]
-        if not congested.empty:
-            st.markdown(f"**Engpass-Zeitpunkte (> 80 %):** {len(congested)}")
-            disp = congested.copy()
-            disp.index = x_labels[:len(disp)]
-            disp.columns = [str(c) for c in disp.columns]
-            st.dataframe(disp.head(20).style.format("{:.1f}"), height=200)
+    # ---- Transformer loading ---- #
+    with tab_t:
+        _render_trafo_loading(trafo_loading_df, x_labels, "nsv2_res_trafo")
 
     # ── PDF export button (visible inside the results tabs) ── #
     st.divider()
     _render_pdf_download_button(voltage_df, loading_df, dt_index)
     _render_download_buttons({
         "": _ts_tables(
-            voltage_df, loading_df, st.session_state.get("nsv2_results_profiles")
+            voltage_df, loading_df,
+            st.session_state.get("nsv2_results_profiles"),
+            trafo_loading_df,
         ),
     })
 
@@ -2268,7 +2338,16 @@ def _render_comparison_results(vb, lb, vf, lf, dt_index, alpha) -> None:
         c2.metric("Δ Max. Auslastung", f"{lf_max.max() - lb_max.max():.1f} %",
                   delta_color="inverse")
 
-    tab_v, tab_l = st.tabs(["⚡ Spannungsband", "📈 Leitungsauslastung"])
+    tb = st.session_state.get("nsv2_cmp_trafo_loading_base")
+    tf = st.session_state.get("nsv2_cmp_trafo_loading_flex")
+    tb_max = (tb.max(axis=1) if tb is not None and not tb.empty
+              else pd.Series(dtype=float))
+    tf_max = (tf.max(axis=1) if tf is not None and not tf.empty
+              else pd.Series(dtype=float))
+
+    tab_v, tab_l, tab_t = st.tabs(
+        ["⚡ Spannungsband", "📈 Leitungsauslastung", "🔌 Transformatorauslastung"]
+    )
     with tab_v:
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=x, y=vb_max.values, name="Max U – ohne",
@@ -2302,6 +2381,26 @@ def _render_comparison_results(vb, lb, vf, lf, dt_index, alpha) -> None:
                               xaxis_title="Zeit", yaxis_title="Auslastung (%)",
                               hovermode="x unified")
             st.plotly_chart(fig, use_container_width=True, key="nsv2_cmp_loading")
+    with tab_t:
+        if not len(tb_max) and not len(tf_max):
+            st.info("Keine Transformatordaten vorhanden.")
+        else:
+            fig = go.Figure()
+            if len(tb_max):
+                fig.add_trace(go.Scatter(
+                    x=x, y=tb_max.values, name="Max Trafo-Auslastung – ohne",
+                    line=dict(color="#1d4ed8")))
+            if len(tf_max):
+                fig.add_trace(go.Scatter(
+                    x=x, y=tf_max.values, name="Max Trafo-Auslastung – mit",
+                    line=dict(color="#15803d", dash="dash")))
+            fig.add_hline(y=100, line_dash="dot", line_color="#ef4444",
+                          annotation_text="100 %")
+            fig.update_layout(
+                title="Max. Transformatorauslastung über die Zeit", height=350,
+                xaxis_title="Zeit", yaxis_title="Auslastung (%)",
+                hovermode="x unified")
+            st.plotly_chart(fig, use_container_width=True, key="nsv2_cmp_trafo")
     st.caption("Erste Iteration der Vergleichsdarstellung — wird noch verfeinert.")
 
     st.divider()
@@ -2310,10 +2409,10 @@ def _render_comparison_results(vb, lb, vf, lf, dt_index, alpha) -> None:
     _render_pdf_download_button(vb, lb, dt_index)
     _render_download_buttons({
         "ohne": _ts_tables(
-            vb, lb, st.session_state.get("nsv2_cmp_profiles_base")
+            vb, lb, st.session_state.get("nsv2_cmp_profiles_base"), tb
         ),
         "mit": _ts_tables(
-            vf, lf, st.session_state.get("nsv2_cmp_profiles_flex")
+            vf, lf, st.session_state.get("nsv2_cmp_profiles_flex"), tf
         ),
     })
 
@@ -2418,24 +2517,31 @@ def _section_simulation(net: pp.pandapowerNet) -> None:
                 for variant in ("baseline", "flex"):
                     net_copy = copy.deepcopy(net)
                     profiles = _build_sim_profiles(net_copy, n_steps, variant=variant)
-                    v_df, l_df = _run_timeseries_pf(net_copy, n_steps, profiles, progress_bar)
+                    v_df, l_df, t_df = _run_timeseries_pf(
+                        net_copy, n_steps, profiles, progress_bar
+                    )
                     v_df.index = dt_index
                     if not l_df.empty:
                         l_df.index = dt_index[: len(l_df)]
-                    results[variant] = (v_df, l_df)
+                    if not t_df.empty:
+                        t_df.index = dt_index[: len(t_df)]
+                    results[variant] = (v_df, l_df, t_df)
                     sim_profiles[variant] = profiles
             st.session_state.update({
                 "nsv2_cmp_voltage_base": results["baseline"][0],
                 "nsv2_cmp_loading_base": results["baseline"][1],
+                "nsv2_cmp_trafo_loading_base": results["baseline"][2],
                 "nsv2_cmp_voltage_flex": results["flex"][0],
                 "nsv2_cmp_loading_flex": results["flex"][1],
+                "nsv2_cmp_trafo_loading_flex": results["flex"][2],
                 "nsv2_cmp_profiles_base": sim_profiles["baseline"],
                 "nsv2_cmp_profiles_flex": sim_profiles["flex"],
                 "nsv2_cmp_dt_index": dt_index,
                 "nsv2_cmp_alpha": alpha,
             })
             for _stale in ("nsv2_results_voltage", "nsv2_results_loading",
-                           "nsv2_results_profiles", "nsv2_results_dt_index"):
+                           "nsv2_results_trafo_loading", "nsv2_results_profiles",
+                           "nsv2_results_dt_index"):
                 st.session_state.pop(_stale, None)
             st.success(f"Vergleich abgeschlossen ({n_steps} Schritte × 2 Szenarien).")
 
@@ -2454,20 +2560,24 @@ def _section_simulation(net: pp.pandapowerNet) -> None:
             profiles = _build_sim_profiles(net_copy, n_steps)
             progress_bar = st.progress(0)
             with st.spinner("Simulation läuft…"):
-                voltage_df, loading_df = _run_timeseries_pf(
+                voltage_df, loading_df, trafo_loading_df = _run_timeseries_pf(
                     net_copy, n_steps, profiles, progress_bar
                 )
             voltage_df.index = dt_index
             if not loading_df.empty:
                 loading_df.index = dt_index[: len(loading_df)]
+            if not trafo_loading_df.empty:
+                trafo_loading_df.index = dt_index[: len(trafo_loading_df)]
             st.session_state.update({
                 "nsv2_results_voltage": voltage_df,
                 "nsv2_results_loading": loading_df,
+                "nsv2_results_trafo_loading": trafo_loading_df,
                 "nsv2_results_profiles": profiles,
                 "nsv2_results_dt_index": dt_index,
             })
             for _stale in ("nsv2_cmp_voltage_base", "nsv2_cmp_loading_base",
-                           "nsv2_cmp_voltage_flex", "nsv2_cmp_loading_flex",
+                           "nsv2_cmp_trafo_loading_base", "nsv2_cmp_voltage_flex",
+                           "nsv2_cmp_loading_flex", "nsv2_cmp_trafo_loading_flex",
                            "nsv2_cmp_profiles_base", "nsv2_cmp_profiles_flex"):
                 st.session_state.pop(_stale, None)
             st.success(f"Simulation abgeschlossen ({n_steps} Schritte).")

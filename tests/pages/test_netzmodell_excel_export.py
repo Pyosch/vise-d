@@ -36,6 +36,18 @@ def _make_net():
     return net
 
 
+def _make_net_with_trafo():
+    """Minimal MV/LV net with one named transformer (for trafo-loading tests)."""
+    net = pp.create_empty_network()
+    hv = pp.create_bus(net, vn_kv=10.0, name="MS-Knoten")
+    lv = pp.create_bus(net, vn_kv=0.4, name="NS-Knoten")
+    pp.create_ext_grid(net, bus=hv)
+    pp.create_transformer(net, hv_bus=hv, lv_bus=lv,
+                          std_type="0.4 MVA 10/0.4 kV", name="Trafo HV/LV")
+    pp.create_load(net, bus=lv, p_mw=0.1, q_mvar=0.02, name="Last")
+    return net
+
+
 def _dt_index(n=N_STEPS):
     return pd.date_range("2025-06-01", periods=n, freq="15min")
 
@@ -156,3 +168,42 @@ class TestHasAnyTable:
     def test_true_when_any_table_has_data(self):
         scenarios = {"": {"voltage": pd.DataFrame({0: [1.0]}), "loading": None}}
         assert netzmodell._has_any_table(scenarios) is True
+
+
+class TestTransformerLoading:
+    def test_run_timeseries_pf_returns_transformer_loading(self):
+        net = _make_net_with_trafo()
+        empty = pd.DataFrame()
+        profiles = {"sgen": empty, "load": empty, "storage": empty}
+
+        v_df, l_df, trafo_df = netzmodell._run_timeseries_pf(
+            net, n_steps=3, profiles=profiles
+        )
+
+        assert trafo_df.shape == (3, len(net.trafo))
+        assert list(trafo_df.columns) == list(net.trafo.index)
+        assert (trafo_df.to_numpy() > 0).all()      # a loaded trafo draws current
+
+    def test_ts_tables_carries_transformer_loading(self):
+        idx = _dt_index()
+        voltage = pd.DataFrame({0: np.ones(N_STEPS)}, index=idx)
+        trafo = pd.DataFrame({0: np.linspace(20, 90, N_STEPS)}, index=idx)
+
+        tables = netzmodell._ts_tables(voltage, pd.DataFrame(), {}, trafo)
+
+        assert tables["trafo"] is trafo
+
+    def test_trafo_loading_sheet_is_written_with_name_header(self):
+        net = _make_net_with_trafo()
+        idx = _dt_index()
+        scenarios = {"": {
+            "voltage": pd.DataFrame(
+                {b: np.ones(N_STEPS) for b in net.bus.index}, index=idx),
+            "trafo": pd.DataFrame(
+                {t: np.linspace(20, 90, N_STEPS) for t in net.trafo.index}, index=idx),
+        }}
+
+        sheets = _read(netzmodell._timeseries_to_xlsx_bytes(scenarios, net))
+
+        assert "Trafo_Ausl_%" in sheets
+        assert any("Trafo HV/LV" in str(c) for c in sheets["Trafo_Ausl_%"].columns)
