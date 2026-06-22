@@ -1,4 +1,4 @@
- """VISE-D Dashboard - Main Application Entry Point.
+"""VISE-D Dashboard - Main Application Entry Point.
 
 Virtuelles Institut Smart Energy - Smart Data
 Interactive energy system analysis dashboard for German distribution grids.

@@ -207,21 +207,40 @@ def grid_expansion_research():
     st.markdown("### Real-World Implications")
     st.markdown(
         """
-        The model employs deterministic optimization under perfect foresight, meaning results should be
-        interpreted as techno-economic potentials rather than precise real-world predictions. In practice,
-        imperfect foresight will likely reduce the scheduling efficiency of EV flexibility, though EVs could
-        also yield additional benefits not captured here — such as balancing renewable forecast errors or
-        reducing suppliers' market power. The grid-constrained model runs represent a benchmark of perfectly
-        efficient local coordination, achievable in theory through mechanisms such as redispatch or dynamic
-        spatially varying grid fees. However, both approaches face significant real-world barriers: redispatch
-        requires detailed grid and asset information alongside central controllability, while efficient dynamic
-        grid fees demand precise knowledge of wholesale prices and consumer responsiveness. Germany's current
-        time-of-use grid fees illustrate these limitations — they provide average incentives but cannot respond
-        to stochastic load variations or address heterogeneity between individual transformers. As a result,
-        real-world distribution grid adjustments and associated costs are likely to exceed the model's estimates,
-        and the fragmented nature of distribution grids suggests that local coordination may remain imperfect
-        for the foreseeable future.
-        """
+        <div style="
+            background-color: #fffbeb;
+            border-left: 4px solid #d97706;
+            border-radius: 0 8px 8px 0;
+            padding: 22px 26px;
+            margin-bottom: 28px;
+            color: #1e293b;
+            font-size: 0.97rem;
+            line-height: 1.75;
+        ">
+            <p style="margin: 0 0 14px 0;">
+                The model employs <strong>deterministic optimization under perfect foresight</strong>, meaning results should be
+                interpreted as techno-economic potentials rather than precise real-world predictions. In practice,
+                imperfect foresight will likely reduce the scheduling efficiency of EV flexibility, though EVs could
+                also yield additional benefits not captured here — such as balancing renewable forecast errors or
+                reducing suppliers' market power.
+            </p>
+            <p style="margin: 0 0 14px 0;">
+                The grid-constrained model runs represent a benchmark of perfectly
+                efficient local coordination, achievable in theory through mechanisms such as redispatch or dynamic
+                spatially varying grid fees. However, both approaches face significant real-world barriers: redispatch
+                requires detailed grid and asset information alongside central controllability, while efficient dynamic
+                grid fees demand precise knowledge of wholesale prices and consumer responsiveness.
+            </p>
+            <p style="margin: 0;">
+                Germany's current <strong>time-of-use grid fees</strong> illustrate these limitations — they provide average incentives but cannot respond
+                to stochastic load variations or address heterogeneity between individual transformers. As a result,
+                real-world distribution grid adjustments and associated costs are likely to exceed the model's estimates,
+                and the fragmented nature of distribution grids suggests that local coordination may remain imperfect
+                for the foreseeable future.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -302,21 +321,39 @@ def grid_expansion_research():
     st.markdown("### Conclusion")
     st.markdown(
         """
-        While prior studies showed that distributed flexibility can substantially benefit wholesale electricity
-        markets, they overlooked distribution grid constraints. This study fills that gap using an enhanced
-        virtual storage approach integrated into a wholesale market model. Applied to EV flexibility in Germany,
-        the findings show that grid constraints limit not only flexible EV charging but also inflexible charging
-        and PV feed-in, with PV curtailment being particularly significant. Flexible EV charging based purely
-        on wholesale prices causes herding behaviour — load peaks during low-price hours — though this effect
-        is reduced in the integrated model, as shifting load raises prices until equilibrium is reached. The
-        resulting local grid adjustments are frequent and sizeable, yet their wholesale market impact is minor,
-        since charging can be shifted to adjacent hours with comparable benefits. Crucially, the costs of
-        managing distribution grid congestion are an order of magnitude lower than those of full grid expansion,
-        suggesting that locally coordinated distributed flexibility is a more cost-effective path forward.
-        Effective local coordination — using either price or volume signals and accounting for both generation
-        and load constraints alongside wholesale market outcomes — is therefore essential to unlocking the full
-        potential of distributed flexibility without compromising grid security.
-        """
+        <div style="
+            background-color: #f0fdfa;
+            border-left: 4px solid #0d9488;
+            border-radius: 0 8px 8px 0;
+            padding: 22px 26px;
+            margin-bottom: 28px;
+            color: #1f2937;
+            font-size: 0.97rem;
+            line-height: 1.75;
+        ">
+            <p style="margin: 0 0 14px 0;">
+                While prior studies showed that distributed flexibility can substantially benefit wholesale electricity
+                markets, they overlooked distribution grid constraints. This study fills that gap using an enhanced
+                <strong>virtual storage approach</strong> integrated into a wholesale market model. Applied to EV flexibility in Germany,
+                the findings show that grid constraints limit not only flexible EV charging but also inflexible charging
+                and PV feed-in, with PV curtailment being particularly significant.
+            </p>
+            <p style="margin: 0 0 14px 0;">
+                Flexible EV charging based purely on wholesale prices causes <strong>herding behaviour</strong> — load peaks during low-price hours — though this effect
+                is reduced in the integrated model, as shifting load raises prices until equilibrium is reached. The
+                resulting local grid adjustments are frequent and sizeable, yet their wholesale market impact is minor,
+                since charging can be shifted to adjacent hours with comparable benefits.
+            </p>
+            <p style="margin: 0;">
+                Crucially, the costs of managing distribution grid congestion are <strong>an order of magnitude lower</strong> than those of full grid expansion,
+                suggesting that locally coordinated distributed flexibility is a more cost-effective path forward.
+                Effective local coordination — using either price or volume signals and accounting for both generation
+                and load constraints alongside wholesale market outcomes — is therefore essential to unlocking the full
+                potential of distributed flexibility without compromising grid security.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     # ── Footer logos ──────────────────────────────────────────────────────────
