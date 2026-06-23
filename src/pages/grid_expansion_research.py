@@ -12,6 +12,12 @@ AI Assistance: Antigravity (Claude Sonnet 4.6)
 __author__ = "Pyosch"
 
 import streamlit as st
+from PIL import Image as _PILImage
+
+# The research figures are large, trusted renders shipped with the repo. Lift
+# Pillow's decompression-bomb guard (default ~89.5 MP) so st.image() does not
+# emit a DecompressionBombWarning when loading them.
+_PILImage.MAX_IMAGE_PIXELS = None
 
 
 def grid_expansion_research():
@@ -162,7 +168,7 @@ def grid_expansion_research():
     st.markdown("#### System Costs and Grid Expansion Costs by Scenario")
     st.image(
         f"{_FIGS}/cost_comparison.jpg",
-        use_container_width=True,
+        use_column_width=True,
     )
     st.caption(
         "Comparison of system costs (congestion-related) and grid expansion costs "
@@ -177,7 +183,7 @@ def grid_expansion_research():
     st.markdown("#### Required Grid Expansion by Cause — PV vs. EV Charging")
     st.image(
         f"{_FIGS}/eval_expansion.jpg",
-        use_container_width=True,
+        use_column_width=True,
     )
     st.caption(
         "Stacked bar chart showing the total additional grid capacity (GW) required "
@@ -192,7 +198,7 @@ def grid_expansion_research():
     st.markdown("#### Combined Overview: Expansion Capacity and Costs")
     st.image(
         f"{_FIGS}/expansion_costs_cap.jpg",
-        use_container_width=True,
+        use_column_width=True,
     )
     st.caption(
         "Side-by-side comparison of required grid expansion capacity (left) and "
@@ -256,7 +262,7 @@ def grid_expansion_research():
     st.markdown("#### Grid Expansion Requirement by District (GW)")
     st.image(
         "Analysis_expansion_costs/figures/expansion_heat_maps.jpg",
-        use_container_width=True,
+        use_column_width=True,
     )
     st.caption(
         "Choropleth maps showing the required grid expansion in GW per NUTS3 district "
@@ -270,7 +276,7 @@ def grid_expansion_research():
     st.markdown("#### Expansion Driver by District — PV vs. EV Share")
     st.image(
         "Analysis_expansion_costs/figures/expansion_heat_maps_cause.jpg",
-        use_container_width=True,
+        use_column_width=True,
     )
     st.caption(
         "Choropleth maps showing which factor primarily drives grid expansion in each "
@@ -285,7 +291,7 @@ def grid_expansion_research():
     st.markdown("#### Combined Overview: Expansion and Driver — All Scenarios")
     st.image(
         "Analysis_expansion_costs/figures/expansion_heat_maps_merged.jpg",
-        use_container_width=True,
+        use_column_width=True,
     )
     st.caption(
         "Merged view combining both the expansion magnitude (GW) and the expansion "

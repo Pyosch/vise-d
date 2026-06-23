@@ -30,6 +30,9 @@ data/mastr/*
 *.sqlite
 *.html
 
+# Exception: ship the pre-rendered interactive map for the grid-expansion research page
+!Analysis_expansion_costs/figures/interactive_expansion_map.json
+
 # Virtual environments
 venv/
 ENV/
