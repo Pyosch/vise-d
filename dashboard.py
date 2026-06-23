@@ -1,4 +1,4 @@
-﻿"""VISE-D Dashboard - Main Application Entry Point.
+"""VISE-D Dashboard - Main Application Entry Point.
 
 Virtuelles Institut Smart Energy - Smart Data
 Interactive energy system analysis dashboard for German distribution grids.
@@ -28,6 +28,10 @@ def _startseite():
 def _research_results():
     from src.pages.research_results import research_results
     research_results()
+
+def _grid_expansion_research():
+    from src.pages.grid_expansion_research import grid_expansion_research
+    grid_expansion_research()
 
 def _bev_settings():
     from src.pages.bev_settings import bev_settings
@@ -118,6 +122,7 @@ _page_startseite = st.Page(_startseite, title="Startseite", icon="🏠", default
 
 pages = {
     "research_results": st.Page(_research_results, title="Integration von E-Fahrzeugen in Verteilnetze"),
+    "grid_expansion": st.Page(_grid_expansion_research, title="Flexibilität in Groß- und Verteilnetzen"),
     "bev_settings": st.Page(_bev_settings, title="E-Mobilität"),
     "heatpump": st.Page(_heatpump_configuration, title="Wärmepumpe"),
     "pv": st.Page(_pv_configuration, title="Photovoltaik"),
@@ -149,6 +154,7 @@ pg = st.navigation({
     ],
     "Forschungsergebnisse": [
         pages["research_results"],
+        pages["grid_expansion"],
     ],
     "Lastprofilgeneratoren": [
         pages["bev_settings"],
