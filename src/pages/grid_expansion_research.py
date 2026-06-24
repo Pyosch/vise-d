@@ -336,7 +336,19 @@ def grid_expansion_research():
     @st.cache_resource
     def load_interactive_map_v2():
         import plotly.io as pio
-        return pio.read_json("Analysis_expansion_costs/figures/interactive_expansion_map.json")
+
+        # Read with an explicit encoding rather than pio.read_json(), which uses
+        # the platform default (cp1252 on Windows, UTF-8 on Linux/Streamlit
+        # Cloud). District names contain German characters (e.g. "Böblingen"),
+        # so a platform-dependent decode breaks on one OS or the other. Newer
+        # files are UTF-8; cp1252 is the legacy fallback for older exports.
+        path = "Analysis_expansion_costs/figures/interactive_expansion_map.json"
+        raw = open(path, "rb").read()
+        try:
+            json_str = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            json_str = raw.decode("cp1252")
+        return pio.from_json(json_str)
 
     try:
         with st.spinner("Interaktive Karte wird geladen (kann beim ersten Laden einige Sekunden dauern)..."):

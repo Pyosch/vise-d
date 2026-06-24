@@ -1045,7 +1045,11 @@ fig_interactive.update_layout(
 
 # ── 10. Save and display ──────────────────────────────────────────────────────
 fig_interactive.write_html(r"figures\interactive_expansion_map.html")
-pio.write_json(fig_interactive, r"figures\interactive_expansion_map.json")
+# Write explicit UTF-8: pio.write_json() uses the platform default encoding
+# (cp1252 on Windows), which the Streamlit Cloud loader (Linux/UTF-8) cannot
+# decode for German district names such as "Böblingen".
+with open(r"figures\interactive_expansion_map.json", "w", encoding="utf-8") as _f:
+    _f.write(pio.to_json(fig_interactive))
 print("Interactive map saved:")
 print("   -> figures/interactive_expansion_map.html  (open in browser)")
 print("   -> figures/interactive_expansion_map.json  (load in Streamlit)")
