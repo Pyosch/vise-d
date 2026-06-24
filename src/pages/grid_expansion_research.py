@@ -63,8 +63,21 @@ def grid_expansion_research():
         unsafe_allow_html=True,
     )
 
+    # ── Link to publication ───────────────────────────────────────────────────
+    st.markdown(
+        '<p style="margin: -8px 0 28px 0; font-size: 0.95rem;">'
+        '🔗 <a href="https://www.ewi.uni-koeln.de/de/publikationen/'
+        "flexibility-in-electricity-wholesale-markets-and-distribution-grids-an-"
+        "integrated-model-and-its-application-to-electric-vehicles-in-germany/\" "
+        'target="_blank" rel="noopener noreferrer" '
+        'style="color: #2d4a7a; font-weight: 600; text-decoration: none;">'
+        "Zur Veröffentlichung (EWI – Energiewirtschaftliches Institut, "
+        "Universität zu Köln)</a></p>",
+        unsafe_allow_html=True,
+    )
+
     # ── Abstract ──────────────────────────────────────────────────────────────
-    st.markdown("### Abstract")
+    st.markdown("### Zusammenfassung")
 
     st.markdown(
         """
@@ -79,31 +92,33 @@ def grid_expansion_research():
             line-height: 1.75;
         ">
             <p style="margin: 0 0 14px 0;">
-                The ongoing transition of our energy systems implies a rise of distributed generators,
-                batteries, and new consumers, including electric vehicles and heat pumps. Previous studies
-                have found that distributed flexibility may substantially benefit wholesale electricity
-                markets, but have neglected that these benefits may be subject to distribution grid
-                constraints.
+                Der fortschreitende Umbau unserer Energiesysteme bringt eine Zunahme dezentraler
+                Erzeuger, Batterien und neuer Verbraucher mit sich, darunter Elektrofahrzeuge und
+                Wärmepumpen. Frühere Studien haben gezeigt, dass dezentrale Flexibilität den
+                Stromgroßhandelsmärkten einen erheblichen Nutzen bringen kann, dabei jedoch
+                vernachlässigt, dass dieser Nutzen durch Restriktionen der Verteilnetze begrenzt
+                sein könnte.
             </p>
             <p style="margin: 0 0 14px 0;">
-                Here, we propose using a <strong>virtual storage approach</strong> to aggregate the net
-                load and flexibility of individual consumers at the distribution grid level, subject to
-                the corresponding grid constraints. We apply our approach to flexible electric vehicle
-                charging scenarios in German distribution grids for the years <strong>2030</strong> and
-                <strong>2045</strong>.
+                Wir schlagen einen <strong>virtuellen Speicheransatz</strong> vor, um die Netzlast
+                und Flexibilität einzelner Verbraucher auf Ebene des Verteilnetzes – unter
+                Berücksichtigung der entsprechenden Netzrestriktionen – zu aggregieren. Wir wenden
+                unseren Ansatz auf Szenarien für flexibles Laden von Elektrofahrzeugen in deutschen
+                Verteilnetzen für die Jahre <strong>2030</strong> und <strong>2045</strong> an.
             </p>
             <p style="margin: 0 0 14px 0;">
-                Our results suggest that distributed flexibility <em>exacerbates</em> distribution grid
-                congestion if it only follows wholesale market prices. However, there may be the
-                potential to alleviate local congestion with stable wholesale market benefits of
-                distributed flexibility.
+                Unsere Ergebnisse deuten darauf hin, dass dezentrale Flexibilität Engpässe im
+                Verteilnetz <em>verschärft</em>, wenn sie ausschließlich den Großhandelspreisen
+                folgt. Es besteht jedoch möglicherweise das Potenzial, lokale Engpässe zu verringern,
+                während der Nutzen dezentraler Flexibilität für den Großhandelsmarkt stabil bleibt.
             </p>
             <p style="margin: 0;">
-                Local coordination of distributed flexibility appears to be able to resolve distribution
-                grid constraints at substantially lower costs than expanding transformer capacity. We
-                conclude that <strong>local coordination mechanisms are key</strong> to unlocking the
-                wholesale market benefits of distributed flexibility while mitigating hazards in the
-                distribution grids.
+                Eine lokale Koordination dezentraler Flexibilität scheint in der Lage zu sein,
+                Restriktionen im Verteilnetz zu deutlich geringeren Kosten zu beheben als ein Ausbau
+                der Transformatorkapazität. Wir schlussfolgern, dass <strong>lokale
+                Koordinationsmechanismen entscheidend sind</strong>, um den Großhandelsnutzen
+                dezentraler Flexibilität zu erschließen und zugleich Gefahren in den Verteilnetzen
+                zu mindern.
             </p>
         </div>
         """,
@@ -111,7 +126,7 @@ def grid_expansion_research():
     )
 
     # ── Key findings pills ────────────────────────────────────────────────────
-    st.markdown("### Key Findings")
+    st.markdown("### Zentrale Erkenntnisse")
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -122,7 +137,7 @@ def grid_expansion_research():
                         flex-direction:column;justify-content:center;">
                 <div style="font-size:1.6rem;margin-bottom:6px;">⚡</div>
                 <div style="font-size:0.85rem;color:#92400e;font-weight:600;line-height:1.4;">
-                    Uncoordinated flexibility worsens distribution grid congestion
+                    Unkoordinierte Flexibilität verschärft Engpässe im Verteilnetz
                 </div>
             </div>
             """,
@@ -136,7 +151,7 @@ def grid_expansion_research():
                         flex-direction:column;justify-content:center;">
                 <div style="font-size:1.6rem;margin-bottom:6px;">🔗</div>
                 <div style="font-size:0.85rem;color:#166534;font-weight:600;line-height:1.4;">
-                    Local coordination resolves congestion more cost-effectively than grid expansion
+                    Lokale Koordination behebt Engpässe kostengünstiger als ein Netzausbau
                 </div>
             </div>
             """,
@@ -150,7 +165,7 @@ def grid_expansion_research():
                         flex-direction:column;justify-content:center;">
                 <div style="font-size:1.6rem;margin-bottom:6px;">📈</div>
                 <div style="font-size:0.85rem;color:#1e40af;font-weight:600;line-height:1.4;">
-                    Wholesale market benefits remain stable with local coordination
+                    Der Nutzen für den Großhandelsmarkt bleibt bei lokaler Koordination stabil
                 </div>
             </div>
             """,
@@ -160,57 +175,57 @@ def grid_expansion_research():
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Results: bar charts from analyze_grid_expansion_costs.py ─────────────
-    st.markdown("### Results")
+    st.markdown("### Ergebnisse")
 
     _FIGS = "Analysis_expansion_costs/figures"
 
     # 1. Cost comparison
-    st.markdown("#### System Costs and Grid Expansion Costs by Scenario")
+    st.markdown("#### Systemkosten und Netzausbaukosten nach Szenario")
     st.image(
         f"{_FIGS}/cost_comparison.jpg",
         use_column_width=True,
     )
     st.caption(
-        "Comparison of system costs (congestion-related) and grid expansion costs "
-        "across five scenarios for 2030 and 2045. Each bar pair shows the trade-off "
-        "between allowing more flexibility (reducing wholesale costs) and the resulting "
-        "investment needed to reinforce the distribution grid."
+        "Vergleich der (engpassbedingten) Systemkosten und der Netzausbaukosten über fünf "
+        "Szenarien für 2030 und 2045. Jedes Balkenpaar zeigt den Zielkonflikt zwischen mehr "
+        "zugelassener Flexibilität (geringere Großhandelskosten) und den daraus resultierenden "
+        "Investitionen, die zur Verstärkung des Verteilnetzes erforderlich sind."
     )
 
     st.markdown("---")
 
     # 2. Expansion by cause (PV vs EV stacked)
-    st.markdown("#### Required Grid Expansion by Cause — PV vs. EV Charging")
+    st.markdown("#### Erforderlicher Netzausbau nach Ursache — PV vs. E-Fahrzeug-Laden")
     st.image(
         f"{_FIGS}/eval_expansion.jpg",
         use_column_width=True,
     )
     st.caption(
-        "Stacked bar chart showing the total additional grid capacity (GW) required "
-        "in each scenario, broken down by the driving cause: photovoltaic feed-in (PV) "
-        "and electric vehicle charging load (EV). Scenarios without flexibility coordination "
-        "show significantly higher expansion requirements."
+        "Gestapeltes Balkendiagramm der gesamten zusätzlich erforderlichen Netzkapazität (GW) "
+        "je Szenario, aufgeschlüsselt nach Ursache: Photovoltaik-Einspeisung (PV) und Ladelast "
+        "von Elektrofahrzeugen (E-Fahrzeuge). Szenarien ohne Flexibilitätskoordination weisen "
+        "einen deutlich höheren Ausbaubedarf auf."
     )
 
     st.markdown("---")
 
     # 3. Combined capacity + cost overview
-    st.markdown("#### Combined Overview: Expansion Capacity and Costs")
+    st.markdown("#### Kombinierte Übersicht: Ausbaukapazität und Kosten")
     st.image(
         f"{_FIGS}/expansion_costs_cap.jpg",
         use_column_width=True,
     )
     st.caption(
-        "Side-by-side comparison of required grid expansion capacity (left) and "
-        "associated expansion costs (right) across all five scenarios. "
-        "The figure illustrates that local flexibility coordination can substantially "
-        "reduce both the physical grid reinforcement needed and the associated investment costs."
+        "Gegenüberstellung der erforderlichen Netzausbaukapazität (links) und der damit "
+        "verbundenen Ausbaukosten (rechts) über alle fünf Szenarien. Die Abbildung verdeutlicht, "
+        "dass eine lokale Flexibilitätskoordination sowohl die physische Netzverstärkung als auch "
+        "die damit verbundenen Investitionskosten erheblich verringern kann."
     )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Real-World Implications ───────────────────────────────────────────────
-    st.markdown("### Real-World Implications")
+    st.markdown("### Praktische Implikationen")
     st.markdown(
         """
         <div style="
@@ -224,25 +239,31 @@ def grid_expansion_research():
             line-height: 1.75;
         ">
             <p style="margin: 0 0 14px 0;">
-                The model employs <strong>deterministic optimization under perfect foresight</strong>, meaning results should be
-                interpreted as techno-economic potentials rather than precise real-world predictions. In practice,
-                imperfect foresight will likely reduce the scheduling efficiency of EV flexibility, though EVs could
-                also yield additional benefits not captured here — such as balancing renewable forecast errors or
-                reducing suppliers' market power.
+                Das Modell verwendet eine <strong>deterministische Optimierung unter vollständiger
+                Voraussicht</strong>, sodass die Ergebnisse als techno-ökonomische Potenziale und
+                nicht als präzise Vorhersagen der Realität zu verstehen sind. In der Praxis wird
+                eine unvollständige Voraussicht die Einsatzeffizienz der Flexibilität von
+                Elektrofahrzeugen voraussichtlich verringern, wobei Elektrofahrzeuge auch hier nicht
+                erfasste zusätzliche Vorteile bringen könnten — etwa den Ausgleich von Prognosefehlern
+                erneuerbarer Energien oder die Verringerung der Marktmacht von Anbietern.
             </p>
             <p style="margin: 0 0 14px 0;">
-                The grid-constrained model runs represent a benchmark of perfectly
-                efficient local coordination, achievable in theory through mechanisms such as redispatch or dynamic
-                spatially varying grid fees. However, both approaches face significant real-world barriers: redispatch
-                requires detailed grid and asset information alongside central controllability, while efficient dynamic
-                grid fees demand precise knowledge of wholesale prices and consumer responsiveness.
+                Die netzrestringierten Modellläufe stellen einen Referenzwert für eine perfekt
+                effiziente lokale Koordination dar, der theoretisch über Mechanismen wie Redispatch
+                oder dynamische, räumlich variierende Netzentgelte erreichbar ist. Beide Ansätze
+                stoßen in der Praxis jedoch auf erhebliche Hürden: Redispatch erfordert detaillierte
+                Netz- und Anlageninformationen sowie eine zentrale Steuerbarkeit, während effiziente
+                dynamische Netzentgelte eine präzise Kenntnis der Großhandelspreise und der
+                Reaktionsbereitschaft der Verbraucher voraussetzen.
             </p>
             <p style="margin: 0;">
-                Germany's current <strong>time-of-use grid fees</strong> illustrate these limitations — they provide average incentives but cannot respond
-                to stochastic load variations or address heterogeneity between individual transformers. As a result,
-                real-world distribution grid adjustments and associated costs are likely to exceed the model's estimates,
-                and the fragmented nature of distribution grids suggests that local coordination may remain imperfect
-                for the foreseeable future.
+                Die derzeitigen <strong>zeitvariablen Netzentgelte</strong> in Deutschland
+                verdeutlichen diese Grenzen — sie bieten durchschnittliche Anreize, können jedoch
+                nicht auf stochastische Lastschwankungen reagieren oder die Heterogenität einzelner
+                Transformatoren berücksichtigen. Folglich dürften die tatsächlichen Anpassungen der
+                Verteilnetze und die damit verbundenen Kosten die Modellschätzungen übersteigen, und
+                die fragmentierte Struktur der Verteilnetze legt nahe, dass die lokale Koordination
+                auf absehbare Zeit unvollständig bleiben könnte.
             </p>
         </div>
         """,
@@ -252,61 +273,64 @@ def grid_expansion_research():
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Geographic Distribution ───────────────────────────────────────────────
-    st.markdown("### Geographic Distribution")
+    st.markdown("### Geografische Verteilung")
     st.markdown(
-        "The maps below show how grid expansion requirements and their driving causes "
-        "are distributed across Germany's NUTS3 districts for each modelled scenario."
+        "Die nachstehenden Karten zeigen, wie sich der Netzausbaubedarf und seine Ursachen "
+        "über die NUTS3-Kreise Deutschlands für jedes modellierte Szenario verteilen."
     )
 
     # 1. Expansion GW heatmaps
-    st.markdown("#### Grid Expansion Requirement by District (GW)")
+    st.markdown("#### Netzausbaubedarf nach Kreis (GW)")
     st.image(
         "Analysis_expansion_costs/figures/expansion_heat_maps.jpg",
         use_column_width=True,
     )
     st.caption(
-        "Choropleth maps showing the required grid expansion in GW per NUTS3 district "
-        "across all five scenarios. Darker shading indicates districts with greater "
-        "need for transformer and line reinforcement."
+        "Choroplethenkarten des erforderlichen Netzausbaus in GW je NUTS3-Kreis über alle fünf "
+        "Szenarien. Dunklere Schattierungen kennzeichnen Kreise mit höherem Bedarf an "
+        "Transformator- und Leitungsverstärkung."
     )
 
     st.markdown("---")
 
     # 2. Expansion cause heatmaps
-    st.markdown("#### Expansion Driver by District — PV vs. EV Share")
+    st.markdown("#### Ausbautreiber nach Kreis — Anteil PV vs. E-Fahrzeuge")
     st.image(
         "Analysis_expansion_costs/figures/expansion_heat_maps_cause.jpg",
         use_column_width=True,
     )
     st.caption(
-        "Choropleth maps showing which factor primarily drives grid expansion in each "
-        "district: photovoltaic feed-in (green) or electric vehicle charging load (red). "
-        "Districts coloured towards green are predominantly solar-driven; those towards "
-        "red are predominantly EV-driven."
+        "Choroplethenkarten, die zeigen, welcher Faktor den Netzausbau in jedem Kreis "
+        "überwiegend antreibt: Photovoltaik-Einspeisung (grün) oder Ladelast von "
+        "Elektrofahrzeugen (rot). Kreise mit grüner Färbung sind überwiegend solargetrieben, "
+        "jene mit roter Färbung überwiegend durch Elektrofahrzeuge getrieben."
     )
 
     st.markdown("---")
 
     # 3. Merged combined heatmaps
-    st.markdown("#### Combined Overview: Expansion and Driver — All Scenarios")
+    st.markdown("#### Kombinierte Übersicht: Ausbau und Treiber — alle Szenarien")
     st.image(
         "Analysis_expansion_costs/figures/expansion_heat_maps_merged.jpg",
         use_column_width=True,
     )
     st.caption(
-        "Merged view combining both the expansion magnitude (GW) and the expansion "
-        "driver (PV vs. EV share) side by side for all five scenarios. This provides "
-        "a complete district-level picture of where and why grid investment is needed."
+        "Zusammengeführte Ansicht, die das Ausmaß des Ausbaus (GW) und den Ausbautreiber "
+        "(Anteil PV vs. E-Fahrzeuge) für alle fünf Szenarien nebeneinander darstellt. Dies "
+        "liefert ein vollständiges Bild auf Kreisebene, wo und warum Netzinvestitionen "
+        "erforderlich sind."
     )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Interactive Map ───────────────────────────────────────────────────────
-    st.markdown("### Interactive Grid Expansion Map")
+    st.markdown("### Interaktive Netzausbaukarte")
     st.markdown(
-        "Use the dropdown menu in the top-left corner of the map to switch between the five scenarios "
-        "and choose either the **Grid Expansion [GW]** layer or the **Expansion Driver (PV vs. EV share)** layer. "
-        "Hover over individual districts to see details, and zoom or pan to explore regions."
+        "Verwenden Sie das Dropdown-Menü oben links in der Karte, um zwischen den fünf Szenarien "
+        "zu wechseln und entweder die Ebene **Netzausbau [GW]** oder die Ebene "
+        "**Ausbautreiber (Anteil PV vs. E-Fahrzeuge)** auszuwählen. Bewegen Sie den Mauszeiger "
+        "über einzelne Kreise, um Details anzuzeigen, und zoomen oder verschieben Sie die Ansicht, "
+        "um Regionen zu erkunden."
     )
 
     @st.cache_resource
@@ -315,16 +339,16 @@ def grid_expansion_research():
         return pio.read_json("Analysis_expansion_costs/figures/interactive_expansion_map.json")
 
     try:
-        with st.spinner("Loading interactive map (this may take a few seconds on first load)..."):
+        with st.spinner("Interaktive Karte wird geladen (kann beim ersten Laden einige Sekunden dauern)..."):
             fig_map = load_interactive_map_v2()
             st.plotly_chart(fig_map, use_container_width=True)
     except Exception as e:
-        st.error(f"Error loading interactive map: {e}")
+        st.error(f"Fehler beim Laden der interaktiven Karte: {e}")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Conclusion ────────────────────────────────────────────────────────────
-    st.markdown("### Conclusion")
+    st.markdown("### Fazit")
     st.markdown(
         """
         <div style="
@@ -338,24 +362,34 @@ def grid_expansion_research():
             line-height: 1.75;
         ">
             <p style="margin: 0 0 14px 0;">
-                While prior studies showed that distributed flexibility can substantially benefit wholesale electricity
-                markets, they overlooked distribution grid constraints. This study fills that gap using an enhanced
-                <strong>virtual storage approach</strong> integrated into a wholesale market model. Applied to EV flexibility in Germany,
-                the findings show that grid constraints limit not only flexible EV charging but also inflexible charging
-                and PV feed-in, with PV curtailment being particularly significant.
+                Während frühere Studien zeigten, dass dezentrale Flexibilität den
+                Stromgroßhandelsmärkten einen erheblichen Nutzen bringen kann, ließen sie die
+                Restriktionen der Verteilnetze außer Acht. Diese Studie schließt diese Lücke
+                mithilfe eines erweiterten <strong>virtuellen Speicheransatzes</strong>, der in ein
+                Großhandelsmarktmodell integriert ist. Angewendet auf die Flexibilität von
+                Elektrofahrzeugen in Deutschland zeigen die Ergebnisse, dass Netzrestriktionen
+                nicht nur das flexible Laden von Elektrofahrzeugen, sondern auch das unflexible
+                Laden und die PV-Einspeisung begrenzen, wobei die PV-Abregelung besonders ins
+                Gewicht fällt.
             </p>
             <p style="margin: 0 0 14px 0;">
-                Flexible EV charging based purely on wholesale prices causes <strong>herding behaviour</strong> — load peaks during low-price hours — though this effect
-                is reduced in the integrated model, as shifting load raises prices until equilibrium is reached. The
-                resulting local grid adjustments are frequent and sizeable, yet their wholesale market impact is minor,
-                since charging can be shifted to adjacent hours with comparable benefits.
+                Flexibles Laden von Elektrofahrzeugen, das sich allein an Großhandelspreisen
+                orientiert, führt zu <strong>Herdenverhalten</strong> — Lastspitzen in
+                Niedrigpreisstunden —, wobei dieser Effekt im integrierten Modell geringer ausfällt,
+                da das Verschieben von Last die Preise so lange erhöht, bis ein Gleichgewicht
+                erreicht ist. Die daraus resultierenden lokalen Netzanpassungen sind häufig und
+                beträchtlich, ihr Einfluss auf den Großhandelsmarkt ist jedoch gering, da das Laden
+                mit vergleichbarem Nutzen auf benachbarte Stunden verschoben werden kann.
             </p>
             <p style="margin: 0;">
-                Crucially, the costs of managing distribution grid congestion are <strong>an order of magnitude lower</strong> than those of full grid expansion,
-                suggesting that locally coordinated distributed flexibility is a more cost-effective path forward.
-                Effective local coordination — using either price or volume signals and accounting for both generation
-                and load constraints alongside wholesale market outcomes — is therefore essential to unlocking the full
-                potential of distributed flexibility without compromising grid security.
+                Entscheidend ist, dass die Kosten für das Management von Engpässen im Verteilnetz
+                <strong>um eine Größenordnung niedriger</strong> sind als die eines vollständigen
+                Netzausbaus, was darauf hindeutet, dass lokal koordinierte dezentrale Flexibilität
+                ein kosteneffizienterer Weg ist. Eine wirksame lokale Koordination — über Preis-
+                oder Mengensignale und unter Berücksichtigung sowohl der Erzeugungs- als auch der
+                Lastrestriktionen neben den Ergebnissen des Großhandelsmarkts — ist daher
+                unerlässlich, um das volle Potenzial dezentraler Flexibilität zu erschließen, ohne
+                die Netzsicherheit zu gefährden.
             </p>
         </div>
         """,
