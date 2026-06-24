@@ -1045,11 +1045,20 @@ fig_interactive.update_layout(
 
 # ── 10. Save and display ──────────────────────────────────────────────────────
 fig_interactive.write_html(r"figures\interactive_expansion_map.html")
-# Write explicit UTF-8: pio.write_json() uses the platform default encoding
-# (cp1252 on Windows), which the Streamlit Cloud loader (Linux/UTF-8) cannot
-# decode for German district names such as "Böblingen".
+# Serialize for the Streamlit deployment (pinned plotly 5.22), which differs
+# from the plotly used here in two ways:
+#   1. Encoding — pio.write_json() uses the platform default (cp1252 on
+#      Windows); the cloud loader (Linux/UTF-8) cannot decode German district
+#      names such as "Böblingen". So write explicit UTF-8.
+#   2. Template — plotly 6.x embeds MapLibre trace types (scattermap/...) in the
+#      default template that older plotly cannot deserialize, even though the
+#      actual data traces are old-style *mapbox. Strip them before writing.
+_fig_json = json.loads(pio.to_json(fig_interactive))
+_template_data = _fig_json.get("layout", {}).get("template", {}).get("data", {})
+for _trace_type in ("scattermap", "choroplethmap", "densitymap"):
+    _template_data.pop(_trace_type, None)
 with open(r"figures\interactive_expansion_map.json", "w", encoding="utf-8") as _f:
-    _f.write(pio.to_json(fig_interactive))
+    json.dump(_fig_json, _f, ensure_ascii=False)
 print("Interactive map saved:")
 print("   -> figures/interactive_expansion_map.html  (open in browser)")
 print("   -> figures/interactive_expansion_map.json  (load in Streamlit)")
