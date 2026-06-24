@@ -945,8 +945,11 @@ for idx, combo in enumerate(all_combos):
             for n, c, v in zip(names, codes, z)
         ]
 
-    # Choropleth layer (Plotly 6.x uses Choroplethmap instead of Choroplethmapbox)
-    fig_interactive.add_trace(go.Choroplethmap(
+    # Choropleth layer. Use the mapbox trace type (not the Plotly-6 maplibre
+    # "Choroplethmap"): Streamlit 1.39's bundled plotly.js renders mapbox
+    # traces but not the newer maplibre ones, so maplibre traces show up as an
+    # empty cartesian plot in the dashboard.
+    fig_interactive.add_trace(go.Choroplethmapbox(
         geojson=nuts3_geojson_int,
         locations=codes,
         z=z,
@@ -967,7 +970,7 @@ for idx, combo in enumerate(all_combos):
     ))
 
     # District name labels — small font, readable only when zoomed in
-    fig_interactive.add_trace(go.Scattermap(
+    fig_interactive.add_trace(go.Scattermapbox(
         lon=nuts3_int["lon"].tolist(),
         lat=nuts3_int["lat"].tolist(),
         mode="text",
@@ -980,7 +983,7 @@ for idx, combo in enumerate(all_combos):
     ))
 
 # State name labels — bold, always visible at all zoom levels
-fig_interactive.add_trace(go.Scattermap(
+fig_interactive.add_trace(go.Scattermapbox(
     lon=nuts1_int["lon"].tolist(),
     lat=nuts1_int["lat"].tolist(),
     mode="text",
@@ -1030,7 +1033,7 @@ fig_interactive.update_layout(
         font=dict(size=12),
         pad=dict(r=10, t=10),
     )],
-    map=dict(
+    mapbox=dict(
         style="carto-positron",      # free tile, no Mapbox token needed
         center=dict(lat=51.2, lon=10.4),
         zoom=5,
