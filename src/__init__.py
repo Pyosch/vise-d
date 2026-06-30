@@ -3,12 +3,12 @@
 Energy system analysis tool for distribution grids with German interface.
 
 Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 Created: January 2026
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 __version__ = "0.1.0"
 
 # Ensure necessary directories exist on import

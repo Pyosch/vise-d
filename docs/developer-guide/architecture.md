@@ -1,6 +1,6 @@
 # VISE-D Architecture
 
-**Last Updated:** January 2026
+**Last Updated:** June 2026
 
 ## Overview
 
@@ -17,7 +17,7 @@ VISE-D follows a modular layered architecture with clear separation of concerns.
                             ↓
 ┌─────────────────────────────────────────────────────────┐
 │                   Business Logic Layer                   │
-│  src/planning/ (solar/wind) + src/forecasting/ (models) │
+│        src/planning/ (solar/wind site planning)         │
 │         src/network/ (pandapower integration)            │
 └─────────────────────────────────────────────────────────┘
                             ↓
@@ -55,10 +55,6 @@ src/
 ├── mastr/               # MaStR database integration (Layer: Data Access)
 │   ├── preprocessing.py # Database queries, geodata loading
 │   └── simulation.py    # MaStR data simulation and processing
-│
-├── forecasting/         # Energy forecasting (Layer: Business Logic)
-│   ├── openstef.py      # OpenSTEF model integration, MLflow tracking
-│   └── utils.py         # Forecasting helper functions
 │
 ├── planning/            # Site planning tools (Layer: Business Logic)
 │   ├── solar.py         # Solar farm planning, obstacle detection
@@ -100,7 +96,6 @@ src/
     ├── storage_installation_mastr.py
     ├── energy_generation_solar.py
     ├── wind_energy_generation.py
-    ├── openstef_forecasting.py
     └── planning_ffpv_wea.py
 ```
 
@@ -185,31 +180,6 @@ Used by pages/ modules for visualization
 **Design Pattern:** Repository pattern for data access, DTO pattern for geodata
 
 **Dependencies:** config/, data_layer/, utils/
-
-### Forecasting Layer (`src/forecasting/`)
-
-**Purpose:** Energy generation forecasting using OpenSTEF models
-
-**Key Components:**
-- `openstef.py`: OpenSTEF integration, model training, MLflow tracking
-- `utils.py`: Forecasting utilities, data preparation
-
-**Data Flow:**
-```
-Historical weather data (DWD/ERA5)
-    ↓
-Feature engineering (openstef.py)
-    ↓
-OpenSTEF model (XGBoost/LightGBM)
-    ↓
-PV/Wind generation forecast
-    ↓
-MLflow tracking for model versions
-```
-
-**Design Pattern:** Strategy pattern for different forecast models, Observer pattern for MLflow tracking
-
-**Dependencies:** data_layer/, utils/
 
 ### Planning Layer (`src/planning/`)
 
@@ -326,8 +296,8 @@ Visualization (network diagram, loading plots)
    - solar_installation_mastr.py, wind_installation_mastr.py, storage_installation_mastr.py
 4. **Energy Generation** (2 pages)
    - energy_generation_solar.py, wind_energy_generation.py
-5. **Planning & Forecasting** (2 pages)
-   - planning_ffpv_wea.py, openstef_forecasting.py
+5. **Planning** (1 page)
+   - planning_ffpv_wea.py
 
 **Design Pattern:** Page Controller pattern, each page is independent module
 
@@ -344,7 +314,7 @@ Visualization (network diagram, loading plots)
     ↓
 3. User fills form (ui/components/)
     ↓
-4. Business logic processes parameters (planning/, forecasting/, network/)
+4. Business logic processes parameters (planning/, network/)
     ↓
 5. Results visualized (visualization/)
     ↓
@@ -363,22 +333,6 @@ data_layer/cache.py (30-min TTL)
 pages/solar_installation_mastr.py (display and analysis)
     ↓
 visualization/displays.py (maps, charts)
-```
-
-### Forecasting Data Flow
-
-```
-Historical weather data (ERA5/DWD)
-    ↓
-data_layer/environment.py (vpplib Environment, 1-hour cache)
-    ↓
-forecasting/openstef.py (feature engineering, model training)
-    ↓
-OpenSTEF model prediction
-    ↓
-MLflow tracking (model versioning)
-    ↓
-pages/openstef_forecasting.py (visualization)
 ```
 
 ### Planning Data Flow
@@ -436,7 +390,7 @@ tests/
 │   ├── test_research_results.py
 │   ├── test_bev_settings.py
 │   └── ...
-└── (future: planning/, forecasting/, network/)
+└── (future: planning/, network/)
 ```
 
 **Test Strategy:**
@@ -454,9 +408,9 @@ dashboard.py (entry point)
     ↓
 pages/* (17 page modules)
     ↓ ↓ ↓
-    ↓ planning/         forecasting/         network/
-    ↓     ↓                  ↓                  ↓
-    ↓     └──────────────────┴──────────────────┘
+    ↓ planning/                            network/
+    ↓     ↓                                    ↓
+    ↓     └────────────────────────────────────┘
     ↓                        ↓
     ↓                   data_layer/
     ↓                        ↓
@@ -524,24 +478,7 @@ visualization/               ↓
 - All paths use `pathlib` for safe cross-platform handling
 - No user-provided file paths
 
-## Future Architectural Improvements
-
-### Phase 6: Testing
-- Increase coverage 30% → 70%
-- Add integration tests for cross-module workflows
-- CI/CD pipeline with automated test runs
-
-### Phase 7: Tariff Design Studio
-- New `src/tariff/` module for tariff modeling
-- DSO intervention analysis algorithms
-- Economic impact calculations
-
-### Phase 8: Multi-Scenario Planning
-- `src/scenarios/` module for scenario management
-- Batch simulation engine
-- Parallel processing for parameter sweeps
-
 ---
 
 **Author:** Pyosch  
-**AI Assistance:** GitHub Copilot (Claude Sonnet 4.5)
+**AI Assistance:** Claude Code (Claude Opus 4.8)

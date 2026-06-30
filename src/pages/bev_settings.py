@@ -3,12 +3,12 @@
 This page provides configuration and simulation for BEV charging scenarios.
 
 Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 Created: January 2026
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 
 import datetime
 from datetime import date, timedelta

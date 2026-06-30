@@ -4,7 +4,7 @@ This module handles data loading, caching, and database operations.
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 
 from src.data_layer.cache import (
     CACHE_CONFIG,

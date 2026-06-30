@@ -66,4 +66,4 @@ Phase 1: Core Module Migration (utils, mastr, forecasting)
 ---
 
 **Author:** Pyosch  
-**AI Assistance:** GitHub Copilot (Claude Sonnet 4.5)
+**AI Assistance:** Claude Code (Claude Opus 4.8)

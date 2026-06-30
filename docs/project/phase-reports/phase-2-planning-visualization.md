@@ -107,4 +107,4 @@ Phase 3: UI Components Migration
 ---
 
 **Author:** Pyosch  
-**AI Assistance:** GitHub Copilot (Claude Sonnet 4.5)
+**AI Assistance:** Claude Code (Claude Opus 4.8)

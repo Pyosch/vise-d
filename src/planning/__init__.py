@@ -4,12 +4,12 @@ Provides tools for site selection, obstacle detection, and energy simulation
 for photovoltaic and wind power installations.
 
 Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 Created: January 2026
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 
 # Solar planning functions
 from src.planning.solar import (
@@ -22,7 +22,6 @@ from src.planning.solar import (
 from src.planning.wind import (
     fetch_obstacles_wind,
     packing_wind,
-    # simulate_windfarm_output,  # TODO: Function not yet implemented
     get_weather_for_windpowerlib,
 )
 
@@ -40,7 +39,6 @@ __all__ = [
     # Wind
     "fetch_obstacles_wind",
     "packing_wind",
-    # "simulate_windfarm_output",  # TODO: Not yet implemented
     "get_weather_for_windpowerlib",
     # Geographic utilities
     "get_local_crs",

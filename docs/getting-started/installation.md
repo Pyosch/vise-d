@@ -69,7 +69,7 @@ pip install -r requirements.txt
 
 **Key dependencies installed:**
 - Streamlit (dashboard framework)
-- vpplib 0.0.5 (component models)
+- vpplib 0.0.6 (component models)
 - Pandapower (network analysis)
 - windpowerlib (wind turbine modeling)
 - pandas, numpy (data processing)
@@ -111,7 +111,7 @@ pytest
 # =========== X passed, Y skipped in Z.XXs ===========
 ```
 
-**Current test status:** 23/34 passing (67.6%), 11 failures expected (library-level issues)
+Run the test suite to verify your environment. Markers (`unit`, `integration`, `ui`, `slow`) are registered in `tests/conftest.py`.
 
 ### 7. Launch Dashboard
 
@@ -150,15 +150,15 @@ pip install -r requirements.txt
 
 ### vpplib Installation Issues
 
-**Problem:** `ERROR: Could not find a version that satisfies the requirement vpplib==0.0.5`
+**Problem:** `ERROR: Could not find a version that satisfies the requirement vpplib==0.0.6`
 
 **Solution:**
 ```bash
 # Install from PyPI
-pip install vpplib==0.0.5
+pip install vpplib==0.0.6
 
 # Or install from GitHub if not available
-pip install git+https://github.com/greco-project/vpplib.git@0.0.5
+pip install git+https://github.com/greco-project/vpplib.git@0.0.6
 ```
 
 ### Pandapower Network Errors
@@ -298,7 +298,7 @@ Remove-Item -Recurse -Force vise-d  # Windows PowerShell
 
 - **[Quickstart Guide](quickstart.md)** - 5-minute walkthrough
 - **[Configuration Guide](configuration.md)** - Detailed configuration options
-- **[User Guide](../user-guide/)** - Using VISE-D features
+- **[Dashboard Documentation](../project/dashboard-dokumentation.md)** - Using the dashboard (German)
 - **[Developer Guide](../developer-guide/)** - Contributing to VISE-D
 
 ## Getting Help
@@ -310,4 +310,4 @@ Remove-Item -Recurse -Force vise-d  # Windows PowerShell
 ---
 
 **Author:** Pyosch  
-**AI Assistance:** GitHub Copilot (Claude Sonnet 4.5)
+**AI Assistance:** Claude Code (Claude Opus 4.8)

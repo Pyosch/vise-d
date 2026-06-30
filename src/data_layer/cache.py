@@ -4,12 +4,12 @@ This module provides cached data loading functions to optimize performance
 for expensive operations like database queries, file I/O, and visualizations.
 
 Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 Created: January 2026
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 
 from typing import Optional, Tuple, List, Any
 import pandas as pd

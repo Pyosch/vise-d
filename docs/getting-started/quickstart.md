@@ -200,9 +200,8 @@ Technology Configuration → Network Calculations → Add components → Run pow
 ## Next Steps
 
 ### Learn More
-- **[User Guide](../user-guide/)** - Detailed feature documentation
+- **[Dashboard Documentation](../project/dashboard-dokumentation.md)** - Page-by-page guide (German)
 - **[Configuration Guide](configuration.md)** - Advanced configuration options
-- **[Forecasting Guide](../user-guide/forecasting.md)** - OpenSTEF details
 
 ### Get Data
 - **[MaStR Database Setup](configuration.md#mastr-database-setup)** - Real installation data
@@ -210,7 +209,7 @@ Technology Configuration → Network Calculations → Add components → Run pow
 
 ### Contribute
 - **[Developer Guide](../developer-guide/)** - Architecture and testing
-- **[Roadmap](../../roadmap.md)** - Project status and future plans
+- **[Project Overview](../../roadmap.md)** - Project status and overview
 
 ## Troubleshooting
 
@@ -225,7 +224,6 @@ Technology Configuration → Network Calculations → Add components → Run pow
 ## Getting Help
 
 - **[Installation Guide](installation.md)** - Detailed setup instructions
-- **[FAQ](../user-guide/)** - Common questions
 - **GitHub Issues** - Report bugs
 - **GitHub Discussions** - Ask questions
 
@@ -234,4 +232,4 @@ Technology Configuration → Network Calculations → Add components → Run pow
 **Enjoy exploring VISE-D!** 🚀
 
 **Author:** Pyosch  
-**AI Assistance:** GitHub Copilot (Claude Sonnet 4.5)
+**AI Assistance:** Claude Code (Claude Opus 4.8)

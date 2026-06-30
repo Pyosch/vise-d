@@ -4,12 +4,12 @@ This module provides example distribution networks using Pandapower's built-in
 network templates, with interactive visualization and power flow calculation.
 
 Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 Created: January 2026
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 
 import pandapower as pp
 import pandapower.networks as pn

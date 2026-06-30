@@ -2848,8 +2848,6 @@ def netzmodell():
     # ------------------------------------------------------------------ #
     # Section 4: Simulation & Ergebnisse                                   #
     # ------------------------------------------------------------------ #
-    # Section 4: Simulation & Ergebnisse                                   #
-    # ------------------------------------------------------------------ #
     st.subheader("4. Simulation & Ergebnisse")
     if net is None:
         st.info("Bitte zuerst ein Netz in Abschnitt 1 laden.")
@@ -2857,9 +2855,9 @@ def netzmodell():
         _section_simulation(net)
 
 
-# ROADMAP: OPF (Optimale Lastflussberechnung)
-# - Deprioritized; do not implement until PF pipeline is stable.
-# - When implemented: offer PF | OPF->PF (fix dispatch from OPF, run PF for
+# NOTE: OPF (Optimale Lastflussberechnung) is a possible future extension.
+# - Deprioritized; do not implement until the PF pipeline is stable.
+# - When implemented: offer PF | OPF->PF (fix dispatch from OPF, then run PF for
 #   physically consistent results). Do NOT use a silent PF fallback on OPF failure.
-# - Before any OPF work: remove the 0.85-1.15 p.u. voltage limit hack and
-#   the post-hoc loading normalization from the intern's netzmittimeseries.py.
+# - Before any OPF work: revisit the fixed 0.85-1.15 p.u. voltage-limit assumption
+#   and the post-hoc loading normalization in the time-series power-flow code.

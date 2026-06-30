@@ -225,5 +225,5 @@ Phase 5 has successfully transformed VISE-D from a monolithic structure to a cle
 ---
 
 **Author:** Pyosch  
-**AI Assistance:** GitHub Copilot (Claude Sonnet 4.5)  
+**AI Assistance:** Claude Code (Claude Opus 4.8)  
 **Completed:** January 2026

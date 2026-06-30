@@ -6,13 +6,13 @@ integration analysis results.
 
 Author: Pyosch
 Original Author: lilienkampa
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 Created: November 2024
 Migrated: January 2026
 """
 
 __author__ = "Pyosch"
-__credits__ = ["lilienkampa", "GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["lilienkampa", "Claude Code (Claude Opus 4.8)"]
 
 import pandas as pd
 import numpy as np

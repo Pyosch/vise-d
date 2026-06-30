@@ -4,12 +4,12 @@ Provides decorators and utilities for graceful error handling including database
 API calls, data processing, and file system operations with user-friendly Streamlit messages.
 
 Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 Created: January 2026
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 
 import streamlit as st
 import pandas as pd

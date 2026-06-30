@@ -4,11 +4,11 @@ Wind installation MaStR dashboard page.
 Visualizes wind installations from German MaStR database and simulates energy generation.
 
 Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 
 import logging
 from datetime import date, datetime, timedelta

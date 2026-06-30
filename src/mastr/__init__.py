@@ -4,12 +4,12 @@ Provides data fetching, preprocessing, and simulation utilities for German energ
 system data from the Marktstammdatenregister.
 
 Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 Created: January 2026
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 
 # Submodules are intentionally NOT re-exported here. Importing any submodule
 # (e.g. ``from src.mastr.preprocessing import ...``) executes this __init__ first;

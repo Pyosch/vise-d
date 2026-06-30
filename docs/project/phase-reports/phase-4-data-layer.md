@@ -125,4 +125,4 @@ Phase 5: Page Extraction (17 page functions, 2,674+ lines)
 ---
 
 **Author:** Pyosch  
-**AI Assistance:** GitHub Copilot (Claude Sonnet 4.5)
+**AI Assistance:** Claude Code (Claude Opus 4.8)

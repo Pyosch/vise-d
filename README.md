@@ -1,14 +1,18 @@
 # VISE-D: Virtuelles Institut Smart Energy - Smart Data
 
-Interactive dashboard for energy system analysis in German distribution grids with real MaStR data, renewable energy forecasting, and network power flow calculations.
+Interactive Streamlit dashboard for energy-system analysis of German distribution grids:
+multi-technology DER simulation, real MaStR installation data, weather-driven load and
+generation profiles, and Pandapower power-flow analysis.
 
 ## Features
 
 - **Multi-technology simulation**: PV, wind, battery storage, heat pumps, electric vehicles
-- **Grid network analysis**: Pandapower-based power flow calculations
-- **Energy forecasting**: OpenSTEF integration for renewable predictions
+- **Grid network analysis**: Pandapower-based time-series power flow with voltage-band and
+  line/transformer loading checks
+- **Real data integration**: 26,000+ installations from the MaStR (Marktstammdatenregister)
+- **Flexibility modelling**: Appliance-level household load shifting and aggregation
 - **Interactive planning**: Geographic tools for solar and wind site planning
-- **Real data integration**: 26,000+ installations from MaStR database
+- **Reporting**: Excel and PDF export of simulation results
 
 ## Quick Start
 
@@ -32,24 +36,22 @@ Dashboard opens at `http://localhost:8501`
 ## Documentation
 
 - **[Getting Started](docs/getting-started/)** - Installation, configuration, quickstart
-- **[User Guide](docs/user-guide/)** - Features, forecasting, planning tools
+- **[Dashboard Documentation](docs/project/dashboard-dokumentation.md)** - Page-by-page guide (German)
 - **[Developer Guide](docs/developer-guide/)** - Architecture, testing, caching
-- **[Project Roadmap](roadmap.md)** - Development status and future plans
+- **[Project Roadmap](roadmap.md)** - Project status and overview
 
 ## Project Status
 
-✅ **Phase 0-5 Complete** (January 2026) - Fully refactored modular architecture  
-🔄 **Phase 6 In Progress** - Test coverage expansion (30% → 70%)  
-📋 **Future Phases** - Tariff design studio, multi-scenario planning
-
-Dashboard reduced from 2,351 lines → 89 lines (90.2% reduction). See [phase reports](docs/project/phase-reports/).
+Refactored into a clean, modular architecture: the dashboard entry point was reduced from
+2,351 lines to 89 lines (90.2% reduction), with all application code organised under `src/`.
+See the [phase reports](docs/project/phase-reports/) for the refactoring history.
 
 ## Key Dependencies
 
 - Python 3.11+, Streamlit, Pandapower
-- vpplib 0.0.5 (component models)
-- windpowerlib, OpenSTEF
-- pandas, numpy, plotly
+- vpplib 0.0.6 (component models)
+- windpowerlib, geopandas / shapely / pyproj
+- pandas, numpy, plotly, matplotlib
 
 ## Language Policy
 
@@ -63,13 +65,13 @@ pytest                              # Run all tests
 pytest --cov=src --cov-report=html  # With coverage
 ```
 
-Current: 30% coverage (pages) | Target: 70% → 90%
+Test markers (`unit`, `integration`, `ui`, `slow`) are registered in `tests/conftest.py`.
 
 ## Authors
 
 **Pyosch** - Lead Developer  
-**GitHub Copilot (Claude Sonnet 4.5)** - AI Assistance
+**Claude Code (Claude Opus 4.8)** - AI Assistance
 
 ---
 
-**Last Updated**: January 2026
+**Last Updated**: June 2026

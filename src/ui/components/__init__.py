@@ -4,12 +4,12 @@ Provides Streamlit-based parameter input forms for energy system technologies.
 All UI text is in German for end users.
 
 Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 Created: January 2026
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 
 from src.ui.components.bev import battery_electric_vehicle_settings
 from src.ui.components.electrical_storage import electrical_storage

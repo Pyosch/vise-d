@@ -5,12 +5,12 @@ using OpenStreetMap obstacle data, ERA5 weather data, site packing algorithms,
 and windpowerlib simulation.
 
 Author: Pyosch
-AI Assistance: GitHub Copilot (Claude Sonnet 4.5)
+AI Assistance: Claude Code (Claude Opus 4.8)
 Created: January 2026
 """
 
 __author__ = "Pyosch"
-__credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
+__credits__ = ["Claude Code (Claude Opus 4.8)"]
 
 import streamlit as st
 import folium
