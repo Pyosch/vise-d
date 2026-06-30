@@ -32,7 +32,6 @@ Projektberichts gedacht.
     - [Windenergie](#windenergie)
     - [Elektrischer Speicher](#elektrischer-speicher)
     - [Thermischer Speicher](#thermischer-speicher)
-- [4. Screenshot-Checkliste](#4-screenshot-checkliste)
 - [Anhang: Export nach Word/PDF](#anhang-export-nach-wordpdf)
 
 ---
@@ -580,32 +579,6 @@ kalibriert (siehe Kapitel 2).
 **Ergebnis / Ausgabe.** Vorschau-Tabellen sowie Diagramme des Temperaturverlaufs (mit Ziel-
 und Minimaltemperatur) und des elektrischen Bedarfs des Wärmeerzeugers. Bei Unterdeckung
 erscheint ein Hinweis mit Lösungsvorschlägen.
-
----
-
-## 4. Screenshot-Checkliste
-
-Alle benötigten Aufnahmen in Dokumentreihenfolge. Die Dateien in `docs/project/screenshots/`
-ablegen; die Dateinamen müssen exakt mit den Platzhaltern oben übereinstimmen.
-
-- [ ] `startseite-01-uebersicht.png` — Startseite: Begrüßung + gruppierte Seiten-Kacheln.
-- [ ] `netzmodell-01-netzauswahl.png` — Netzmodell-Szenario: Abschnitt 1 Netzauswahl + Netz-Vorschau (Netz geladen).
-- [ ] `netzmodell-02-der-konfiguration.png` — Netzmodell-Szenario: Abschnitt 3 DER-Konfiguration mit den drei Reitern.
-- [ ] `netzmodell-03-ergebnis.png` — Netzmodell-Szenario: Ergebnis-Reiter „⚡ Spannungsband" / „📈 Leitungsauslastung" nach Simulation.
-- [ ] `flexibility-01-haushaltsmix.png` — Flexibilitätskonfigurator: Haushaltsverteilung + Schieberegler Verschiebungsgrad.
-- [ ] `flexibility-02-vergleich.png` — Flexibilitätskonfigurator: Vergleichsdiagramm Basis vs. verschoben + Kennzahlen.
-- [ ] `solar-mastr-01-karte.png` — Solaranlagen: interaktive Karte + Kennzahlen (nach „Anlagen anzeigen").
-- [ ] `solar-mastr-02-erzeugung.png` — Solaranlagen: Diagramm der aggregierten Solareinspeisung (nach „Erzeugung berechnen").
-- [ ] `wind-mastr-01-karte.png` — Windanlagen: interaktive Karte + Kennzahlen (nach „Anlagen anzeigen").
-- [ ] `storage-mastr-01-karte.png` — Speicheranlagen: Karte + Tabelle/Auswertungen (nach „Anlagen anzeigen").
-- [ ] `research-ev-01-abbildung.png` — Integration von E-Fahrzeugen: eine Ergebnis-Abbildung mit Erläuterungstext.
-- [ ] `grid-expansion-01-karte.png` — Flexibilität in Groß- und Verteilnetzen: interaktive Netzausbaukarte mit Szenario-Dropdown.
-- [ ] `bev-01-ladeprofil.png` — E-Mobilität: Diagramm der Ladeleistung (kW) über die Zeit (nach „BEV simulieren").
-- [ ] `heatpump-01-ergebnis.png` — Wärmepumpe: Kennzahlen + Leistungs-/COP-Diagramm (nach Simulation).
-- [ ] `pv-01-profil.png` — Photovoltaik: Modus-Auswahl + PV-Leistungsdiagramm (nach „Profil generieren").
-- [ ] `wind-01-profil.png` — Windenergie: Windleistungsdiagramm + Kennzahlen (nach „Profil generieren").
-- [ ] `electrical-storage-01-speicherbetrieb.png` — Elektrischer Speicher: Diagramm Speicherbetrieb (laden/entladen) nach Simulation.
-- [ ] `thermal-storage-01-temperaturverlauf.png` — Thermischer Speicher: Temperaturverlauf-Diagramm (nach Simulation).
 
 ---
 
