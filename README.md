@@ -72,6 +72,10 @@ Test markers (`unit`, `integration`, `ui`, `slow`) are registered in `tests/conf
 **Pyosch** - Lead Developer  
 **Claude Code (Claude Opus 4.8)** - AI Assistance
 
+## License
+
+Released under the [MIT License](LICENSE).
+
 ---
 
 **Last Updated**: June 2026

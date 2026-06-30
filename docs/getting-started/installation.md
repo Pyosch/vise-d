@@ -13,7 +13,7 @@
 ### Optional
 - **Git:** For cloning repository
 - **SQLite browser:** For inspecting MaStR database
-- **Docker:** For containerized deployment (future)
+- **Docker:** For containerized deployment
 
 ## Installation Steps
 
@@ -90,13 +90,16 @@ See [Configuration Guide](configuration.md#mastr-database-setup) for detailed in
 
 ### 5. Configure Environment (Optional)
 
-Create `.env` file in project root for custom configuration:
+The dashboard runs without extra configuration. To point at a MaStR database in a
+non-default location (or to force the online fallback), set the `VISED_MASTR_DB_PATH`
+environment variable:
 
 ```bash
-# data/.env
-MASTR_DB_PATH=data/open-mastr.db
-WEATHER_DATA_DIR=data/era5_germany_2024_wind
-CACHE_TTL_HOURS=1
+# Windows (PowerShell)
+$env:VISED_MASTR_DB_PATH = "D:\data\open-mastr.db"
+
+# Linux/macOS
+export VISED_MASTR_DB_PATH=/data/open-mastr.db
 ```
 
 See [Configuration Guide](configuration.md) for all options.
@@ -208,11 +211,7 @@ taskkill /F /IM streamlit.exe
 **Solution:**
 1. Close other applications
 2. Clear Streamlit cache (see "Pandapower Network Errors" above)
-3. Reduce cache TTL in configuration:
-   ```python
-   # src/config/constants.py
-   CACHE_TTL_HOURS = 0.5  # Reduce from 1 hour to 30 minutes
-   ```
+3. Reduce the cache TTLs in `src/config/constants.py` (see the `CacheConfig` values)
 
 ## Platform-Specific Notes
 

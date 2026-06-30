@@ -39,8 +39,8 @@ The refactoring history is documented in the
 
 OpenSTEF (Open Short-Term Energy Forecasting) was integrated and evaluated as a machine-learning
 forecasting backend for renewable generation. After evaluation it was found not to meet the
-project's quality and usability requirements and was discarded. It is **not** exposed in the
-dashboard; the dormant integration code under `src/forecasting/` is retained only for reference.
+project's quality and usability requirements and was discarded. The integration has been
+removed from the codebase and is not part of the dashboard.
 
 ## Known Limitations
 

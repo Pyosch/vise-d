@@ -23,7 +23,6 @@ class CacheConfig:
     MASTR_DATA_TTL: int = 1800  # 30 minutes for MaStR database queries
     WEATHER_DATA_TTL: int = 3600  # 1 hour for weather data
     NETWORK_ANALYSIS_TTL: int = 900  # 15 minutes for network calculations
-    FORECAST_TTL: int = 1800  # 30 minutes for forecast results
 
 
 # Default cache configuration instance
@@ -57,19 +56,6 @@ class DWDConfig:
 
 
 DWD: Final[DWDConfig] = DWDConfig()
-
-
-# OpenSTEF forecasting settings
-@dataclass(frozen=True)
-class OpenSTEFConfig:
-    """Configuration for OpenSTEF forecasting integration."""
-    
-    MLFLOW_TRACKING_URI: str = "mlruns"  # MLflow tracking directory
-    DEFAULT_MODEL_TYPE: str = "xgboost"  # Default model type
-    FORECAST_HORIZON_HOURS: int = 48  # Default forecast horizon
-
-
-OPENSTEF: Final[OpenSTEFConfig] = OpenSTEFConfig()
 
 
 # Network analysis settings

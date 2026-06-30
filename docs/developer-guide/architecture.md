@@ -17,8 +17,8 @@ VISE-D follows a modular layered architecture with clear separation of concerns.
                             ↓
 ┌─────────────────────────────────────────────────────────┐
 │                   Business Logic Layer                   │
-│        src/planning/ (solar/wind site planning)         │
-│         src/network/ (pandapower integration)            │
+│   src/network/ (pandapower) + src/flexibility/ (load)    │
+│        src/planning/ (solar/wind site planning)          │
 └─────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -62,15 +62,14 @@ src/
 │   └── geo_utils.py     # Geographic coordinate utilities
 │
 ├── ui/                  # User interface components (Layer: Presentation)
-│   ├── components/      # Technology parameter forms (German UI)
-│   │   ├── bev.py       # Battery electric vehicle form
-│   │   ├── electrical_energy_storage.py
-│   │   ├── heat_pump.py
-│   │   ├── photovoltaic.py
-│   │   ├── wind_power.py
-│   │   ├── user_profile.py
-│   │   └── environment.py
-│   └── layout.py        # Sidebar, navigation elements
+│   └── components/      # Technology parameter forms (German UI)
+│       ├── bev.py
+│       ├── electrical_storage.py
+│       ├── heat_pump.py
+│       ├── photovoltaics.py
+│       ├── wind_energy.py
+│       ├── location_weather.py
+│       └── netzmittimeseries.py
 │
 ├── visualization/       # Visualization utilities (Layer: Infrastructure)
 │   ├── research_figures.py  # Publication plots (original: lilienkampa)
@@ -80,23 +79,26 @@ src/
 ├── network/             # Pandapower integration (Layer: Business Logic)
 │   └── examples.py      # Example network topologies
 │
+├── flexibility/         # Household load and flexibility models (Layer: Business Logic)
+│
+├── content/             # Shared page descriptions (Layer: Presentation)
+│   └── page_descriptions.py
+│
 └── pages/               # Dashboard page modules (Layer: Presentation)
+    ├── startseite.py
+    ├── netzmodell.py
+    ├── flexibility_configurator.py
+    ├── solar_installation_mastr.py
+    ├── wind_installation_mastr.py
+    ├── storage_installation_mastr.py
     ├── research_results.py
-    ├── network_calculations.py
+    ├── grid_expansion_research.py
     ├── bev_settings.py
     ├── heatpump_configuration.py
     ├── pv_configuration.py
     ├── wind_configuration.py
     ├── electrical_storage_configuration.py
-    ├── thermal_storage_settings.py
-    ├── hydrogen_research.py
-    ├── hydrogen_electrolyzer_settings.py
-    ├── solar_installation_mastr.py
-    ├── wind_installation_mastr.py
-    ├── storage_installation_mastr.py
-    ├── energy_generation_solar.py
-    ├── wind_energy_generation.py
-    └── planning_ffpv_wea.py
+    └── thermal_storage_settings.py
 ```
 
 ## Module Responsibilities
@@ -204,7 +206,10 @@ Used by pages/ modules for visualization
 
 **Dependencies:** data_layer/, utils/, config/
 
-**Known Issue:** `simulate_windfarm_output()` not yet implemented
+**Note:** the planning module is not currently surfaced as a dashboard page.
+
+**Known limitation:** `simulate_windfarm_output()` is not yet implemented (the solar
+counterpart `simulate_solarfarm_output()` exists).
 
 ### UI Layer (`src/ui/`)
 
@@ -284,20 +289,17 @@ Visualization (network diagram, loading plots)
 **Purpose:** Dashboard page modules, each implementing a specific analysis workflow
 
 **Key Components:**
-- 17 page modules, each with a `render()` function called by dashboard.py
+- One module per page, imported lazily by dashboard.py on first navigation
 - Each page orchestrates: UI forms → data loading → business logic → visualization
 
-**Page Categories:**
-1. **Research & Analysis** (2 pages)
-   - research_results.py, hydrogen_research.py
-2. **Technology Configuration** (8 pages)
-   - bev_settings.py, heatpump_configuration.py, pv_configuration.py, etc.
-3. **MaStR Data Analysis** (3 pages)
-   - solar_installation_mastr.py, wind_installation_mastr.py, storage_installation_mastr.py
-4. **Energy Generation** (2 pages)
-   - energy_generation_solar.py, wind_energy_generation.py
-5. **Planning** (1 page)
-   - planning_ffpv_wea.py
+**Navigation groups (see `dashboard.py`):**
+1. **Übersicht** — startseite.py
+2. **Energiesystemanalysen** — netzmodell.py, flexibility_configurator.py
+3. **Marktstammdatenregister** — solar_installation_mastr.py, wind_installation_mastr.py,
+   storage_installation_mastr.py
+4. **Forschungsergebnisse** — research_results.py, grid_expansion_research.py
+5. **Lastprofilgeneratoren** — bev_settings.py, heatpump_configuration.py, pv_configuration.py,
+   wind_configuration.py, electrical_storage_configuration.py, thermal_storage_settings.py
 
 **Design Pattern:** Page Controller pattern, each page is independent module
 
@@ -338,7 +340,7 @@ visualization/displays.py (maps, charts)
 ### Planning Data Flow
 
 ```
-User draws polygon on map (pages/planning_ffpv_wea.py)
+Polygon geometry (site boundary)
     ↓
 planning/geo_utils.py (coordinate conversion)
     ↓
@@ -382,15 +384,12 @@ visualization/ (results display)
 
 ```
 tests/
-├── conftest.py           # Shared fixtures (mock_streamlit, temp_mastr_db)
-├── data_layer/           # Data layer tests (19 tests, 100% pass)
+├── conftest.py           # Shared fixtures and markers (unit, integration, ui, slow)
+├── data_layer/           # Data layer tests
 │   ├── test_cache.py
 │   └── test_environment.py
-├── pages/                # Page module tests (34 tests, 67.6% pass)
-│   ├── test_research_results.py
-│   ├── test_bev_settings.py
-│   └── ...
-└── (future: planning/, network/)
+└── pages/                # Page module tests
+    └── ...
 ```
 
 **Test Strategy:**
@@ -398,15 +397,14 @@ tests/
 - Lightweight fixtures avoid heavy dependencies (no actual DB/file I/O)
 - Test both success and failure paths for error handling
 
-**Current Coverage:** ~30% (pages only)  
-**Target:** 70% → 90% for production
+Run `pytest --cov=src --cov-report=html` for a current coverage report.
 
 ## Module Dependency Graph
 
 ```
 dashboard.py (entry point)
     ↓
-pages/* (17 page modules)
+pages/* (page modules)
     ↓ ↓ ↓
     ↓ planning/                            network/
     ↓     ↓                                    ↓

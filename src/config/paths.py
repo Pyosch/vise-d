@@ -38,9 +38,6 @@ MASTR_DB_PATH: Final[Path] = Path(_MASTR_DB_ENV) if _MASTR_DB_ENV else DATA_DIR 
 # PV parametrization cache directory (one CSV per location)
 PV_PARAMS_DIR: Final[Path] = DATA_DIR / "pv_parametrization"
 
-# MLflow tracking directory
-MLRUNS_DIR: Final[Path] = PROJECT_ROOT / "mlruns"
-
 # Documentation directory
 DOCS_DIR: Final[Path] = PROJECT_ROOT / "docs"
 
