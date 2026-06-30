@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from vpplib import ElectricalEnergyStorage
 from vpplib.environment import Environment
 from src.ui.components import electrical_storage
+from src.ui.components.netzmittimeseries import get_normalized_pv_output
 
 try:
     import osmnx as ox
@@ -83,6 +84,19 @@ def electrical_storage_configuration():
     start_date = datetime.combine(date_start, datetime.min.time())
     end_date = datetime.combine(date_end, datetime.max.time())
 
+    # ── PV-Anlage ─────────────────────────────────────────────────────────────
+    # Vereinfachtes 1-kWp-Referenzmodell (PVlib + DWD), skaliert auf die
+    # installierte Leistung — identisch zur Seite "PV-Konfiguration".
+    st.subheader("PV-Anlage")
+    pv_capacity_kwp = st.number_input(
+        "Installierte Leistung (kWp)",
+        min_value=0.1,
+        max_value=100_000.0,
+        value=10.0,
+        key="storage_cfg_pv_cap",
+        help="Nennleistung der PV-Anlage unter Standardbedingungen. Hausdach typ. 5–15 kWp; ~6–7 m² Modulfläche je kWp.",
+    )
+
     st.markdown("---")
     
     # Electrical storage settings form
@@ -104,50 +118,40 @@ def electrical_storage_configuration():
         electrical_storage_simulation_button = st.form_submit_button("🚀 Speicher Simulation starten")
            
         if electrical_storage_simulation_button:
-            with st.spinner("Wetterdaten werden abgerufen und PV-System simuliert..."):
+            with st.spinner("Wetterdaten werden abgerufen, PV-Erzeugung und Speicher werden simuliert..."):
                 try:
+                    start_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
+                    end_str = end_date.strftime("%Y-%m-%d %H:%M:%S")
+
+                    # Minimal environment for the storage model (only timebase is used).
                     env = Environment(
                         timebase=15,
-                        start=start_date.strftime("%Y-%m-%d %H:%M:%S"),
-                        end=end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        start=start_str,
+                        end=end_str,
                         surpress_output_globally=False
                     )
-                    station_meta = env.get_dwd_pv_data(
-                        lat=lat,
-                        lon=lon,
-                    )
 
-                    st.success("✅ Wetterdaten erfolgreich abgerufen!")
+                    # ── Simplified PV model (same as the "PV-Konfiguration" page) ──
+                    # 1-kWp reference yield from PVlib + DWD, scaled to installed capacity.
+                    raw_pv = get_normalized_pv_output(
+                        lat, lon,
+                        pd.Timestamp(date_start),
+                        pd.Timestamp(date_end) + pd.Timedelta(days=1),
+                    )
+                    normalized_pv = pd.to_numeric(
+                        raw_pv, errors="coerce"
+                    ).fillna(0.0).reset_index(drop=True)
+                    pv_values = normalized_pv.values * pv_capacity_kwp
+
+                    st.success("✅ Wetterdaten abgerufen und PV-Erzeugung berechnet!")
                     with st.expander("ℹ️ Wetterdaten-Information"):
                         st.write(f"**Koordinaten:** {lat:.4f}°N, {lon:.4f}°E")
                         st.write(f"**Angefragt:** {start_date.date()} bis {end_date.date()}")
-                        st.write(f"**Datenpunkte:** {len(env.pv_data)}")
-                        if not station_meta.empty:
-                            row = station_meta.iloc[0]
-                            st.write(f"**Station:** {row.get('name', '—')} (ID {row.get('station_id', '?')}, {row.get('distance', 0):.1f} km)")
+                        st.write(f"**Installierte Leistung:** {pv_capacity_kwp:.1f} kWp")
+                        st.write(f"**Datenpunkte:** {len(normalized_pv)}")
 
-                except Exception as e:
-                    st.error(f"❌ Fehler beim Abrufen der Wetterdaten: {e}")
-                    return
-
-            with st.spinner("PV-System und Speicher werden simuliert..."):
-                try:
-                    
-                    # Check if PV system is configured
-                    if "pv" not in st.session_state:
-                        st.error("❌ Bitte konfigurieren Sie zuerst ein PV-System auf der 'PV Konfiguration' Seite.")
-                        return
-                    
-                    # Configure PV system
-                    PhotoV = st.session_state["pv"]
-                    name = f"bus_{lat:.2f}_{lon:.2f}"
-                    PhotoV.identifier = (name + "_pv")
-                    PhotoV.environment = env
-                    
-                    # Prepare PV time series
-                    PhotoV.prepare_time_series()
-                    
                     # Initialize Electrical Storage with form inputs
+                    name = f"bus_{lat:.2f}_{lon:.2f}"
                     st.session_state["es"] = ElectricalEnergyStorage(
                         environment=env,
                         identifier=(name + "_storage"),
@@ -158,34 +162,25 @@ def electrical_storage_configuration():
                         max_c=st.session_state["electrical_storage"]["max_c"],
                         capacity=st.session_state["electrical_storage"]["Max Capacity"]
                     )
-                
+
                     st.success("✅ Speichersystem erfolgreich konfiguriert!")
-                    
-                    # Create baseload profile
-                    start_str = start_date.strftime("%Y-%m-%d %H:%M:%S")
-                    end_str = end_date.strftime("%Y-%m-%d %H:%M:%S")
+
+                    # Build the 15-min load profiles (baseload, PV generation, residual load).
                     time_index = pd.date_range(start=start_str, end=end_str, freq="15min")
-                    baseload = pd.DataFrame({
-                        "0": [baseload_power] * len(time_index)
-                    }, index=time_index)
 
-                    # Calculate residual load (consumption - generation) with robust index alignment.
-                    pv_series = PhotoV.timeseries.loc[start_str:end_str]
-                    if isinstance(pv_series, pd.DataFrame):
-                        pv_series = pv_series.iloc[:, 0]
-
+                    # Align the PV generation to the baseload index positionally.
+                    n = min(len(time_index), len(pv_values))
                     house_loadshape = pd.DataFrame(index=time_index)
-                    house_loadshape["baseload"] = baseload["0"].reindex(time_index)
-                    house_loadshape["pv_gen"] = pd.to_numeric(
-                        pv_series.reindex(time_index), errors="coerce"
-                    ).fillna(0.0)
+                    house_loadshape["baseload"] = float(baseload_power)
+                    house_loadshape["pv_gen"] = 0.0
+                    house_loadshape.iloc[:n, house_loadshape.columns.get_loc("pv_gen")] = pv_values[:n]
                     house_loadshape["residual_load"] = (
                         house_loadshape["baseload"] - house_loadshape["pv_gen"]
                     ).fillna(0.0)
-                    
+
                     # Assign residual load to storage
                     st.session_state["es"].residual_load = house_loadshape.residual_load
-                    
+
                     # Prepare time series data for Electrical Storage
                     st.session_state["es"].prepare_time_series()
 
