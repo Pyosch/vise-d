@@ -10,7 +10,7 @@ Created: January 2026
 __author__ = "Pyosch"
 __credits__ = ["GitHub Copilot (Claude Sonnet 4.5)"]
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 import pandas as pd
 import streamlit as st
@@ -19,12 +19,22 @@ from vpplib.heat_pump import HeatPump
 from vpplib.user_profile import UserProfile
 from vpplib.environment import Environment
 from src.ui.components import heatpump_settings
+from src.utils.vpplib_interface import reference_consumerfactor
 
 try:
     import osmnx as ox
     _HAS_OSMNX = True
 except Exception:
     _HAS_OSMNX = False
+
+
+# SigLinDe reference temperature for vpplib's thermal-demand model. This is NOT
+# the building heating limit: the SigLinDe sigmoid (B / (T - t_0))**C requires
+# t_0 to lie above all ambient temperatures (vpplib's documented default is
+# 40 °C). Lower values flip the sign of (T - t_0) depending on the weather and
+# yield a NaN demand profile, which makes HeatPump.prepare_time_series raise
+# "No thermal energy demand available". The Netzmodell page uses 40 °C as well.
+_SIGLINDE_T0 = 40.0
 
 
 @st.cache_data
@@ -80,10 +90,6 @@ def heatpump_configuration():
         return
     st.caption(f"{n_days} Tag(e) × 96 Schritte = {n_days * 96} Zeitschritte (15-min-Raster)")
 
-    # Für die Simulation benötigte datetime-Werte (voller Tagesbereich)
-    start_date = datetime.combine(date_start, datetime.min.time())
-    end_date = datetime.combine(date_end, datetime.max.time())
-
     st.markdown("---")
     
     # Heat pump settings form
@@ -94,18 +100,6 @@ def heatpump_configuration():
     yearly_thermal_energy_demand = st.session_state["heatpump_settings"]["yearly_thermal_energy_demand"]
     building_type = st.session_state["heatpump_settings"]["building_type"]
 
-    # Building and thermal demand settings
-    with st.expander("🏠 Gebäude und Wärmebedarf"):
-        t_0 = st.number_input(
-            "Heizgrenztemperatur (°C)",
-            min_value=0.0,
-            max_value=70.0,
-            value=15.0,
-            step=0.5,
-            help="Außentemperatur, ab der geheizt wird",
-            key="hp_t_0"
-        )
-
     with st.form(key="heatpump_simulation_form"):
         # Heat Pump simulation button
         heatpump_simulation_button = st.form_submit_button("🚀 Wärmepumpe Simulation starten")
@@ -113,77 +107,82 @@ def heatpump_configuration():
         if heatpump_simulation_button:
             with st.spinner("Wetterdaten werden abgerufen..."):
                 try:
-                    _env_temp = Environment(
-                        start=start_date.strftime("%Y-%m-%d %H:%M:%S"),
-                        end=end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                    # vpplib-aligned weather acquisition: let the Environment build
+                    # the mean-temperature frames so their indices match what
+                    # UserProfile.get_thermal_energy_demand expects (the previous
+                    # manual resample/reindex produced misaligned indices and a
+                    # NaN demand profile).
+                    env = Environment(
+                        timebase=15,
+                        start=f"{date_start} 00:00:00",
+                        end=f"{date_end} 23:45:00",
+                        time_freq="15 min",
+                        surpress_output_globally=False,
                     )
-                    station_meta = _env_temp.get_dwd_temp_data(
-                        lat=lat,
-                        lon=lon,
+                    station_meta = env.get_dwd_mean_temp_hours(
+                        lat=lat, lon=lon, min_quality_per_parameter=10
                     )
-                    # temp_data has column 'temperature' in °C; rename for downstream use
-                    weather_data = _env_temp.temp_data.rename(columns={'temperature': 'temp_air'})
+                    env.get_dwd_mean_temp_days(
+                        lat=lat, lon=lon, min_quality_per_parameter=10
+                    )
+                    env.mean_temp_quarter_hours = (
+                        env.mean_temp_hours.resample("15 Min").interpolate()
+                    )
 
                     st.success("✅ Wetterdaten erfolgreich abgerufen!")
                     with st.expander("ℹ️ Wetterdaten-Information"):
                         st.write(f"**Koordinaten:** {lat:.4f}°N, {lon:.4f}°E")
-                        st.write(f"**Angefragt:** {start_date.date()} bis {end_date.date()}")
-                        st.write(f"**Datenpunkte:** {len(weather_data)}")
-                        if not station_meta.empty:
+                        st.write(f"**Angefragt:** {date_start} bis {date_end}")
+                        st.write(f"**Datenpunkte (stündlich):** {len(env.mean_temp_hours)}")
+                        if station_meta is not None and not getattr(station_meta, "empty", True):
                             row = station_meta.iloc[0]
-                            st.write(f"**Station:** {row.get('name', '—')} (ID {row.get('station_id', '?')}, {row.get('distance', 0):.1f} km)")
+                            st.write(
+                                f"**Station:** {row.get('name', '—')} "
+                                f"(ID {row.get('station_id', '?')}, "
+                                f"{row.get('distance', 0):.1f} km)"
+                            )
 
                 except Exception as e:
                     st.error(f"❌ Fehler beim Abrufen der Wetterdaten: {e}")
                     return
 
+            with st.spinner("Referenzjahr wird kalibriert (DWD-Daten, einmalig je Standort)…"):
+                try:
+                    # Calibrate the consumerfactor over a full reference year so the
+                    # short simulation window does not have to carry the whole annual
+                    # demand. Without this the SigLinDe profile degenerates to NaN and
+                    # HeatPump.prepare_time_series raises "No thermal energy demand"
+                    # (same approach as the Netzmodell / Thermischer-Speicher pages).
+                    consumerfactor = reference_consumerfactor(
+                        lat=lat,
+                        lon=lon,
+                        yearly_demand=float(yearly_thermal_energy_demand),
+                        building_type=building_type,
+                        t_0=_SIGLINDE_T0,
+                    )
+                except Exception as e:
+                    st.error(f"❌ Fehler bei der Referenzjahr-Kalibrierung: {e}")
+                    return
+
             with st.spinner("Wärmepumpe wird simuliert..."):
                 try:
-                    # Determine date range from daily aggregation
-                    daily_temp = weather_data['temp_air'].resample('D').mean()
-                    
-                    # Create full hourly, daily, and 15-min time ranges
-                    actual_start = daily_temp.index[0].replace(tzinfo=None, hour=0, minute=0, second=0)
-                    actual_end = daily_temp.index[-1].replace(tzinfo=None, hour=23, minute=45, second=0)
-                    
-                    # Generate complete time indices for vpplib
-                    full_hourly_index = pd.date_range(start=actual_start, end=actual_end.replace(minute=0), freq='h', tz='Europe/Berlin')
-                    full_daily_index = pd.date_range(start=actual_start, end=actual_end.replace(hour=0, minute=0), freq='D', tz='Europe/Berlin')
-                    full_15min_index = pd.date_range(start=actual_start, end=actual_end, freq='15min', tz='Europe/Berlin')
-                    
-                    # Resample and reindex to complete time ranges
-                    mean_temp_hours = weather_data['temp_air'].resample('h').mean().reindex(full_hourly_index, method='nearest').to_frame(name='temperature')
-                    mean_temp_days = weather_data['temp_air'].resample('D').mean().reindex(full_daily_index, method='nearest').to_frame(name='temperature')
-                    mean_temp_quarter_hours = weather_data['temp_air'].resample('15min').interpolate(method='linear').reindex(full_15min_index, method='nearest').to_frame(name='temperature')
-                    
-                    # Create environment with full day coverage
-                    env = Environment(
-                        timebase=15,
-                        start=actual_start.strftime("%Y-%m-%d %H:%M:%S"),
-                        end=actual_end.strftime("%Y-%m-%d %H:%M:%S"),
-                        time_freq="15 min",
-                        surpress_output_globally=False
-                    )
-                    
-                    # Set temperature data on environment for HeatPump COP calculation
-                    env.mean_temp_hours = mean_temp_hours
-                    env.mean_temp_days = mean_temp_days
-                    env.mean_temp_quarter_hours = mean_temp_quarter_hours
-                    
-                    # Create user profile with thermal demand
+                    # Build the thermal demand for the chosen window using the
+                    # vpplib-built mean-temperature frames and the reference-year
+                    # consumerfactor.
                     user_profile = UserProfile(
                         identifier=None,
                         latitude=lat,
                         longitude=lon,
                         thermal_energy_demand_yearly=yearly_thermal_energy_demand,
-                        mean_temp_days=mean_temp_days,
-                        mean_temp_hours=mean_temp_hours,
-                        mean_temp_quarter_hours=mean_temp_quarter_hours,
+                        mean_temp_days=env.mean_temp_days,
+                        mean_temp_hours=env.mean_temp_hours,
+                        mean_temp_quarter_hours=env.mean_temp_quarter_hours,
                         building_type=building_type,
                         comfort_factor=None,
-                        t_0=t_0,
+                        t_0=_SIGLINDE_T0,
+                        consumerfactor=consumerfactor,
                     )
-                    
+
                     user_profile.get_thermal_energy_demand()
                     
                     # Initialize Heat Pump with form inputs
